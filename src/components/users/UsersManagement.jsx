@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import OrderEditableList from '../OrderEditableList';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useUsers } from '../../contexts/UsersContext';
+import axios from "axios"
 
 // Import all extracted components
 import DraggableCollegeItem from './DraggableCollegeItem';
@@ -14,16 +12,36 @@ import ListSelectionModal from './ListSelectionModal';
 import EditListModal from './EditListModal';
 import ErrorDisplay from './ErrorDisplay';
 
-const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL || 'http://localhost:3008';
+const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
 const UsersManagement = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [hasMore, setHasMore] = useState(false);
-  const [nextPageId, setNextPageId] = useState(null);
+  const {
+    users,
+    loading,
+    error,
+    currentPage,
+    pageSize,
+    hasMore,
+    setCurrentPage,
+    setPageSize,
+    fetchUsers,
+    searchUsers,
+    updateUser,
+    deleteUser,
+    setLoading,
+    setError,
+    setUsers
+  } = useUsers();
+
+  const getAuthAxios = () => {
+    const token = localStorage.getItem('adminToken');
+    return axios.create({
+      baseURL: API_URL,
+      headers: { token }
+    });
+  };
+
+  // Local state for UI elements
   const [searchParams, setSearchParams] = useState({
     name: '',
     phone: ''
@@ -54,89 +72,33 @@ const UsersManagement = () => {
   const [isSearchingColleges, setIsSearchingColleges] = useState(false);
   const [editingOrderList, setEditingOrderList] = useState(null);
 
-  // Create axios instance with authentication header
-  const getAuthAxios = () => {
-    const token = localStorage.getItem('adminToken');
-    return axios.create({
-      baseURL: API_URL,
-      headers: { token }
-    });
-  };
-
-  // Fetch users on initial load and pagination changes
+  // Remove fetchUsers implementation and use context's fetchUsers
   useEffect(() => {
     if (!isSearchMode) {
-      fetchUsers();
+      fetchUsers(currentPage);
     }
-  }, [currentPage, pageSize]);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const authAxios = getAuthAxios();
-      const response = await authAxios.get(`/api/admin/all-users`, {
-        params: {
-          page: currentPage,
-          limit: pageSize,
-          lastDocId: nextPageId
-        }
-      });
-      
-      setUsers(response.data);
-      setNextPageId(response.data.nextPageId);
-      setHasMore(response.data.hasMore);
-      setError(null);
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        setError('Authentication required. Please log in again.');
-      } else {
-        setError('Failed to fetch users');
-      }
-      console.error('Error fetching users:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [currentPage, pageSize, fetchUsers, isSearchMode]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    try {
-      setLoading(true);
-      setIsSearchMode(true);
-      
-      const filteredParams = Object.entries(searchParams)
-        .filter(([_, value]) => value !== '')
-        .reduce((obj, [key, value]) => {
-          obj[key] = value;
-          return obj;
-        }, {});
-      
-      const authAxios = getAuthAxios();
-      const response = await authAxios.post(`/api/admin/user/search`, filteredParams);
-      
-      setUsers(response.data);
-      setError(null);
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        setError('Authentication required. Please log in again.');
-      } else {
-        setError('Failed to search users');
-      }
-      console.error('Error searching users:', err);
-    } finally {
-      setLoading(false);
-    }
+    setIsSearchMode(true);
+    const filteredParams = Object.entries(searchParams)
+      .filter(([_, value]) => value !== '')
+      .reduce((obj, [key, value]) => {
+        obj[key] = value;
+        return obj;
+      }, {});
+    await searchUsers(filteredParams);
   };
 
   const resetSearch = () => {
     setSearchParams({ name: '', phone: '' });
     setIsSearchMode(false);
     setCurrentPage(1);
-    setNextPageId(null);
-    fetchUsers();
+    fetchUsers(1);
   };
 
-  const handleEdit = (user) => {
+  const handleEdit = async (user) => {
     setEditingUser(user);
     setFormData({
       name: user.name || '',
@@ -149,16 +111,8 @@ const UsersManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        const authAxios = getAuthAxios();
-        await authAxios.delete(`/api/admin/delete-user/${id}`);
-        setUsers(users.filter(user => user.id !== id));
-        setError(null);
+        await deleteUser(id);
       } catch (err) {
-        if (err.response && err.response.status === 401) {
-          setError('Authentication required. Please log in again.');
-        } else {
-          setError('Failed to delete user');
-        }
         console.error('Error deleting user:', err);
       }
     }
@@ -167,20 +121,10 @@ const UsersManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const authAxios = getAuthAxios();
-      await authAxios.put(`/api/admin/update-user/${editingUser.id}`, formData);
-      setUsers(users.map(user => 
-        user.id === editingUser.id ? { ...user, ...formData } : user
-      ));
+      await updateUser(editingUser.id, formData);
       setEditingUser(null);
       setFormData({ name: '', phone: '', email: '', premium: false });
-      setError(null);
     } catch (err) {
-      if (err.response && err.response.status === 401) {
-        setError('Authentication required. Please log in again.');
-      } else {
-        setError('Failed to update user');
-      }
       console.error('Error saving user:', err);
     }
   };
@@ -344,7 +288,7 @@ const UsersManagement = () => {
       console.log(`Saving list with ID: ${targetListId} for user ${selectedUserListsId}`);
       
       const response = await authAxios.put(
-        `/api/admin/user/${selectedUserListsId}/list/${targetListId}`, 
+        `/api/admin/user/${selectedUserListsId}/list/${targetListId}`,
         listData
       );
 

@@ -7,6 +7,9 @@ import ChangePassword from './pages/ChangePassword';
 import Users from './pages/Users';
 import Forms from './pages/Forms';
 import Lists from './pages/Lists';
+import { UsersProvider } from './contexts/UsersContext';
+import Analytics from './pages/Analytics';
+import { ListsProvider } from './contexts/ListsContext';
 
 // Protected Route component to handle authentication
 const ProtectedRoute = ({ children }) => {
@@ -42,7 +45,9 @@ function App() {
             path='/users' 
             element={
               <ProtectedRoute>
-                <Users/>
+                <UsersProvider>
+                  <Users />
+                </UsersProvider>
               </ProtectedRoute>
             }
           />
@@ -70,6 +75,17 @@ function App() {
             element={
               <ProtectedRoute>
                 <ChangePassword />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route 
+            path='/home' 
+            element={
+              <ProtectedRoute>
+                 
+                          <Analytics />
+               
               </ProtectedRoute>
             }
           />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useUsers } from '../../contexts/UsersContext';
 
 const ListSelectionModal = ({ 
   showModal, 
@@ -9,6 +10,7 @@ const ListSelectionModal = ({
   onSelectList 
 }) => {
   if (!showModal) return null;
+  const {users} = useUsers();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -29,7 +31,11 @@ const ListSelectionModal = ({
         ) : availableLists.length > 0 ? (
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {availableLists.map(list => {
-              const isSelected = list.userIds && list.userIds.includes(selectedUserId);
+              const isSelected2 = list.userIds && list.userIds.includes(selectedUserId);
+              const selectedUser = users.find(user => user.id === selectedUserId);
+              const isSelected = selectedUser?.lists?.map(l => l.listId).includes(list.id);
+              console.log(isSelected);
+              ;
               return (
                 <div 
                   key={list.id}

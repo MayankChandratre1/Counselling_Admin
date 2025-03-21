@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List } from 'lucide-react';
+import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const VerticalNavbar = ({ onClose }) => {
@@ -42,6 +42,15 @@ const VerticalNavbar = ({ onClose }) => {
       
       {/* Navigation Items */}
       <nav className="flex-1 overflow-y-auto p-2">
+        {/* User Section */}
+        <Link 
+          to="/home"
+          onClick={onClose}
+          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
+        >
+          <Home className="mr-3 text-white" />
+          <span>Home</span>
+        </Link>
         {/* User Section */}
         <Link 
           to="/users"
