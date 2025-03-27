@@ -3,6 +3,16 @@ import { Plus, Trash2, CheckCircle } from 'lucide-react';
 import DraggableCollegeItem from './DraggableCollegeItem';
 
 const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, removeCollegeFromList }) => {
+
+  const branchNameFormatter = (branchName) => {
+    const commonWords = ['and', 'of', 'the', 'in', 'for', 'with', 'on', 'at', 'by', 'from'];
+    return branchName
+      .split(' ')
+      .filter(word => !commonWords.includes(word.toLowerCase()))
+      .map(word => word.charAt(0).toUpperCase())
+      .join('');
+  }
+
   const renderSelectedCollegesTable = () => (
     <div className="overflow-x-auto border rounded-lg">
       <table className="min-w-full divide-y divide-gray-200">
@@ -15,10 +25,10 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
               Branch Code
             </th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              City
+              Branch
             </th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Branch
+              City
             </th>
             <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
               Actions
@@ -41,8 +51,8 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
   );
 
   return (
-    <div className="h-[calc(100vh-350px)] flex flex-col">
-      <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 mb-2">
+    <div className=" flex flex-col">
+      {/* <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 mb-2">
         <div className="flex justify-between items-center">
           <label className="block text-sm font-medium text-gray-700 flex items-center">
             <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
@@ -64,7 +74,7 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
             </button>
           )}
         </div>
-      </div>
+      </div> */}
       <div className="flex-1 border border-gray-200 rounded-md bg-gray-50 overflow-hidden shadow-sm">
         <div className="h-full overflow-y-auto p-2">
           {selectedColleges.length > 0 ? (

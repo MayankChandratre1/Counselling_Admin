@@ -48,8 +48,8 @@ const FilterDropdown = ({
   const colorClasses = getColorClasses();
   
   return (
-    <div className="relative bg-white p-4 rounded-md shadow-sm border border-gray-200">
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+    <div className="relative bg-white">
+      {/* <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label> */}
       <div className="flex items-center space-x-2 mb-2">
         <div className="relative flex-grow">
           <input

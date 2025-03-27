@@ -1,37 +1,33 @@
 import React from 'react';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, School, Users } from 'lucide-react';
 import ListDetails from './ListDetails';
 
-const ListCard = ({ 
-  list, 
-  expandedListId, 
-  handleListClick, 
-  handleEdit, 
-  handleDelete 
-}) => {
+const ListCard = ({ list, expandedListId, handleListClick, handleEdit, handleDelete }) => {
   return (
     <div className="bg-white rounded-lg shadow-md transition-all hover:shadow-lg">
-      {/* List Header - Always visible and clickable */}
       <div 
         className={`p-6 cursor-pointer ${
           expandedListId === list.id ? 'border-b border-gray-200' : ''
         }`}
         onClick={() => handleListClick(list.id)}
       >
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex justify-between items-start">
+          <div className="space-y-3 flex-1">
             <h2 className="text-xl font-semibold text-gray-800">{list.title}</h2>
-            <div className="flex mt-2 space-x-2">
-              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
-                {list.colleges?.length || 0} colleges
-              </span>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center text-blue-600">
+                <School size={16} className="mr-1.5" />
+                <span className="text-sm font-medium">{list.colleges?.length || 0}</span>
+              </div>
               {list.userIds && list.userIds.length > 0 && (
-                <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
-                  {list.userIds.length} users
-                </span>
+                <div className="flex items-center text-green-600">
+                  <Users size={16} className="mr-1.5" />
+                  <span className="text-sm font-medium">{list.userIds.length}</span>
+                </div>
               )}
             </div>
           </div>
+          
           <div className="flex space-x-2">
             <button
               onClick={(e) => {
@@ -57,7 +53,6 @@ const ListCard = ({
         </div>
       </div>
 
-      {/* Expanded List Content */}
       {expandedListId === list.id && (
         <div className="p-6">
           <ListDetails list={list} />

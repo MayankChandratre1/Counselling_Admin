@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axiosInstance from '../../utils/axios';
 import { Plus } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
@@ -40,6 +40,7 @@ const ListsManagement = () => {
   const [branchSearchInput, setBranchSearchInput] = useState('');
   const [filteredCities, setFilteredCities] = useState([]);
   const [filteredBranches, setFilteredBranches] = useState([]);
+  const searchTimeoutRef = useRef(null);
 
   useEffect(() => {
     fetchLists();
@@ -252,20 +253,25 @@ const ListsManagement = () => {
     const value = e.target.value;
     setSearchQuery(value);
     // Debounce the search to avoid too many requests
-    const timeoutId = setTimeout(() => {
-        searchColleges(value, selectedCity, selectedBranch);
-    }, 300);
-    return () => clearTimeout(timeoutId);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      searchColleges(value, selectedCity, selectedBranch);
+    }, 1000);
   };
 
   // Modify the add college to list functionality
-  const addCollegeToList = (college, branch = null) => {
-    // Create a unique identifier for the college-branch combination
-    const uniqueId = branch 
-      ? `${college.id}_${branch.branchCode}`
-      : college.id;
-      
-    // Check if this college-branch combo is already selected
+  
+  const addCollegeToList = (college, branch = null, batchColleges = null) => {
+    if (batchColleges) {
+      // Handle batch addition
+      setSelectedColleges(prev => [...prev, ...batchColleges]);
+      return;
+    }
+
+    // Handle single college addition (existing logic)
+    const uniqueId = branch ? `${college.id}_${branch.branchCode}` : college.id;
     if (!selectedColleges.some(c => 
       (branch && c.id === college.id && c.selectedBranchCode === branch.branchCode) ||
       (!branch && c.id === college.id && !c.selectedBranchCode)
@@ -276,7 +282,6 @@ const ListsManagement = () => {
         selectedBranch: branch ? branch.branchName : null,
         selectedBranchCode: branch ? branch.branchCode : null
       };
-      
       setSelectedColleges([...selectedColleges, collegeToAdd]);
     }
   };
@@ -454,7 +459,7 @@ const ListsManagement = () => {
           )}
 
           {/* Lists Grid */}
-          <div className="grid gap-6">
+          <div className="grid lg:grid-cols-4 gap-6">
             {lists.length > 0 ? (
               lists.map((list) => (
                 <ListCard 
