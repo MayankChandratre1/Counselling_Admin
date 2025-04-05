@@ -10,6 +10,8 @@ import Lists from './pages/Lists';
 import { UsersProvider } from './contexts/UsersContext';
 import Analytics from './pages/Analytics';
 import { ListsProvider } from './contexts/ListsContext';
+import DataCollectionForms from './pages/DataCollectionForms';
+import CutOff from './pages/CutOff';
 
 // Protected Route component to handle authentication
 const ProtectedRoute = ({ children }) => {
@@ -85,6 +87,25 @@ function App() {
                  
                           <Analytics />
                
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path='/registrationform' 
+            element={
+              <ProtectedRoute>
+                 
+                          <DataCollectionForms />
+               
+              </ProtectedRoute>
+            }
+          />
+
+<Route 
+            path='/cutoff' 
+            element={
+              <ProtectedRoute>
+                <CutOff/>
               </ProtectedRoute>
             }
           />

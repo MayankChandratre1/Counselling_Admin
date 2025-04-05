@@ -2,7 +2,18 @@ import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { GripVertical } from 'lucide-react';
 
-const DraggableCollegeItem = ({ college, index, moveCollege, handleRemoveCollege }) => {
+const DraggableCollegeItem = ({ 
+  college, 
+  index, 
+  moveCollege, 
+  handleRemoveCollege,
+  isSelected,
+  onSelect,
+  selectedCount,
+  isSearchPanelCollapsed,
+  highlighted,
+  highlightedIndices
+}) => {
   const branchNameFormatter = (branchName) => {
     const commonWords = ['and', 'of', 'the', 'in', 'for', 'with', 'on', 'at', 'by', 'from'];
     return branchName ? branchName
@@ -13,31 +24,61 @@ const DraggableCollegeItem = ({ college, index, moveCollege, handleRemoveCollege
   }
   const [{ isDragging }, drag] = useDrag({
     type: 'COLLEGE',
-    item: { index },
+    item: { 
+      index,
+      isSelected,
+      selectedCount
+    },
     collect: monitor => ({
-      isDragging: monitor.isDragging(),
+      isDragging: !!monitor.isDragging(),
     }),
   });
 
-  const [, drop] = useDrop({
+  const [{ isOver }, drop] = useDrop({
     accept: 'COLLEGE',
-    hover(item) {
+    hover(item, monitor) {
+      if (!monitor.isOver({ shallow: true })) return;
       if (item.index === index) return;
       moveCollege(item.index, index);
       item.index = index;
     },
+    collect: monitor => ({
+      isOver: monitor.isOver({ shallow: true })
+    })
   });
 
   return (
     <tr 
       ref={(node) => drag(drop(node))} 
-      className={`${isDragging ? 'opacity-50 bg-gray-50' : 'hover:bg-gray-50'} transition-colors duration-200`}
+      id={`college-row-${index}`}
+      className={`
+        ${isDragging ? 'opacity-50' : ''}
+        ${isOver ? 'bg-blue-50' : ''}
+        ${isSelected ? 'bg-blue-100' : ''}
+        ${highlightedIndices?.has(index) ? '!bg-yellow-50 border-l-4 border-yellow-500' : ''}
+        hover:bg-gray-50
+        transition-all duration-200
+      `}
     >
       <td className="px-6 py-2 whitespace-nowrap">
-        <div className="flex items-center">
-          <GripVertical size={16} className="text-gray-400 cursor-grabbing mr-2" />
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(event) => onSelect(index, event.target.checked, event)}
+            onKeyDown={(e) => {
+              // Prevent spacebar from triggering drag
+              if (e.key === ' ') {
+                e.preventDefault();
+              }
+            }}
+            className="rounded border-blue-500 text-blue-600 focus:ring-blue-500"
+            onClick={e => e.stopPropagation()}
+          />
+          <div>{index+1}</div>
+          <GripVertical size={16} className="text-gray-400 cursor-grabbing" />
           <div>
-            <div className="text-xs font-medium text-gray-900">{college.instituteName}</div>
+            <div className="text-xs font-medium text-gray-900">{!isSearchPanelCollapsed ? `${college.instituteName.substring(0,30)}...`:`${college.instituteName}`}</div>
             <div className="text-xs text-gray-500">Status: {college.Status || 'N/A'}</div>
           </div>
         </div>

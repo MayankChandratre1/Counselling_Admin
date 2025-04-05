@@ -13,7 +13,8 @@ const UsersTable = ({
   onAddToList, 
   onViewLists, 
   onEdit, 
-  onDelete
+  onDelete,
+  onViewDetails // Add this prop
 }) => {
   if (loading) {
     return (
@@ -105,6 +106,12 @@ const UsersTable = ({
                 )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button 
+                    onClick={() => onViewDetails(user)}
+                    className="text-blue-600 hover:text-blue-900 mr-4 transition-colors duration-200"
+                  >
+                    View Details
+                  </button>
                   <button 
                     onClick={() => onAddToList(user.id)}
                     className="text-green-600 hover:text-green-900 mr-4 transition-colors duration-200"

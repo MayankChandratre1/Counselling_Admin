@@ -298,7 +298,14 @@ const ListsManagement = () => {
     try {
       const submitData = {
         title: formData.title,
-        colleges: selectedColleges,
+        colleges: selectedColleges.map(college => ({
+          ...college,
+          branches: undefined, // Remove branches from the college object before sending,
+          searchIndex: undefined, // Remove searchIndex if it exists
+          additionalMetadata: undefined, // Remove additional metadata if it exists,
+           keywords: undefined,
+
+        })),
         userIds: formData.userIds || []
       };
 
@@ -316,6 +323,8 @@ const ListsManagement = () => {
       setFormData({ title: '' });
       setSelectedColleges([]);
     } catch (err) {
+      console.log(err);
+      
       setError('Failed to save list');
     }
   };

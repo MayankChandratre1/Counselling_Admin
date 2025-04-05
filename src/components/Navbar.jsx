@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home } from 'lucide-react';
+import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home, FormInputIcon, FileLineChart,CheckCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const VerticalNavbar = ({ onClose }) => {
@@ -51,6 +51,7 @@ const VerticalNavbar = ({ onClose }) => {
           <Home className="mr-3 text-white" />
           <span>Home</span>
         </Link>
+        
         {/* User Section */}
         <Link 
           to="/users"
@@ -79,6 +80,14 @@ const VerticalNavbar = ({ onClose }) => {
           <FormInput className="mr-3 text-green-400" />
           <span>Forms</span>
         </Link>
+        <Link 
+          to="/registrationform"
+          onClick={onClose}
+          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
+        >
+          <FileLineChart className="mr-3 text-green-400" />
+          <span>Data Collection Form</span>
+        </Link>
 
         <Link 
           to="/lists"
@@ -88,6 +97,15 @@ const VerticalNavbar = ({ onClose }) => {
           <List className="mr-3 text-green-400" />
           <span>Lists</span>
         </Link>
+        <Link 
+          to="/cutoff"
+          onClick={onClose}
+          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
+        >
+          <CheckCheck className="mr-3 text-green-400" />
+          <span>Cutoff</span>
+        </Link>
+
 
         {/* Change Password Section */}
         <Link 

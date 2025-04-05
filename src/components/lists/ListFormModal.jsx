@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Search, Trash2, GraduationCap, List, Filter, ArrowBigLeft, ArrowLeft } from 'lucide-react';
+import { X, Plus, Search, Trash2, GraduationCap, List, Filter, ArrowBigLeft, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import CollegeSearchForm from './CollegeSearchForm';
@@ -34,10 +34,12 @@ const ListFormModal = ({
   handleBranchSelect,
   filteredBranches,
   selectedBranch,
-  moveCollege,
+  // moveCollege,
   removeCollegeFromList
 }) => {
   const [activeTab, setActiveTab] = useState('search');
+  const [selectedForDrag, setSelectedForDrag] = useState([]);
+  const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] = useState(false);
 
   const clearColleges = () => {
     if (window.confirm('Are you sure you want to clear all selected colleges?')) {
@@ -45,9 +47,49 @@ const ListFormModal = ({
     }
   };
 
+  const handleSelectForDrag = (collegeId) => {
+    setSelectedForDrag(prev => 
+      prev.includes(collegeId) 
+        ? prev.filter(id => id !== collegeId)
+        : [...prev, collegeId]
+    );
+  };
+
+  const handleDragMultiple = () => {
+    const collegesToAdd = searchResults
+      .filter(college => selectedForDrag.includes(college.id))
+      .map(college => ({
+        ...college,
+        uniqueId: college.id,
+      }));
+
+    if (collegesToAdd.length > 0) {
+      setSelectedColleges(prev => [...prev, ...collegesToAdd]);
+      setSelectedForDrag([]); // Clear selection after adding
+    }
+  };
+
+  const moveCollege = (dragIndex, hoverIndex, newOrder = null) => {
+    if (newOrder) {
+      // Handle bulk move with new order
+      setSelectedColleges(newOrder);
+    } else {
+      // Handle single drag and drop
+      setSelectedColleges(prevColleges => {
+        const newColleges = [...prevColleges];
+        const [draggedCollege] = newColleges.splice(dragIndex, 1);
+        newColleges.splice(hoverIndex, 0, draggedCollege);
+        return newColleges;
+      });
+    }
+  };
+
+  const toggleSearchPanel = () => {
+    setIsSearchPanelCollapsed(!isSearchPanelCollapsed);
+  };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col h-screen w-screen">
+    <div className="fixed inset-0 bg-white z-50 flex flex-col min-h-screen w-screen">
       {/* Header with title input */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-3 flex items-center gap-3">
         <button
@@ -68,63 +110,98 @@ const ListFormModal = ({
       </div>
 
       {/* Search Bar and Filters - Horizontal */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3">
-        <div className=" mx-auto">
-          <CollegeSearchForm
-            searchQuery={searchQuery}
-            handleSearchChange={handleSearchChange}
-            searchColleges={searchColleges}
-            isSearching={isSearching}
-            selectedCity={selectedCity}
-            citySearchInput={citySearchInput}
-            setCitySearchInput={setCitySearchInput}
-            showCityFilter={showCityFilter}
-            setShowCityFilter={setShowCityFilter}
-            handleCitySelect={handleCitySelect}
-            filteredCities={filteredCities}
-            selectedBranch={selectedBranch}
-            branchSearchInput={branchSearchInput}
-            setBranchSearchInput={setBranchSearchInput}
-            showBranchFilter={showBranchFilter}
-            setShowBranchFilter={setShowBranchFilter}
-            handleBranchSelect={handleBranchSelect}
-            filteredBranches={filteredBranches}
-            compact={true} // New prop for horizontal layout
-          />
-        </div>
-      </div>
+        {!isSearchPanelCollapsed && <div className="bg-white border-b border-gray-200 px-6 py-3">
+          <div className=" mx-auto">
+            <CollegeSearchForm
+              searchQuery={searchQuery}
+              handleSearchChange={handleSearchChange}
+              searchColleges={searchColleges}
+              isSearching={isSearching}
+              selectedCity={selectedCity}
+              citySearchInput={citySearchInput}
+              setCitySearchInput={setCitySearchInput}
+              showCityFilter={showCityFilter}
+              setShowCityFilter={setShowCityFilter}
+              handleCitySelect={handleCitySelect}
+              filteredCities={filteredCities}
+              selectedBranch={selectedBranch}
+              branchSearchInput={branchSearchInput}
+              setBranchSearchInput={setBranchSearchInput}
+              showBranchFilter={showBranchFilter}
+              setShowBranchFilter={setShowBranchFilter}
+              handleBranchSelect={handleBranchSelect}
+              filteredBranches={filteredBranches}
+              compact={true} // New prop for horizontal layout
+            />
+          </div>
+        </div>}
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden bg-gray-50">
         <DndProvider backend={HTML5Backend}>
-          <div className="h-full flex">
-            {/* Search Results Panel - 50% width */}
-            <div className="w-1/2 p-4 flex flex-col h-full border-r border-gray-200">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-medium text-gray-800 flex items-center">
-                  <Search size={20} className="text-blue-600 mr-2" />
-                  Search Results
-                </h3>
-                {searchResults.length > 0 && (
-                  <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
-                    {searchResults.length} colleges
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 overflow-y-auto bg-white rounded-lg border border-gray-200">
-                <CollegeSearchResults
-                  searchResults={searchResults}
-                  selectedColleges={selectedColleges}
-                  addCollegeToList={addCollegeToList}
-                  searchQuery={searchQuery}
-                  selectedCity={selectedCity}
-                  selectedBranch={selectedBranch}
-                />
+          <div className="h-full flex relative">
+            {/* Search Results Panel - Collapsible */}
+            <div className={`
+              transition-all duration-300 ease-in-out
+              ${isSearchPanelCollapsed ? 'w-0' : 'w-1/2'}
+              flex flex-col h-full border-r border-gray-200 overflow-hidden
+            `}>
+              <div className={`p-4 flex flex-col h-full ${isSearchPanelCollapsed ? 'invisible' : ''}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-medium text-gray-800 flex items-center">
+                    <Search size={20} className="text-blue-600 mr-2" />
+                    Search Results
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {selectedForDrag.length > 0 && (
+                      <button
+                        onClick={handleDragMultiple}
+                        className="px-3 py-1 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-md flex items-center"
+                      >
+                        <Plus size={16} className="mr-1" />
+                        Add Selected ({selectedForDrag.length})
+                      </button>
+                    )}
+                    {searchResults.length > 0 && (
+                      <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
+                        {searchResults.length} colleges
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto bg-white rounded-lg border border-gray-200">
+                  <CollegeSearchResults
+                    searchResults={searchResults}
+                    selectedColleges={selectedColleges}
+                    addCollegeToList={addCollegeToList}
+                    searchQuery={searchQuery}
+                    selectedCity={selectedCity}
+                    selectedBranch={selectedBranch}
+                    selectedForDrag={selectedForDrag}
+                    onSelectForDrag={handleSelectForDrag}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Selected Colleges Panel - 50% width */}
-            <div className="w-1/2 p-4 flex flex-col h-full">
+            {/* Collapse Toggle Button */}
+            <button
+              onClick={toggleSearchPanel}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-r-lg p-1.5 shadow-md hover:bg-gray-50"
+            >
+              {isSearchPanelCollapsed ? (
+                <ChevronRight className="w-4 h-4 text-gray-600" />
+              ) : (
+                <ChevronLeft className="w-4 h-4 text-gray-600" />
+              )}
+            </button>
+
+            {/* Selected Colleges Panel - Dynamic Width */}
+            <div className={`
+              transition-all duration-300 ease-in-out
+              ${isSearchPanelCollapsed ? 'w-full' : 'w-1/2'}
+              p-4 flex flex-col h-full
+            `}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-medium text-gray-800 flex items-center">
                   <GraduationCap size={20} className="text-blue-600 mr-2" />
@@ -145,6 +222,7 @@ const ListFormModal = ({
                   selectedColleges={selectedColleges}
                   moveCollege={moveCollege}
                   removeCollegeFromList={removeCollegeFromList}
+                  isSearchPanelCollapsed={isSearchPanelCollapsed}
                 />
               </div>
             </div>

@@ -11,6 +11,7 @@ import UserListModal from './UserListModal';
 import ListSelectionModal from './ListSelectionModal';
 import EditListModal from './EditListModal';
 import ErrorDisplay from './ErrorDisplay';
+import UserDetailsModal from './UserDetailsModal';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -71,6 +72,8 @@ const UsersManagement = () => {
   const [collegeSearchResults, setCollegeSearchResults] = useState([]);
   const [isSearchingColleges, setIsSearchingColleges] = useState(false);
   const [editingOrderList, setEditingOrderList] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Remove fetchUsers implementation and use context's fetchUsers
   useEffect(() => {
@@ -437,6 +440,11 @@ const UsersManagement = () => {
     }));
   };
 
+  const handleViewDetails = (user) => {
+    setSelectedUser(user);
+    setShowDetailsModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
@@ -486,6 +494,7 @@ const UsersManagement = () => {
             onViewLists={handleViewUserLists}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onViewDetails={handleViewDetails}
           />
         </div>
         
@@ -537,6 +546,15 @@ const UsersManagement = () => {
             onSave={handleSaveOrder}
           />
         )}
+
+        <UserDetailsModal
+          user={selectedUser}
+          showModal={showDetailsModal}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedUser(null);
+          }}
+        />
       </div>
     </div>
   );
