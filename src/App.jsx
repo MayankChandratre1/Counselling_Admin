@@ -1,22 +1,23 @@
-import { useState } from 'react';
-import './App.css';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Colleges from './pages/Colleges';
-import Login from './pages/Login';
-import ChangePassword from './pages/ChangePassword';
-import Users from './pages/Users';
-import Forms from './pages/Forms';
-import Lists from './pages/Lists';
-import { UsersProvider } from './contexts/UsersContext';
-import Analytics from './pages/Analytics';
-import { ListsProvider } from './contexts/ListsContext';
-import DataCollectionForms from './pages/DataCollectionForms';
-import CutOff from './pages/CutOff';
+import { useState } from "react";
+import "./App.css";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Colleges from "./pages/Colleges";
+import Login from "./pages/Login";
+import ChangePassword from "./pages/ChangePassword";
+import Users from "./pages/Users";
+import Forms from "./pages/Forms";
+import Lists from "./pages/Lists";
+import { UsersProvider } from "./contexts/UsersContext";
+import Analytics from "./pages/Analytics";
+import DataCollectionForms from "./pages/DataCollectionForms";
+import CutOff from "./pages/CutOff";
+import UserDetailsPage from "./pages/UserDetailsPage";
+import AddUsers from "./pages/AddUsers";
 
 // Protected Route component to handle authentication
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('adminToken');
-  
+  const token = localStorage.getItem("adminToken");
+
   if (!token) {
     return <Navigate to="/" replace />;
   }
@@ -30,20 +31,20 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Login route */}
-          <Route path='/' element={<Login />} />
-          
+          <Route path="/" element={<Login />} />
+
           {/* Protected routes */}
-          <Route 
-            path='/colleges' 
+          <Route
+            path="/colleges"
             element={
               <ProtectedRoute>
                 <Colleges />
               </ProtectedRoute>
             }
           />
-          
-          <Route 
-            path='/users' 
+
+          <Route
+            path="/users"
             element={
               <ProtectedRoute>
                 <UsersProvider>
@@ -53,63 +54,78 @@ function App() {
             }
           />
 
-          <Route 
-            path='/forms' 
+          <Route
+            path="/users/:id"
             element={
               <ProtectedRoute>
-                <Forms/>
+                <UsersProvider>
+                  <UserDetailsPage />
+                </UsersProvider>
               </ProtectedRoute>
             }
           />
 
-          <Route 
-            path='/lists' 
+          <Route
+            path="/forms"
+            element={
+              <ProtectedRoute>
+                <Forms />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/lists"
             element={
               <ProtectedRoute>
                 <Lists />
               </ProtectedRoute>
             }
           />
-          
-          <Route 
-            path='/change-password' 
+
+          <Route
+            path="/change-password"
             element={
               <ProtectedRoute>
                 <ChangePassword />
               </ProtectedRoute>
             }
           />
-          
-          <Route 
-            path='/home' 
+
+          <Route
+            path="/home"
             element={
               <ProtectedRoute>
-                 
-                          <Analytics />
-               
+                <Analytics />
               </ProtectedRoute>
             }
           />
-          <Route 
-            path='/registrationform' 
+          <Route
+            path="/registrationform"
             element={
               <ProtectedRoute>
-                 
-                          <DataCollectionForms />
-               
+                <DataCollectionForms />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/add-user"
+            element={
+              <ProtectedRoute>
+                <AddUsers />
               </ProtectedRoute>
             }
           />
 
-<Route 
-            path='/cutoff' 
+          <Route
+            path="/cutoff"
             element={
               <ProtectedRoute>
-                <CutOff/>
+                <CutOff />
               </ProtectedRoute>
             }
           />
-          
+
           {/* Catch all - redirect to login */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

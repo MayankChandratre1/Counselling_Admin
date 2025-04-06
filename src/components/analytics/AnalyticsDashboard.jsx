@@ -3,7 +3,8 @@ import { useUsers } from '../../contexts/UsersContext';
 import { useLists } from '../../contexts/ListsContext';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import FormProgressTracker from './FormProgressTracker';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -17,10 +18,13 @@ const AnalyticsDashboard = () => {
     planWiseUsers: {},
     usersWithLists: 0,
     averageListsPerUser: 0,
+    batchWiseUsers: {},
   });
   const [filterPlan, setFilterPlan] = useState('all');
   const [filterList, setFilterList] = useState('all');
+  const [filterBatch, setFilterBatch] = useState('all');
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [isUserListCollapsed, setIsUserListCollapsed] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -57,9 +61,13 @@ const AnalyticsDashboard = () => {
         });
       }
 
+      if (filterBatch !== 'all') {
+        result = result.filter(user => user.batch === filterBatch);
+      }
+
       setFilteredUsers(result);
     }
-  }, [users, filterPlan, filterList]);
+  }, [users, filterPlan, filterList, filterBatch]);
 
   const calculateMetrics = () => {
     const totalUsers = users.length;
@@ -75,6 +83,13 @@ const AnalyticsDashboard = () => {
       return acc;
     }, {});
 
+    // Calculate batch-wise distribution
+    const batchWiseUsers = users.reduce((acc, user) => {
+      const batch = user.batch || 'Unassigned';
+      acc[batch] = (acc[batch] || 0) + 1;
+      return acc;
+    }, {});
+
     // Calculate average lists per user
     const totalLists = users.reduce((acc, user) => {
       return acc + (user.lists?.length || 0);
@@ -87,6 +102,7 @@ const AnalyticsDashboard = () => {
       planWiseUsers,
       usersWithLists,
       averageListsPerUser: totalLists / totalUsers || 0,
+      batchWiseUsers,
     });
   };
 
@@ -112,6 +128,25 @@ const AnalyticsDashboard = () => {
         '#EF4444',
         '#F59E0B',
       ],
+    }],
+  };
+
+  const batchWiseData = {
+    labels: Object.keys(metrics.batchWiseUsers),
+    datasets: [{
+      label: 'Users per Batch',
+      data: Object.values(metrics.batchWiseUsers),
+      backgroundColor: [
+        '#3B82F6', // blue
+        '#10B981', // green
+        '#F59E0B', // yellow
+        '#EF4444', // red
+        '#8B5CF6', // purple
+        '#EC4899', // pink
+        '#6366F1', // indigo
+        '#14B8A6', // teal
+      ],
+      borderWidth: 1,
     }],
   };
 
@@ -185,101 +220,173 @@ const AnalyticsDashboard = () => {
           </div>
         </div>
 
-        {/* User List Section */}
-        <div className="bg-white p-6 rounded-lg shadow mt-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-            <h2 className="text-xl font-semibold mb-4 sm:mb-0">User List</h2>
-            
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4">
-              {/* Plan Filter */}
-              <div className="relative">
-                <select
-                  value={filterPlan}
-                  onChange={(e) => setFilterPlan(e.target.value)}
-                  className="appearance-none bg-gray-50 border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Plans</option>
-                  <option value="premium">Premium</option>
-                  <option value="standard">Standard</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              </div>
-
-              {/* List Filter */}
-              <div className="relative">
-                <select
-                  value={filterList}
-                  onChange={(e) => setFilterList(e.target.value)}
-                  className="appearance-none bg-gray-50 border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Users</option>
-                  <option value="with">With Lists</option>
-                  <option value="without">Without Lists</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              </div>
+        {/* Add Batch Distribution Chart after existing charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">Batch-wise Distribution</h2>
+            <div className="h-[300px] flex items-center justify-center">
+              <Bar
+                data={batchWiseData}
+                options={{
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: {
+                        stepSize: 1
+                      }
+                    }
+                  },
+                  plugins: {
+                    legend: {
+                      display: false
+                    }
+                  }
+                }}
+              />
             </div>
           </div>
+        </div>
 
-          {/* Users Table */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Phone</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Lists</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map(user => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.phone || "—"}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {user.isPremium ? (
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Premium
-                        </span>
-                      ) : (
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                          Standard
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {user.lists && user.lists.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {user.lists.slice(0, 2).map((list, idx) => (
-                            <span key={idx} className="px-2 py-1 text-xs leading-tight rounded-full bg-indigo-100 text-indigo-800">
-                              {list.title}
+        {/* Form Progress Tracking Section */}
+        <div className="bg-white p-6 rounded-lg shadow mt-8">
+          <h2 className="text-xl font-semibold mb-6">Form Progress Analytics</h2>
+          <FormProgressTracker />
+        </div>
+
+        {/* Collapsible User List Section */}
+        <div className="bg-white p-6 rounded-lg shadow mt-8">
+          <div className="flex justify-between items-center mb-6 cursor-pointer"
+               onClick={() => setIsUserListCollapsed(!isUserListCollapsed)}>
+            <h2 className="text-xl font-semibold">User List</h2>
+            <button className="p-2 hover:bg-gray-100 rounded-full">
+              {isUserListCollapsed ? (
+                <ChevronDown className="w-5 h-5" />
+              ) : (
+                <ChevronUp className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+
+          {!isUserListCollapsed && (
+            <>
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <h2 className="text-xl font-semibold mb-4 sm:mb-0">User List</h2>
+                
+                {/* Filters */}
+                <div className="flex flex-wrap gap-4">
+                  {/* Plan Filter */}
+                  <div className="relative">
+                    <select
+                      value={filterPlan}
+                      onChange={(e) => setFilterPlan(e.target.value)}
+                      className="appearance-none bg-gray-50 border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Plans</option>
+                      <option value="premium">Premium</option>
+                      <option value="standard">Standard</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  </div>
+
+                  {/* List Filter */}
+                  <div className="relative">
+                    <select
+                      value={filterList}
+                      onChange={(e) => setFilterList(e.target.value)}
+                      className="appearance-none bg-gray-50 border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Users</option>
+                      <option value="with">With Lists</option>
+                      <option value="without">Without Lists</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  </div>
+
+                  {/* Add Batch Filter */}
+                  <div className="relative">
+                    <select
+                      value={filterBatch}
+                      onChange={(e) => setFilterBatch(e.target.value)}
+                      className="appearance-none bg-gray-50 border border-gray-300 rounded-lg py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Batches</option>
+                      {Object.keys(metrics.batchWiseUsers).map(batch => (
+                        <option key={batch} value={batch}>{batch}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Users Table */}
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Phone</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Lists</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Batch</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredUsers.map(user => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{user.phone || "—"}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {user.isPremium ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              Premium
                             </span>
-                          ))}
-                          {user.lists.length > 2 && (
-                            <span className="px-2 py-1 text-xs leading-tight rounded-full bg-gray-100 text-gray-600">
-                              +{user.lists.length - 2} more
+                          ) : (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                              Standard
                             </span>
                           )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-500">No lists assigned</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {user.lists && user.lists.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {user.lists.slice(0, 2).map((list, idx) => (
+                                <span key={idx} className="px-2 py-1 text-xs leading-tight rounded-full bg-indigo-100 text-indigo-800">
+                                  {list.title}
+                                </span>
+                              ))}
+                              {user.lists.length > 2 && (
+                                <span className="px-2 py-1 text-xs leading-tight rounded-full bg-gray-100 text-gray-600">
+                                  +{user.lists.length - 2} more
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-500">No lists assigned</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                            {user.batch || 'Unassigned'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const UsersTable = ({ 
   users, 
@@ -16,6 +17,8 @@ const UsersTable = ({
   onDelete,
   onViewDetails // Add this prop
 }) => {
+  const navigate = useNavigate();
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-32">
@@ -107,7 +110,7 @@ const UsersTable = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button 
-                    onClick={() => onViewDetails(user)}
+                    onClick={() => navigate(`/users/${user.id}`)}
                     className="text-blue-600 hover:text-blue-900 mr-4 transition-colors duration-200"
                   >
                     View Details

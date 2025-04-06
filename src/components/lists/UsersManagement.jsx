@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useUsers } from '../../contexts/UsersContext';
 import axios from "axios"
-import { ChevronDown, ChevronUp } from 'lucide-react';
 
 // Import all extracted components
 import DraggableCollegeItem from './DraggableCollegeItem';
@@ -13,7 +12,6 @@ import ListSelectionModal from './ListSelectionModal';
 import EditListModal from '../lists/EditListModal';
 import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
-import { Link } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -76,9 +74,6 @@ const UsersManagement = () => {
   const [editingOrderList, setEditingOrderList] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState('all');
-  const [uniqueBatches, setUniqueBatches] = useState([]);
-  const [isSearchFormCollapsed, setIsSearchFormCollapsed] = useState(true);
 
   // Remove fetchUsers implementation and use context's fetchUsers
   useEffect(() => {
@@ -86,14 +81,6 @@ const UsersManagement = () => {
       fetchUsers(currentPage);
     }
   }, [currentPage, pageSize, fetchUsers, isSearchMode]);
-
-  // Add this effect to extract unique batches
-  useEffect(() => {
-    if (users.length > 0) {
-      const batches = [...new Set(users.map(user => user.batch || 'Unassigned'))].sort();
-      setUniqueBatches(batches);
-    }
-  }, [users]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -441,7 +428,6 @@ const UsersManagement = () => {
     }
   };
 
-
   const handleRemoveCollegeFromUserList = (collegeIndex) => {
     setEditListFormData(prevData => ({
       ...prevData,
@@ -471,10 +457,6 @@ const UsersManagement = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Users Management</h1>
-
-          <Link to={"/add-user"} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-200">
-            Add User
-          </Link>
         </div>
         
         {/* Error display */}
@@ -489,68 +471,20 @@ const UsersManagement = () => {
           onCancel={() => setEditingUser(null)} 
         />
         
-        {/* Collapsible Search Section */}
-        <div className="mb-6">
-          <button
-            onClick={() => setIsSearchFormCollapsed(!isSearchFormCollapsed)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-2"
-          >
-            {isSearchFormCollapsed ? (
-              <ChevronDown className="w-5 h-5" />
-            ) : (
-              <ChevronUp className="w-5 h-5" />
-            )}
-            {isSearchFormCollapsed ? 'Show Search' : 'Hide Search'}
-          </button>
-          
-          {!isSearchFormCollapsed && (
-            <UserSearchForm 
-              searchParams={searchParams}
-              onParamChange={handleSearchParamChange}
-              onSubmit={handleSearch}
-              onReset={resetSearch}
-            />
-          )}
-        </div>
+        {/* Search Section */}
+        <UserSearchForm 
+          searchParams={searchParams}
+          onParamChange={handleSearchParamChange}
+          onSubmit={handleSearch}
+          onReset={resetSearch}
+        />
         
-        {/* Batch Tabs */}
+        {/* Users List */}
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-          <div className="border-b border-gray-200 mb-6">
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              <button
-                onClick={() => setSelectedBatch('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
-                  selectedBatch === 'all'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                All Users
-              </button>
-              {uniqueBatches.map(batch => (
-                <button
-                  key={batch}
-                  onClick={() => setSelectedBatch(batch)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
-                    selectedBatch === batch
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {batch}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <h2 className="text-xl font-semibold mb-6 text-gray-800">
-            {selectedBatch === 'all' ? 'All Users' : `${selectedBatch} Users`}
-          </h2>
+          <h2 className="text-xl font-semibold mb-6 text-gray-800">Users List</h2>
           
           <UsersTable 
-            users={users.filter(user => 
-              selectedBatch === 'all' ? true : (user.batch || 'Unassigned') === selectedBatch
-            )}
+            users={users}
             loading={loading}
             error={error}
             isSearchMode={isSearchMode}
@@ -569,7 +503,7 @@ const UsersManagement = () => {
             onViewDetails={handleViewDetails}
           />
         </div>
-
+        
         {/* List Selection Modal */}
         <ListSelectionModal 
           showModal={showListsModal}

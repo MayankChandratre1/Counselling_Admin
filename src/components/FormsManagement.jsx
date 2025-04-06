@@ -36,7 +36,7 @@ const FormStepsManagement = () => {
     const updatedForms = [...forms];
     updatedForms[formIndex].steps[stepIndex] = { 
       ...updatedForms[formIndex].steps[stepIndex], 
-      [field]: field === 'number' ? parseInt(value, 10) : value 
+      [field]: field === 'showListButton' || field === 'isLocked' ? value === true : value 
     };
     setForms(updatedForms);
   };
@@ -64,7 +64,10 @@ const FormStepsManagement = () => {
     
     updatedForms[formIndex].steps.push({
       number: newStepNumber,
-      title: `New Step ${newStepNumber}`
+      title: `New Step ${newStepNumber}`,
+      description: '',
+      showListButton: false,
+      isLocked: false
     });
     
     setForms(updatedForms);
@@ -147,75 +150,125 @@ const FormStepsManagement = () => {
                           : 'bg-white hover:shadow-sm'
                       }`}
                     >
-                      <div className="flex flex-col sm:flex-row gap-3 items-center">
-                        {/* Step Number */}
-                        <div className="w-20">
-                          {editIndex === stepIndex && activeFormIndex === formIndex ? (
-                            <input
-                              type="number"
-                              value={step.number}
-                              onChange={(e) => handleChange(formIndex, stepIndex, "number", e.target.value)}
-                              className="border p-2 w-full text-center rounded bg-white"
-                            />
-                          ) : (
-                            <div className="bg-gray-100 p-2 rounded-lg text-center font-medium">
-                              Step {step.number}
-                            </div>
-                          )}
+                      <div className="flex flex-col gap-4">
+                        {/* Step Header with Number */}
+                        <div className="flex items-center gap-3">
+                          <div className="bg-gray-100 px-3 py-1.5 rounded-lg text-center font-medium w-24">
+                            Step {step.number}
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 ml-auto">
+                            {editIndex === stepIndex && activeFormIndex === formIndex ? (
+                              <button
+                                onClick={() => handleSave(formIndex)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                              >
+                                Save
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleEditClick(formIndex, stepIndex)}
+                                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => deleteStep(formIndex, stepIndex)}
+                                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md font-medium transition-colors"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                  </svg>
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        
-                        {/* Step Title */}
-                        <div className="flex-1">
+
+                        {/* Step Content */}
+                        <div className="space-y-4">
                           {editIndex === stepIndex && activeFormIndex === formIndex ? (
-                            <input
-                              type="text"
-                              value={step.title}
-                              onChange={(e) => handleChange(formIndex, stepIndex, "title", e.target.value)}
-                              className="border p-2 w-full rounded bg-white"
-                              placeholder="Enter step title"
-                            />
-                          ) : (
-                            <p className="p-2">{step.title}</p>
-                          )}
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex gap-2">
-                          {editIndex === stepIndex && activeFormIndex === formIndex ? (
-                            <button
-                              onClick={() => handleSave(formIndex)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
-                            >
-                              Save
-                            </button>
+                            <>
+                              {/* Title Input */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                <input
+                                  type="text"
+                                  value={step.title}
+                                  onChange={(e) => handleChange(formIndex, stepIndex, "title", e.target.value)}
+                                  className="border p-2 w-full rounded bg-white"
+                                  placeholder="Enter step title"
+                                />
+                              </div>
+
+                              {/* Description Input */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <textarea
+                                  value={step.description || ''}
+                                  onChange={(e) => handleChange(formIndex, stepIndex, "description", e.target.value)}
+                                  className="border p-2 w-full rounded bg-white h-24 resize-none"
+                                  placeholder="Enter step description"
+                                />
+                              </div>
+
+                              {/* Checkboxes */}
+                              <div className="flex gap-6">
+                                <label className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={step.showListButton || false}
+                                    onChange={(e) => handleChange(formIndex, stepIndex, "showListButton", e.target.checked)}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <span className="text-sm text-gray-700">Show List Button</span>
+                                </label>
+                                
+                                <label className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={step.isLocked || false}
+                                    onChange={(e) => handleChange(formIndex, stepIndex, "isLocked", e.target.checked)}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <span className="text-sm text-gray-700">Lock Step</span>
+                                </label>
+                              </div>
+                            </>
                           ) : (
                             <>
-                              <button
-                                onClick={() => handleEditClick(formIndex, stepIndex)}
-                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-medium transition-colors"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => deleteStep(formIndex, stepIndex)}
-                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md font-medium transition-colors"
-                              >
-                                <svg 
-                                  xmlns="http://www.w3.org/2000/svg" 
-                                  width="16" 
-                                  height="16" 
-                                  viewBox="0 0 24 24" 
-                                  fill="none" 
-                                  stroke="currentColor" 
-                                  strokeWidth="2" 
-                                  strokeLinecap="round" 
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M3 6h18"></path>
-                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                </svg>
-                              </button>
+                              <h3 className="font-medium">{step.title}</h3>
+                              {step.description && (
+                                <p className="text-gray-600 text-sm">{step.description}</p>
+                              )}
+                              <div className="flex gap-4 text-sm">
+                                {step.showListButton && (
+                                  <span className="text-blue-600 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <line x1="8" y1="6" x2="21" y2="6"></line>
+                                      <line x1="8" y1="12" x2="21" y2="12"></line>
+                                      <line x1="8" y1="18" x2="21" y2="18"></line>
+                                      <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                      <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                      <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                    </svg>
+                                    Has List
+                                  </span>
+                                )}
+                                {step.isLocked && (
+                                  <span className="text-yellow-600 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                    Locked
+                                  </span>
+                                )}
+                              </div>
                             </>
                           )}
                         </div>
