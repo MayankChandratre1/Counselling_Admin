@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUsers } from '../../contexts/UsersContext';
 import axios from "axios"
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 
 // Import all extracted components
 import DraggableCollegeItem from './DraggableCollegeItem';
@@ -79,6 +79,12 @@ const UsersManagement = () => {
   const [selectedBatch, setSelectedBatch] = useState('all');
   const [uniqueBatches, setUniqueBatches] = useState([]);
   const [isSearchFormCollapsed, setIsSearchFormCollapsed] = useState(true);
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    userName: '',
+    listTitle: '',
+    onConfirm: null
+  });
 
   // Remove fetchUsers implementation and use context's fetchUsers
   useEffect(() => {
@@ -174,8 +180,9 @@ const UsersManagement = () => {
     }
   };
 
-  const handleAddToList = async (userId) => {
+  const handleAddToList = async (userId, userName) => {
     setSelectedUserId(userId);
+    setSelectedUserName(userName); // Store userName for confirmation
     setShowListsModal(true);
     await fetchLists();
   };
@@ -202,51 +209,68 @@ const UsersManagement = () => {
 
   const handleListSelection = async (listId) => {
     try {
-      setLoading(true);
       const authAxios = getAuthAxios();
-      
       const listResponse = await authAxios.get(`/api/admin/list/${listId}`);
       const selectedList = listResponse.data;
-      const timestamp = new Date().toISOString();
-      
-      const listAssignment = {
-        id: `${listId}_${selectedUserId}_${timestamp}`,
-        originalListId: listId,
-        title: selectedList.title,
-        colleges: selectedList.colleges || [],
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        customized: false,
-        isCustomized: false
-      };
 
-      await authAxios.post(`/api/admin/user/${selectedUserId}/assign-list`, listAssignment);
-      
-      setUsers(users.map(user => {
-        if (user.id === selectedUserId) {
-          return {
-            ...user,
-            lists: [...(user.lists || []), listAssignment]
-          };
+      setConfirmationModal({
+        isOpen: true,
+        userName: selectedUserName,
+        listTitle: selectedList.title,
+        onConfirm: async () => {
+          try {
+            setLoading(true);
+            const timestamp = new Date().toISOString();
+            const listAssignment = {
+              id: `${listId}_${selectedUserId}_${timestamp}`,
+              originalListId: listId,
+              title: selectedList.title,
+              colleges: selectedList.colleges || [],
+              createdAt: timestamp,
+              updatedAt: timestamp,
+              customized: false,
+              isCustomized: false
+            };
+
+            await authAxios.post(`/api/admin/user/${selectedUserId}/assign-list`, listAssignment);
+            
+            setUsers(users.map(user => {
+              if (user.id === selectedUserId) {
+                return {
+                  ...user,
+                  lists: [...(user.lists || []), listAssignment]
+                };
+              }
+              return user;
+            }));
+            
+            setConfirmationModal(prev => ({ ...prev, isOpen: false }));
+            setShowListsModal(false);
+            setSelectedUserId(null);
+            setError(null);
+            alert('List assigned to user successfully');
+          } catch (err) {
+            setError('Failed to add list to user');
+            console.error('Error adding list to user:', err);
+          } finally {
+            setLoading(false);
+          }
         }
-        return user;
-      }));
-      
-      setShowListsModal(false);
-      setSelectedUserId(null);
-      setError(null);
-      alert('List assigned to user successfully');
+      });
     } catch (err) {
-      setError('Failed to add list to user');
-      console.error('Error adding list to user:', err);
-    } finally {
-      setLoading(false);
+      console.error('Error getting list details:', err);
+      setError('Failed to get list details');
     }
   };
 
   // Edit User List functions
   const handleEditUserList = (list) => {
-    setEditingUserList(list);
+    // Find the user data
+    const selectedUser = users.find(u => u.id === selectedUserListsId);
+    setEditingUserList({
+      ...list,
+      selectedUser // Add user data to the list object
+    });
     setEditListFormData({
       title: list.title,
       colleges: list.colleges || [],
@@ -597,6 +621,7 @@ const UsersManagement = () => {
           show={showEditListModal}
           onClose={() => setShowEditListModal(false)}
           editingUserList={editingUserList || {}}
+          selectedUser={editingUserList?.selectedUser} // Pass selected user
           editListFormData={editListFormData}
           setEditListFormData={setEditListFormData}
           searchCollegeQuery={searchCollegeQuery}
@@ -628,6 +653,40 @@ const UsersManagement = () => {
           }}
         />
       </div>
+
+      {/* Add Confirmation Modal */}
+      {confirmationModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Confirm List Assignment</h3>
+              <button
+                onClick={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+                className="text-gray-400 hover:text-gray-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Do you want to assign <span className="font-medium">{confirmationModal.listTitle}</span> to <span className="font-medium">{confirmationModal.userName}</span>?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmationModal.onConfirm}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

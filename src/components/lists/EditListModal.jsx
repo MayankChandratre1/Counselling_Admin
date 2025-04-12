@@ -6,8 +6,11 @@ import CollegeSearchForm from './CollegeSearchForm';
 import CollegeSearchResults from './CollegeSearchResults';
 import SelectedColleges from './SelectedColleges';
 import axiosInstance from '../../utils/axios';
+import { useUsers } from '../../contexts/UsersContext';
+import { set } from 'lodash';
 
 const EditListModal = ({
+  selectedUser,
   show,
   onClose,
   editingUserList,
@@ -36,10 +39,12 @@ const EditListModal = ({
   const [filteredBranches, setFilteredBranches] = useState([]);
   const [availableCities, setAvailableCities] = useState([]);
   const [availableBranches, setAvailableBranches] = useState([]);
+  const [selectedCollegesCutoffs, setSelectedCollegesCutoffs] = useState([]);
 
   useEffect(() => {
     fetchAllCities();
     fetchAllBranches();
+    
   }, []);
 
   const fetchAllCities = async () => {
@@ -55,6 +60,21 @@ const EditListModal = ({
           .sort();
           
         setAvailableCities(cities);
+      }
+    } catch (err) {
+      console.error('Error fetching city list:', err);
+    }
+  };
+
+  const fetchCutoffs = async (callback) => {
+    try {
+      const collegeIds = editListFormData.colleges.map(college => college.id);
+      const response = await axiosInstance.post('/api/admin/getcutoff', { collegeIds });
+      if (response.data && response.data.length > 0) {
+        const cutoffs = response.data
+        setSelectedCollegesCutoffs(cutoffs);
+        callback(cutoffs);
+        
       }
     } catch (err) {
       console.error('Error fetching city list:', err);
@@ -203,6 +223,15 @@ const EditListModal = ({
           placeholder="Enter list title..."
           required
         />
+        {/* Add Debug Button */}
+        {selectedUser && (
+          <button
+            onClick={() => console.log('Selected User:', editListFormData)}
+            className="px-4 py-2 bg-white/10 text-white rounded-md hover:bg-white/20 transition-all"
+          >
+            Debug User Info
+          </button>
+        )}
       </div>
 
       {/* Search Bar */}
@@ -297,7 +326,11 @@ const EditListModal = ({
                 moveCollege={handleMoveSelectedColleges}
                 removeCollegeFromList={handleRemoveCollegeFromUserList}
                 clearColleges={clearColleges}
+                selectedUserMarks={selectedUser?.counsellingData?.cetMarks || 0}
+                selectedUserCategory={selectedUser?.counsellingData?.category || "GOPENH"}
                 isSearchPanelCollapsed={isSearchPanelCollapsed}
+                fetchCutoffs={fetchCutoffs}
+                selectedCollegesCuttofs={selectedCollegesCutoffs}
               />
             </div>
           </div>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const UsersTable = ({
   users,
@@ -16,6 +16,31 @@ const UsersTable = ({
   onEdit,
   onDelete
 }) => {
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    userId: null,
+    userName: '',
+    listName: '',
+    onConfirm: null
+  });
+
+  // Handler for initial add to list click
+  const handleAddToList = (userId, userName) => {
+    // This will be called by the list selection modal with the selected list
+    return (listName, confirmCallback) => {
+      setConfirmModal({
+        isOpen: true,
+        userId,
+        userName,
+        listName,
+        onConfirm: () => {
+          confirmCallback();
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      });
+    };
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -56,7 +81,7 @@ const UsersTable = ({
   }
 
   return (
-    <div>
+    <div className="relative">
       <div className="overflow-x-auto -mx-4 sm:-mx-6">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -130,7 +155,7 @@ const UsersTable = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button 
-                    onClick={() => onAddToList(user.id)}
+                    onClick={() => onAddToList(user.id, handleAddToList(user.id, user.name))}
                     className="text-green-600 hover:text-green-900 mr-4 transition-colors duration-200"
                   >
                     Add to List
@@ -202,6 +227,40 @@ const UsersTable = ({
             >
               <ChevronRight size={16} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Confirm List Assignment</h3>
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="text-gray-400 hover:text-gray-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Do you want to assign <span className="font-medium">{confirmModal.listName}</span> to <span className="font-medium">{confirmModal.userName}</span>?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
           </div>
         </div>
       )}

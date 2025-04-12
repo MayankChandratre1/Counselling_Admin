@@ -116,7 +116,7 @@ const UsersTable = ({
                     View Details
                   </button>
                   <button 
-                    onClick={() => onAddToList(user.id)}
+                    onClick={() => onAddToList(user.id, user.name)}
                     className="text-green-600 hover:text-green-900 mr-4 transition-colors duration-200"
                   >
                     Add to List

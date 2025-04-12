@@ -55,20 +55,6 @@ const ListFormModal = ({
     );
   };
 
-  const handleDragMultiple = () => {
-    const collegesToAdd = searchResults
-      .filter(college => selectedForDrag.includes(college.id))
-      .map(college => ({
-        ...college,
-        uniqueId: college.id,
-      }));
-
-    if (collegesToAdd.length > 0) {
-      setSelectedColleges(prev => [...prev, ...collegesToAdd]);
-      setSelectedForDrag([]); // Clear selection after adding
-    }
-  };
-
   const moveCollege = (dragIndex, hoverIndex, newOrder = null) => {
     if (newOrder) {
       // Handle bulk move with new order
@@ -153,15 +139,6 @@ const ListFormModal = ({
                     Search Results
                   </h3>
                   <div className="flex items-center gap-2">
-                    {selectedForDrag.length > 0 && (
-                      <button
-                        onClick={handleDragMultiple}
-                        className="px-3 py-1 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-md flex items-center"
-                      >
-                        <Plus size={16} className="mr-1" />
-                        Add Selected ({selectedForDrag.length})
-                      </button>
-                    )}
                     {searchResults.length > 0 && (
                       <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
                         {searchResults.length} colleges

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import { Plus, Trash2, MoveVertical } from 'lucide-react';
 import DraggableCollegeItem from './DraggableCollegeItem';
 import NavigationSearch from './NavigationSearch';
+import { set } from 'lodash';
 
-const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, removeCollegeFromList, isSearchPanelCollapsed }) => {
+const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, removeCollegeFromList, isSearchPanelCollapsed, selectedUserMarks, selectedUserCategory, fetchCutoffs, selectedCollegesCutoffs2 }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
   const [showMoveBox, setShowMoveBox] = useState(false);
@@ -11,16 +12,46 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
   const [searchMatches, setSearchMatches] = useState([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [highlightedIndices, setHighlightedIndices] = useState(new Set());
+  const [eligibleBranches, setEligibleBranches] = useState([]);
+  const [selectedCollegesCutoffs, setSelectedCollegesCutoffs] = useState([]);
+
+  useEffect(() => {
+    fetchCutoffs && fetchCutoffs(setSelectedCollegesCutoffs);
+  },[selectedColleges])
+
+  useEffect(() => {    
+    if (selectedCollegesCutoffs && selectedCollegesCutoffs.length > 0) {
+      const extractedData = selectedCollegesCutoffs.map(college => {
+        const eligibleBranches = college.branches
+          .filter(branch => {
+            const categoryData = branch.cutoffs.find(
+              c => c.category === selectedUserCategory
+            );
+            return categoryData && selectedUserMarks >= categoryData.percentile;
+          })
+          .map(branch => ({
+            collegeId: college.id,
+            branchCode: branch.branchCode,
+            branchName: branch.branchName,
+            cutoffData: branch.cutoffs.find(c => c.category === selectedUserCategory)
+          }));
+
+        return {
+          collegeId: college.id,
+          eligibleBranches
+        };
+      }).filter(college => college.eligibleBranches.length > 0);
+
+      setEligibleBranches(extractedData);
+    }
+  }, [selectedCollegesCutoffs, selectedUserCategory, selectedUserMarks]);
 
   const handleSelectCollege = (index, checked, event) => {
-    if (!event) return; // Guard against undefined event
+    if (!event) return;
     
     const shiftKey = event.nativeEvent.shiftKey;
     const ctrlKey = event.nativeEvent.ctrlKey || event.nativeEvent.metaKey;
 
-    
-    
-    
     if (shiftKey && lastSelectedIndex !== null) {
       const start = Math.min(lastSelectedIndex, index);
       const end = Math.max(lastSelectedIndex, index);
@@ -29,16 +60,25 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
         (_, i) => start + i
       );
 
-      setSelectedItems(prev => {
-        const newSelection = new Set(prev);
-        if (checked) {
-          range.forEach(i => newSelection.add(i));
-        } else {
-          range.forEach(i => newSelection.delete(i));
-        }
-        return Array.from(newSelection).sort((a, b) => a - b);
-      });
+      // If ctrl is also pressed, toggle the range
+      if (ctrlKey) {
+        setSelectedItems(prev => {
+          const newSelection = new Set(prev);
+          range.forEach(i => {
+            if (newSelection.has(i)) {
+              newSelection.delete(i);
+            } else {
+              newSelection.add(i);
+            }
+          });
+          return Array.from(newSelection).sort((a, b) => a - b);
+        });
+      } else {
+        // Simple shift-click replaces the selection
+        setSelectedItems(checked ? range : []);
+      }
     } else if (ctrlKey) {
+      // Regular ctrl+click for toggling individual items
       setSelectedItems(prev => {
         const newSelection = new Set(prev);
         if (checked) {
@@ -48,11 +88,12 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
         }
         return Array.from(newSelection).sort((a, b) => a - b);
       });
+      setLastSelectedIndex(index);
     } else {
+      // Regular click for selecting single item
       setSelectedItems(checked ? [index] : []);
+      setLastSelectedIndex(checked ? index : null);
     }
-    
-    setLastSelectedIndex(index);
   };
 
   const updateHighlightedIndices = (oldIndices, newOrder) => {
@@ -129,7 +170,15 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
     
     // Convert to 0-based index (UI shows 1-based)
     const targetPosition = parseInt(targetIndex) - 1;
-    if (isNaN(targetPosition) || targetPosition < 0 || targetPosition >= selectedColleges.length) return;
+    
+    // Calculate valid range
+    const maxValidPosition = selectedColleges.length - selectedItems.length;
+    
+    // Ensure target is within valid range
+    if (isNaN(targetPosition) || targetPosition < 0 || targetPosition > maxValidPosition) {
+      alert(`Please enter a valid position between 1 and ${maxValidPosition + 1}`);
+      return;
+    }
 
     const newColleges = [...selectedColleges];
     // Extract selected colleges
@@ -159,6 +208,52 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
     moveCollege(null, null, newColleges);
     setShowMoveBox(false);
     setMoveToIndex('');
+  };
+
+  const moveToTop = () => {
+    if (selectedItems.length === 0) return;
+    const newColleges = [...selectedColleges];
+    
+    // Extract selected colleges
+    const itemsToMove = selectedItems
+      .sort((a, b) => a - b)
+      .map(index => newColleges[index]);
+
+    // Remove from highest to lowest to maintain correct indices
+    selectedItems
+      .sort((a, b) => b - a)
+      .forEach(index => newColleges.splice(index, 1));
+
+    // Insert at the beginning
+    newColleges.unshift(...itemsToMove);
+
+    // Update selected indices to reflect new positions
+    const newSelectedIndices = Array.from({ length: itemsToMove.length }, (_, i) => i);
+    setSelectedItems(newSelectedIndices);
+    moveCollege(null, null, newColleges);
+  };
+
+  const moveToBottom = () => {
+    if (selectedItems.length === 0) return;
+    const newColleges = [...selectedColleges];
+    
+    // Extract selected colleges
+    const itemsToMove = selectedItems
+      .sort((a, b) => a - b)
+      .map(index => newColleges[index]);
+
+    // Remove from highest to lowest to maintain correct indices
+    selectedItems
+      .sort((a, b) => b - a)
+      .forEach(index => newColleges.splice(index, 1));
+
+    // Add to the end
+    newColleges.push(...itemsToMove);
+
+    // Update selected indices to reflect new positions
+    const newSelectedIndices = Array.from({ length: itemsToMove.length }, (_, i) => newColleges.length - itemsToMove.length + i);
+    setSelectedItems(newSelectedIndices);
+    moveCollege(null, null, newColleges);
   };
 
   const branchNameFormatter = (branchName) => {
@@ -249,6 +344,18 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
           <span className="text-sm font-medium">
             {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
           </span>
+          <button
+            onClick={moveToTop}
+            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md flex items-center gap-2 hover:bg-blue-100"
+          >
+            Move to Top
+          </button>
+          <button
+            onClick={moveToBottom}
+            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md flex items-center gap-2 hover:bg-blue-100"
+          >
+            Move to Bottom
+          </button>
           {!showMoveBox ? (
             <button
               onClick={() => setShowMoveBox(true)}
@@ -340,6 +447,10 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Branch
                     </th>
+                    
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Cutoff
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       City
                     </th>
@@ -349,20 +460,34 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {selectedColleges.map((college, index) => (
-                    <DraggableCollegeItem
-                      key={college.uniqueId || `${college.id}_${index}`}
-                      college={college}
-                      index={index}
-                      moveCollege={moveSelectedColleges}
-                      handleRemoveCollege={removeCollegeFromList}
-                      isSelected={selectedItems.includes(index)}
-                      onSelect={handleSelectCollege}
-                      selectedCount={selectedItems.length}
-                      isSearchPanelCollapsed={isSearchPanelCollapsed}
-                      highlightedIndices={highlightedIndices}
-                    />
-                  ))}
+                  {selectedColleges.map((college, index) => {
+                    // Check if this college and branch combination is eligible
+                    const eligibleCollege = eligibleBranches.find(ec => ec.collegeId === college.id);
+                    const isEligible = eligibleCollege?.eligibleBranches.some(
+                      branch => branch.branchCode === college.selectedBranchCode
+                    );
+                  
+                    return (
+                      <DraggableCollegeItem
+                        key={college.uniqueId || `${college.id}_${index}`}
+                        college={college}
+                        index={index}
+                        moveCollege={moveSelectedColleges}
+                        handleRemoveCollege={removeCollegeFromList}
+                        isSelected={selectedItems.includes(index)}
+                        onSelect={handleSelectCollege}
+                        selectedCount={selectedItems.length}
+                        isSearchPanelCollapsed={isSearchPanelCollapsed}
+                        highlightedIndices={highlightedIndices}
+                        selectedUserMarks={selectedUserMarks}
+                        selectedUserCategory={selectedUserCategory}
+                        isEligible={isEligible}
+                        eligibleData={eligibleCollege?.eligibleBranches.find(
+                          branch => branch.branchCode === college.selectedBranchCode
+                        )}
+                      />
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

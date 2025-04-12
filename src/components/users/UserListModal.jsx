@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Edit, Trash2, GraduationCap, Search } from 'lucide-react';
+import { X, Edit, Trash2, GraduationCap, Search, Save } from 'lucide-react';
 import CollegesListModal from './CollegesListModal';
+import axiosInstance from '../../utils/axios';
 
 const UserListModal = ({ 
   showModal, 
@@ -15,6 +16,11 @@ const UserListModal = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedList, setSelectedList] = useState(null);
   const [editListFormData, setEditListFormData] = useState({ colleges: [] });
+  const [saveAsTemplateModal, setSaveAsTemplateModal] = useState({
+    isOpen: false,
+    list: null,
+    title: ''
+  });
 
   if (!showModal) return null;
 
@@ -42,6 +48,29 @@ const UserListModal = ({
       colleges: [...prev.colleges, ...selectedColleges]
     }));
     setSelectedList(null); // Close the modal
+  };
+
+  const handleSaveAsTemplate = async () => {
+    try {
+      const submitData = {
+        title: saveAsTemplateModal.title,
+        colleges: saveAsTemplateModal.list.colleges.map(college => ({
+          ...college,
+          branches: undefined,
+          searchIndex: undefined,
+          additionalMetadata: undefined,
+          keywords: undefined,
+        })),
+        userIds: []
+      };
+
+      await axiosInstance.post('/api/admin/add-list', submitData);
+      setSaveAsTemplateModal({ isOpen: false, list: null, title: '' });
+      alert('Template saved successfully!');
+    } catch (err) {
+      console.error('Error saving template:', err);
+      alert('Failed to save template');
+    }
   };
 
   return (
@@ -139,6 +168,17 @@ const UserListModal = ({
                           <Trash2 size={16} className="mr-2" />
                           Remove
                         </button>
+                        <button
+                          onClick={() => setSaveAsTemplateModal({ 
+                            isOpen: true, 
+                            list: list,
+                            title: `${list.title} - Template` 
+                          })}
+                          className="w-full sm:w-auto px-4 py-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center"
+                        >
+                          <Save size={16} className="mr-2" />
+                          Save as Template
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -162,6 +202,55 @@ const UserListModal = ({
           )}
         </div>
       </div>
+
+      {saveAsTemplateModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Save as Template</h3>
+              <button
+                onClick={() => setSaveAsTemplateModal({ isOpen: false, list: null, title: '' })}
+                className="text-gray-400 hover:text-gray-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="mb-4">
+              <label htmlFor="templateTitle" className="block text-sm font-medium text-gray-700 mb-1">
+                Template Name
+              </label>
+              <input
+                type="text"
+                id="templateTitle"
+                value={saveAsTemplateModal.title}
+                onChange={(e) => setSaveAsTemplateModal(prev => ({ ...prev, title: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter template name..."
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setSaveAsTemplateModal({ isOpen: false, list: null, title: '' })}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveAsTemplate}
+                disabled={!saveAsTemplateModal.title.trim()}
+                className={`px-4 py-2 rounded-md text-white flex items-center ${
+                  !saveAsTemplateModal.title.trim() 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                <Save size={16} className="mr-2" />
+                Save Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Colleges List Modal */}
       <CollegesListModal 
