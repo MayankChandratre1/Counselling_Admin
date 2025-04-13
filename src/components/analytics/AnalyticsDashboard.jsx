@@ -3,7 +3,7 @@ import { useUsers } from '../../contexts/UsersContext';
 import { useLists } from '../../contexts/ListsContext';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import FormProgressTracker from './FormProgressTracker';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
@@ -25,6 +25,8 @@ const AnalyticsDashboard = () => {
   const [filterBatch, setFilterBatch] = useState('all');
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(true);
+  const [selectedMetric, setSelectedMetric] = useState(null);
+  const [showMetricUsers, setShowMetricUsers] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -69,6 +71,28 @@ const AnalyticsDashboard = () => {
     }
   }, [users, filterPlan, filterList, filterBatch]);
 
+  useEffect(() => {
+    if (users.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Convert Firebase Timestamp to Date
+      const todayEnrolled = users.filter(user => {
+        if (!user.premiumPlan?.purchasedDate) return false;
+        
+        const purchaseDate = new Date(
+          user.premiumPlan.purchasedDate._seconds * 1000
+        ).toISOString().split('T')[0];
+        
+        return purchaseDate === today;
+      }).length;
+
+      setMetrics(prev => ({
+        ...prev,
+        todayEnrolled
+      }));
+    }
+  }, [users]);
+
   const calculateMetrics = () => {
     const totalUsers = users.length;
 
@@ -104,6 +128,26 @@ const AnalyticsDashboard = () => {
       averageListsPerUser: totalLists / totalUsers || 0,
       batchWiseUsers,
     });
+  };
+
+  const getMetricUsers = (metricType) => {
+    const today = new Date().toISOString().split('T')[0];
+    switch (metricType) {
+      case 'installs':
+        return users;
+      case 'enrolled':
+        return users.filter(user => user.isPremium);
+      case 'todayEnrolled':
+        return users.filter(user => {
+          if (!user.premiumPlan?.purchasedDate) return false;
+          const purchaseDate = new Date(
+            user.premiumPlan.purchasedDate._seconds * 1000
+          ).toISOString().split('T')[0];
+          return purchaseDate === today;
+        });
+      default:
+        return [];
+    }
   };
 
   const userTypeData = {
@@ -166,16 +210,34 @@ const AnalyticsDashboard = () => {
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
-            title="Total Users"
+            title="Installs"
             value={metrics.totalUsers}
-            icon="👥"
+            icon="📱"
             color="bg-blue-500"
+            onClick={() => {
+              setSelectedMetric('installs');
+              setShowMetricUsers(true);
+            }}
           />
           <MetricCard
-            title="Premium Users"
+            title="Enrolled"
             value={metrics.premiumUsers}
-            icon="⭐"
+            icon="✅"
             color="bg-purple-500"
+            onClick={() => {
+              setSelectedMetric('enrolled');
+              setShowMetricUsers(true);
+            }}
+          />
+          <MetricCard
+            title="Today Enrolled"
+            value={metrics.todayEnrolled || 0}
+            icon="🎯"
+            color="bg-green-500"
+            onClick={() => {
+              setSelectedMetric('todayEnrolled');
+              setShowMetricUsers(true);
+            }}
           />
           <MetricCard
             title="Users with Lists"
@@ -191,18 +253,70 @@ const AnalyticsDashboard = () => {
           />
         </div>
 
+        {/* Metric Users Modal */}
+        {showMetricUsers && selectedMetric && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[80vh] overflow-hidden">
+              <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-xl font-semibold">
+                  {selectedMetric === 'installs' && 'All Installs'}
+                  {selectedMetric === 'enrolled' && 'All Enrolled Users'}
+                  {selectedMetric === 'todayEnrolled' && "Today's Enrollments"}
+                </h3>
+                <button
+                  onClick={() => setShowMetricUsers(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="overflow-auto max-h-[calc(80vh-100px)]">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                      {selectedMetric !== 'installs' && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enrolled Date</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {getMetricUsers(selectedMetric).map(user => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.phone}</td>
+                        {selectedMetric !== 'installs' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {user.premiumPlan?.purchasedDate ? 
+                              new Date(user.premiumPlan.purchasedDate._seconds * 1000).toLocaleDateString() 
+                              : 'N/A'
+                            }
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* User Type Distribution */}
-          <div className="bg-white p-6 rounded-lg shadow">
+          {/* <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">User Type Distribution</h2>
             <div className="h-[300px] flex items-center justify-center">
               <Pie data={userTypeData} options={{ maintainAspectRatio: false }} />
             </div>
-          </div>
+          </div> */}
 
           {/* Premium Plan Distribution */}
-          <div className="bg-white p-6 rounded-lg shadow">
+          {/* <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">Premium Plan Distribution</h2>
             <div className="h-[300px] flex items-center justify-center">
               <Bar
@@ -217,11 +331,11 @@ const AnalyticsDashboard = () => {
                 }}
               />
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Add Batch Distribution Chart after existing charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">Batch-wise Distribution</h2>
             <div className="h-[300px] flex items-center justify-center">
@@ -246,11 +360,11 @@ const AnalyticsDashboard = () => {
               />
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Form Progress Tracking Section */}
         <div className="bg-white p-6 rounded-lg shadow mt-8">
-          <h2 className="text-xl font-semibold mb-6">Form Progress Analytics</h2>
+          <h2 className="text-xl font-semibold mb-6">Track Progress</h2>
           <FormProgressTracker />
         </div>
 
@@ -394,8 +508,11 @@ const AnalyticsDashboard = () => {
 };
 
 // Metric Card Component
-const MetricCard = ({ title, value, icon, color }) => (
-  <div className="bg-white rounded-lg shadow p-6">
+const MetricCard = ({ title, value, icon, color, onClick }) => (
+  <div 
+    className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow"
+    onClick={onClick}
+  >
     <div className="flex items-center">
       <div className={`${color} text-white p-3 rounded-lg mr-4`}>
         <span className="text-2xl">{icon}</span>
