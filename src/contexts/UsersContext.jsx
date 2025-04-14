@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import axiosInstance from '../utils/axios';
 
 const UsersContext = createContext();
@@ -10,6 +10,7 @@ export const UsersProvider = ({ children }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [hasMore, setHasMore] = useState(false);
+  const [notes, setNotes] = useState({});  // Add notes state as an object with userId as key
 
   const fetchUsers = useCallback(async (page = currentPage) => {
     try {
@@ -76,6 +77,54 @@ export const UsersProvider = ({ children }) => {
     }
   };
 
+  // Add function to fetch notes for a specific user
+  const fetchUserNotes = async (userId) => {
+    try {
+      const response = await axiosInstance.post(`/api/admin/get-notes/${userId}`);
+      return response.data;
+    } catch (err) {
+      console.error(`Error fetching notes for user ${userId}:`, err);
+      return [];
+    }
+  };
+
+  // Effect to fetch notes when users change
+  useEffect(() => {
+    const fetchAllNotes = async () => {
+      const notesPromises = users.map(user => fetchUserNotes(user.id));
+      try {
+        const allNotes = await Promise.all(notesPromises);
+        const notesMap = users.reduce((acc, user, index) => {
+          acc[user.id] = allNotes[index];
+          return acc;
+        }, {});
+        setNotes(notesMap);
+      } catch (err) {
+        console.error('Error fetching notes:', err);
+      }
+    };
+
+    if (users.length > 0) {
+      fetchAllNotes();
+    }
+  }, [users]);
+
+  const updateUserNotes = (userId, adminEmail, note, createdAt) => {
+    setNotes(prevNotes => ({
+      ...prevNotes,
+      [userId]: {
+        id: userId,
+        notes: {
+          ...(prevNotes[userId]?.notes || {}),
+          [`note-${adminEmail}`]: {
+            note,
+            createdAt
+          }
+        }
+      }
+    }));
+  };
+
   const value = {
     users,
     loading,
@@ -91,7 +140,11 @@ export const UsersProvider = ({ children }) => {
     deleteUser,
     setLoading,
     setError,
-    setUsers
+    setUsers,
+    notes,
+    setNotes,
+    fetchUserNotes,
+    updateUserNotes,
   };
 
   return <UsersContext.Provider value={value}>{children}</UsersContext.Provider>;

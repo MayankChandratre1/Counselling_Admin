@@ -5,6 +5,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearSca
 import { Pie, Bar } from 'react-chartjs-2';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import FormProgressTracker from './FormProgressTracker';
+import ListTracking from './ListTracking';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -366,6 +367,13 @@ const AnalyticsDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow mt-8">
           <h2 className="text-xl font-semibold mb-6">Track Progress</h2>
           <FormProgressTracker />
+        </div>
+
+
+        {/* User List Section */}
+        <div className="bg-white p-6 rounded-lg shadow mt-8">
+          <h2 className="text-xl font-semibold mb-6">Lists Tracking</h2>
+          <ListTracking />
         </div>
 
         {/* Collapsible User List Section */}
