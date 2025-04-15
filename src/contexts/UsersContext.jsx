@@ -80,7 +80,7 @@ export const UsersProvider = ({ children }) => {
   // Add function to fetch notes for a specific user
   const fetchUserNotes = async (userId) => {
     try {
-      const response = await axiosInstance.post(`/api/admin/get-notes/${userId}`);
+      const response = await axiosInstance.get(`/api/admin/get-notes/${userId}`);
       return response.data;
     } catch (err) {
       console.error(`Error fetching notes for user ${userId}:`, err);
@@ -98,6 +98,7 @@ export const UsersProvider = ({ children }) => {
           acc[user.id] = allNotes[index];
           return acc;
         }, {});
+        
         setNotes(notesMap);
       } catch (err) {
         console.error('Error fetching notes:', err);

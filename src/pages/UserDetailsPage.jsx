@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Copy, ArrowLeft, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { useUsers } from '../contexts/UsersContext';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -13,9 +14,11 @@ const UserDetailsPage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notesToShow, setNotesToShow] = useState({});
   const [error, setError] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const {notes} = useUsers();
 
   useEffect(() => {
     fetchUserDetails();
@@ -28,6 +31,10 @@ const UserDetailsPage = () => {
         headers: { token }
       });
       setUser(response.data);
+      if(notes){
+        console.log(notes[`${id}`]);
+        setNotesToShow(notes[`${id}`]?.notes);
+      }
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch user details');
@@ -136,6 +143,64 @@ const UserDetailsPage = () => {
             </div>
           </div>
 
+          {notesToShow && Object.keys(notesToShow).length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6  mb-6">
+              <h2 className="text-xl font-semibold mb-4">Notes</h2>
+              <div className="space-y-4">
+                {Object.entries(notesToShow).map(([noteKey, noteData], index) => (
+                  <div 
+                    key={index} 
+                    className="border-l-4 border-blue-500 bg-gray-50 p-4 rounded-r-lg hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-medium text-blue-600">
+                        {noteKey.replace('note-', '')}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {new Date(noteData.createdAt).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 whitespace-pre-wrap break-words">
+                      {noteData.note}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+            {/* Steps Progress */}
+            {user.stepsData && (
+            <div className="bg-white rounded-lg shadow-md mb-6 p-6">
+              <h2 className="text-xl font-semibold mb-4">Progress Steps</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {user.stepsData.steps.map((step, index) => (
+                  <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-800 text-sm">
+                        {step.number}
+                      </span>
+                      <p className="font-medium">{step.title}</p>
+                    </div>
+                    <div className="mt-2">
+                      <span className={`px-2 py-1 rounded-full text-sm ${
+                        step.status === 'Yes' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {step.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Counselling Data Card */}
           {user.counsellingData && (
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -202,31 +267,9 @@ const UserDetailsPage = () => {
             </div>
           )}
 
-          {/* Steps Progress */}
-          {user.stepsData && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">Progress Steps</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {user.stepsData.steps.map((step, index) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-800 text-sm">
-                        {step.number}
-                      </span>
-                      <p className="font-medium">{step.title}</p>
-                    </div>
-                    <div className="mt-2">
-                      <span className={`px-2 py-1 rounded-full text-sm ${
-                        step.status === 'Yes' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {step.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        
+
+        
         </div>
       </div>
     </div>

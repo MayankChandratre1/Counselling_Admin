@@ -3,8 +3,9 @@ import { Plus, Trash2, MoveVertical } from 'lucide-react';
 import DraggableCollegeItem from './DraggableCollegeItem';
 import NavigationSearch from './NavigationSearch';
 import { set } from 'lodash';
+import axiosInstance from '../../utils/axios';
 
-const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, removeCollegeFromList, isSearchPanelCollapsed, selectedUserMarks, selectedUserCategory, fetchCutoffs, selectedCollegesCutoffs2 }) => {
+const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList, isSearchPanelCollapsed, selectedUserMarks, selectedUserCategory, fetchCutoffs, selectedCategory }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
   const [showMoveBox, setShowMoveBox] = useState(false);
@@ -15,8 +16,22 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
   const [eligibleBranches, setEligibleBranches] = useState([]);
   const [selectedCollegesCutoffs, setSelectedCollegesCutoffs] = useState([]);
 
+  const fetchCutoffs2 = async (callback) => {
+    try {
+      const collegeIds = selectedColleges.map(college => college.id);
+      const response = await axiosInstance.post('/api/admin/getcutoff', { collegeIds });
+      if (response.data && response.data.length > 0) {
+        const cutoffs = response.data
+        setSelectedCollegesCutoffs(cutoffs);
+        callback(cutoffs);
+      }
+    } catch (err) {
+      console.error('Error fetching city list:', err);
+    }
+  };
+
   useEffect(() => {
-    fetchCutoffs && fetchCutoffs(setSelectedCollegesCutoffs);
+    fetchCutoffs2 && fetchCutoffs2(setSelectedCollegesCutoffs);
   },[selectedColleges])
 
   useEffect(() => {    
@@ -466,7 +481,12 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
                     const isEligible = eligibleCollege?.eligibleBranches.some(
                       branch => branch.branchCode === college.selectedBranchCode
                     );
-                  
+
+                    const selectedCategoryCuttoff = selectedCollegesCutoffs?.find(clg => clg.id === college.id)?.branches?.find(
+                      branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.category === 'GOPENH');
+
+                    console.log(selectedCategoryCuttoff, 'selectedCategoryCuttoff');
+                        
                     return (
                       <DraggableCollegeItem
                         key={college.uniqueId || `${college.id}_${index}`}
@@ -481,6 +501,7 @@ const SelectedColleges = ({ selectedColleges, clearColleges, moveCollege, remove
                         highlightedIndices={highlightedIndices}
                         selectedUserMarks={selectedUserMarks}
                         selectedUserCategory={selectedUserCategory}
+                        selectedCategoryCuttoff={selectedCategoryCuttoff}
                         isEligible={isEligible}
                         eligibleData={eligibleCollege?.eligibleBranches.find(
                           branch => branch.branchCode === college.selectedBranchCode

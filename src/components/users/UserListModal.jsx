@@ -141,6 +141,7 @@ const UserListModal = ({
                           <span className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-blue-600 text-sm">
                             (View Colleges)
                           </span>
+                          
                         </button>
                         <div className="flex items-center gap-2">
                           <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
@@ -152,6 +153,11 @@ const UserListModal = ({
                             </span>
                           )}
                         </div>
+                          {list.lastUpdatedBy && (
+                            <span className="text-sm text-gray-500">
+                              Last updated by: {list.lastUpdatedBy}
+                            </span>
+                          )}
                       </div>
                       <div className="flex items-center gap-3">
                         <button

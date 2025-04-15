@@ -331,11 +331,11 @@ const UsersTable = ({
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button 
                     onClick={() => handleViewNotes(user.id, user.name)}
-                    className="text-green-600 hover:text-green-900 mr-4 transition-colors duration-200"
+                    className="text-green-600 hover:text-green-900 mr-4 transition-colors duration-200 relative"
                   >
                     <Notebook className='w-5 h-5' />
                     {notes[user.id]?.notes && Object.keys(notes[user.id]?.notes).length > 0 && (
-                      <span className="absolute transform translate-x-1/2 -translate-y-1/2 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                      <span className="absolute top-0 transform translate-x-1/2 -translate-y-1/2 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
                         {Object.keys(notes[user.id].notes).length}
                       </span>
                     )}

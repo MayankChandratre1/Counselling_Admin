@@ -26,6 +26,11 @@ const ListCard = ({ list, expandedListId, handleListClick, handleEdit, handleDel
                 </div>
               )}
             </div>
+            {list.lastUpdatedBy && (
+              <div className="text-sm text-gray-500">
+                Last updated by: {list.lastUpdatedBy}
+              </div>
+            )}
           </div>
           
           <div className="flex space-x-2">

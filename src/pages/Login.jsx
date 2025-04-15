@@ -31,17 +31,17 @@ const AdminLogin = () => {
     try {
       const response = await axios.post(`${API_URL}/api/admin/login`, credentials);
       
-      // Store the token in localStorage
-      localStorage.setItem('adminToken', response.data.token);
+      // Store the token in sessionStorage instead of localStorage
+      sessionStorage.setItem('adminToken', response.data.token);
       
-      // Store admin info
-      localStorage.setItem('adminInfo', JSON.stringify(response.data.admin));
+      // Store admin info in sessionStorage
+      sessionStorage.setItem('adminInfo', JSON.stringify(response.data.admin));
       
       // Set default Authorization header for future requests
       axios.defaults.headers.common['token'] = response.data.token;
       
-      // Redirect to colleges page
-      navigate('/colleges');
+      // Redirect to home page
+      navigate('/home');
     } catch (error) {
       console.error('Login error:', error);
       setError(error.response?.data?.error || 'Login failed. Please try again.');

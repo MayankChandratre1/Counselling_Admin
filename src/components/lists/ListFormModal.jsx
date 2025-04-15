@@ -34,7 +34,9 @@ const ListFormModal = ({
   handleBranchSelect,
   filteredBranches,
   selectedBranch,
-  // moveCollege,
+  selectedCategory,
+  setSelectedCategory,
+  categories,
   removeCollegeFromList
 }) => {
   const [activeTab, setActiveTab] = useState('search');
@@ -93,7 +95,23 @@ const ListFormModal = ({
           placeholder="Enter list title..."
           required
         />
+        <div className="flex items-center gap-2">
+          <select
+            id="category"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-3 py-2 text-sm bg-white/10 text-white border border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-transparent appearance-none cursor-pointer w-32"
+          >
+            {categories.map((category) => (
+              <option key={category} value={category} className="text-gray-900">
+                {category}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      
 
       {/* Search Bar and Filters - Horizontal */}
         {!isSearchPanelCollapsed && <div className="bg-white border-b border-gray-200 px-6 py-3">
@@ -148,6 +166,7 @@ const ListFormModal = ({
                 </div>
                 <div className="flex-1 overflow-y-auto bg-white rounded-lg border border-gray-200">
                   <CollegeSearchResults
+                    selectedCategory={selectedCategory}
                     searchResults={searchResults}
                     selectedColleges={selectedColleges}
                     addCollegeToList={addCollegeToList}
@@ -196,6 +215,7 @@ const ListFormModal = ({
               </div>
               <div className="flex-1 overflow-y-auto bg-white rounded-lg border border-gray-200">
                 <SelectedColleges
+                  selectedCategory={selectedCategory}
                   selectedColleges={selectedColleges}
                   moveCollege={moveCollege}
                   removeCollegeFromList={removeCollegeFromList}

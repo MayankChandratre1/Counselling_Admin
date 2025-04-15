@@ -1,14 +1,77 @@
-import React from 'react';
-import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home, FormInputIcon, FileLineChart,CheckCheck } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home, FormInputIcon, FileLineChart,CheckCheck, Settings2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const VerticalNavbar = ({ onClose }) => {
   const navigate = useNavigate();
 
+  const [menuItems, setMenuItems] = React.useState([
+    { name: 'Home', icon: <Home className="mr-3 text-white" />, path: '/home' },
+  ]);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('adminToken');
+    const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
+
+    const role = adminInfo?.role || null;
+    const isSuperAdmin = role === 'super-admin';
+    
+    switch (role) {
+      case 'super-admin':
+        setMenuItems([
+          { name: 'Home', icon: <Home className="mr-3 text-white" />, path: '/home' },
+          { name: 'Users', icon: <User className="mr-3 text-blue-400" />, path: '/users' },
+          { name: 'Colleges', icon: <Building className="mr-3 text-green-400" />, path: '/colleges' },
+          { name: 'Forms', icon: <FormInput className="mr-3 text-green-400" />, path: '/forms' },
+          { name: 'Data Collection Form', icon: <FileLineChart className="mr-3 text-green-400" />, path: '/registrationform' },
+          { name: 'Lists', icon: <List className="mr-3 text-green-400" />, path: '/lists' },
+          { name: 'Cutoff', icon: <CheckCheck className="mr-3 text-green-400" />, path: '/cutoff' },
+          { name: 'Change Password', icon: <Lock className="mr-3 text-yellow-400" />, path: '/change-password' },
+          { name: 'Admin Settings', icon: <Settings2 className="mr-3 text-yellow-400" />, path: '/admin-settings' },
+        ]);
+        break;
+        default:
+        setMenuItems([
+          { name: 'Home', icon: <Home className="mr-3 text-white" />, path: '/home' },
+          { name: 'Users', icon: <User className="mr-3 text-blue-400" />, path: '/users' },
+          { name: 'Colleges', icon: <Building className="mr-3 text-green-400" />, path: '/colleges' },
+          { name: 'Forms', icon: <FormInput className="mr-3 text-green-400" />, path: '/forms' },
+          { name: 'Data Collection Form', icon: <FileLineChart className="mr-3 text-green-400" />, path: '/registrationform' }
+        ]);
+    }
+  },[])
+
+  useEffect(() => {
+    const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
+    const permissions = adminInfo?.permissions;
+    
+    if (!permissions) {
+      setMenuItems([
+        { name: 'Home', icon: <Home className="mr-3 text-white" />, path: '/home' }
+      ]);
+      return;
+    }
+  
+    const allowedPages = permissions.pages;
+    const allMenuItems = [
+      { name: 'Home', icon: <Home className="mr-3 text-white" />, path: '/home', permission: 'home' },
+      { name: 'Users', icon: <User className="mr-3 text-blue-400" />, path: '/users', permission: 'users' },
+      { name: 'Colleges', icon: <Building className="mr-3 text-green-400" />, path: '/colleges', permission: 'colleges' },
+      { name: 'Forms', icon: <FormInput className="mr-3 text-green-400" />, path: '/forms', permission: 'forms' },
+      { name: 'Data Collection Form', icon: <FileLineChart className="mr-3 text-green-400" />, path: '/registrationform', permission: 'registrationform' },
+      { name: 'Lists', icon: <List className="mr-3 text-green-400" />, path: '/lists', permission: 'lists' },
+      { name: 'Cutoff', icon: <CheckCheck className="mr-3 text-green-400" />, path: '/cutoff', permission: 'cutoff' },
+      { name: 'Change Password', icon: <Lock className="mr-3 text-yellow-400" />, path: '/change-password', permission: 'change-password' },
+      { name: 'Admin Settings', icon: <Settings2 className="mr-3 text-yellow-400" />, path: '/admin-settings', permission: 'admin-settings' },
+    ];
+  
+    setMenuItems(allMenuItems.filter(item => allowedPages.includes(item.permission)));
+  }, []);
+
   const handleLogout = () => {
-    // Clear all authentication data from localStorage
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminInfo');
+    // Clear all authentication data from sessionStorage
+    sessionStorage.removeItem('adminToken');
+    sessionStorage.removeItem('adminInfo');
     
     // Remove the token from axios headers if you're using axios
     if (window.axios && window.axios.defaults.headers.common['token']) {
@@ -42,80 +105,22 @@ const VerticalNavbar = ({ onClose }) => {
       
       {/* Navigation Items */}
       <nav className="flex-1 overflow-y-auto p-2">
-        {/* User Section */}
-        <Link 
-          to="/home"
-          onClick={onClose}
-          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
-        >
-          <Home className="mr-3 text-white" />
-          <span>Home</span>
-        </Link>
+       
+        {
+          menuItems.map((item, index) => (
+            <Link 
+              key={index}
+              to={item.path}
+              onClick={onClose}
+              className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
+            >
+              {item.icon}
+              <span>{item.name}</span>
+            </Link>
+          ))
+        }
         
-        {/* User Section */}
-        <Link 
-          to="/users"
-          onClick={onClose}
-          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
-        >
-          <User className="mr-3 text-blue-400" />
-          <span>Users</span>
-        </Link>
         
-        {/* Colleges Section */}
-        <Link 
-          to="/colleges"
-          onClick={onClose}
-          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
-        >
-          <Building className="mr-3 text-green-400" />
-          <span>Colleges</span>
-        </Link>
-
-        <Link 
-          to="/forms"
-          onClick={onClose}
-          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
-        >
-          <FormInput className="mr-3 text-green-400" />
-          <span>Forms</span>
-        </Link>
-        <Link 
-          to="/registrationform"
-          onClick={onClose}
-          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
-        >
-          <FileLineChart className="mr-3 text-green-400" />
-          <span>Data Collection Form</span>
-        </Link>
-
-        <Link 
-          to="/lists"
-          onClick={onClose}
-          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
-        >
-          <List className="mr-3 text-green-400" />
-          <span>Lists</span>
-        </Link>
-        <Link 
-          to="/cutoff"
-          onClick={onClose}
-          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
-        >
-          <CheckCheck className="mr-3 text-green-400" />
-          <span>Cutoff</span>
-        </Link>
-
-
-        {/* Change Password Section */}
-        <Link 
-          to="/change-password"
-          onClick={onClose}
-          className="w-full flex items-center p-3 hover:bg-gray-800 rounded-md transition-colors mb-2"
-        >
-          <Lock className="mr-3 text-yellow-400" />
-          <span>Change Password</span>
-        </Link>
       </nav>
       
       {/* Logout Button */}
@@ -127,10 +132,7 @@ const VerticalNavbar = ({ onClose }) => {
         <span>Logout</span>
       </button>
       
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-700 text-sm text-gray-400">
-        © 2025 Education Portal
-      </div>
+      
     </div>
   );
 };

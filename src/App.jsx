@@ -13,124 +13,79 @@ import DataCollectionForms from "./pages/DataCollectionForms";
 import CutOff from "./pages/CutOff";
 import UserDetailsPage from "./pages/UserDetailsPage";
 import AddUsers from "./pages/AddUsers";
-
-// Protected Route component to handle authentication
-const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem("adminToken");
-
-  if (!token) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
-};
+import AdminSettings from "./pages/AdminSettings";
+import ProtectedRoute from './components/ProtectedRoute';
+import Unauthorized from './pages/Unauthorized';
 
 function App() {
   return (
-    <>
-      <BrowserRouter>
-        <Routes>
-          {/* Login route */}
-          <Route path="/" element={<Login />} />
-
-          {/* Protected routes */}
-          <Route
-            path="/colleges"
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/home" element={
+            <Analytics />
+        } />
+         <Route 
+            path='/colleges' 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredPermission={"colleges"}>
                 <Colleges />
               </ProtectedRoute>
             }
           />
-
-          <Route
-            path="/users"
-            element={
-              <ProtectedRoute>
-                <UsersProvider>
-                  <Users />
-                </UsersProvider>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/users/:id"
-            element={
-              <ProtectedRoute>
-                <UsersProvider>
-                  <UserDetailsPage />
-                </UsersProvider>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/forms"
-            element={
-              <ProtectedRoute>
-                <Forms />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/lists"
-            element={
-              <ProtectedRoute>
-                <Lists />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/change-password"
-            element={
-              <ProtectedRoute>
-                <ChangePassword />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/home"
-            element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/registrationform"
-            element={
-              <ProtectedRoute>
-                <DataCollectionForms />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/add-user"
-            element={
-              <ProtectedRoute>
-                <AddUsers />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/cutoff"
-            element={
-              <ProtectedRoute>
-                <CutOff />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Catch all - redirect to login */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </>
+        <Route path="/users" element={
+          <ProtectedRoute requiredPermission="users">
+            <UsersProvider>
+              <Users />
+            </UsersProvider>
+          </ProtectedRoute>
+        } />
+        <Route path="/users/:id" element={
+          <ProtectedRoute requiredPermission="users">
+            <UsersProvider>
+              <UserDetailsPage />
+            </UsersProvider>
+          </ProtectedRoute>
+        } />
+        <Route path="/forms" element={
+          <ProtectedRoute requiredPermission="forms">
+            <Forms />
+          </ProtectedRoute>
+        } />
+        <Route path="/lists" element={
+          <ProtectedRoute requiredPermission="lists">
+            <Lists />
+          </ProtectedRoute>
+        } />
+        <Route path="/change-password" element={
+          <ProtectedRoute requiredPermission="change-password">
+            <ChangePassword />
+          </ProtectedRoute>
+        } />
+        <Route path="/registrationform" element={
+          <ProtectedRoute requiredPermission="registrationform">
+            <DataCollectionForms />
+          </ProtectedRoute>
+        } />
+        <Route path="/add-user" element={
+          <ProtectedRoute requiredPermission="add-user">
+            <AddUsers />
+          </ProtectedRoute>
+        } />
+        <Route path="/cutoff" element={
+          <ProtectedRoute requiredPermission="cutoff">
+            <CutOff />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin-settings" element={
+          <ProtectedRoute requiredPermission="admin-settings">
+            <AdminSettings />
+          </ProtectedRoute>
+        } />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

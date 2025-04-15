@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 
-const CollegeSearchResults = ({ searchResults, selectedColleges, addCollegeToList, searchQuery, selectedCity, selectedBranch }) => {
+const CollegeSearchResults = ({ searchResults, selectedColleges, addCollegeToList, searchQuery, selectedCity, selectedBranch, selectedCategory }) => {
   const [expandedColleges, setExpandedColleges] = useState({});
+  
 
   const branchNameFormatter = (branchName) => {
     const commonWords = ['and', 'of', 'the', 'in', 'for', 'with', 'on', 'at', 'by', 'from'];
@@ -115,9 +116,34 @@ const CollegeSearchResults = ({ searchResults, selectedColleges, addCollegeToLis
                                 <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
                                   {branch.branchCode}
                                 </span>
+                                <div className="text-sm text-gray-600 ml-4">
+                                {branch.branchName} 
                               </div>
-                              <div className="text-sm text-gray-600 ml-4 mt-1">
-                                {branch.branchName}
+                              </div>
+                              
+                              <div className='grid grid-cols-3 gap-2 mt-2 ml-4'>
+                                {branch.cutoffs && branch.cutoffs.map((cutoff, index) => (
+                                  <>
+                                    {cutoff && cutoff.category === selectedCategory && (
+                                      <div 
+                                        key={index} 
+                                        className='bg-blue-50 border border-blue-100 rounded-lg p-2 flex w-fit items-center gap-1'
+                                      >
+                                        <div className="text-xs font-semibold text-blue-700 mb-1">
+                                          {cutoff.capRound?.toUpperCase().charAt(4-1)}
+                                        </div>
+                                        <div className="flex flex-col ">
+                                          <span className="text-sm font-medium text-gray-700">
+                                            {cutoff.percentile.toFixed(2) || '-'}%
+                                          </span>
+                                          <span className="text-xs text-gray-500">
+                                            {cutoff.rank || '-'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                ))}
                               </div>
                             </div>
                             <button

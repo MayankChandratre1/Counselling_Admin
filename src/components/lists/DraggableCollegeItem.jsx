@@ -16,7 +16,8 @@ const DraggableCollegeItem = ({
   selectedUserMarks,
   selectedUserCategory,
   isEligible,
-  eligibleData
+  eligibleData,
+  selectedCategoryCuttoff
 }) => {
   const branchNameFormatter = (branchName) => {
     const commonWords = ['and', 'of', 'the', 'in', 'for', 'with', 'on', 'at', 'by', 'from'];
@@ -112,11 +113,28 @@ const DraggableCollegeItem = ({
           {branchNameFormatter(college.selectedBranch) || 'All Branches'}
         </span>
       </td>
-      
-
-    
+      {
+       !selectedUserCategory && !selectedUserMarks && !selectedUserCategory && (
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {selectedCategoryCuttoff ? (
+          <div className="flex flex-col">
+            <span className="text-gray-700 font-medium">
+              {selectedCategoryCuttoff.percentile.toFixed(2)}%
+            </span>
+            <span className="text-xs text-blue-600">
+              Rank: {selectedCategoryCuttoff.rank}
+            </span>
+          </div>
+        ) : (
+          <span className="text-gray-400">-</span>
+        )}
+      </td>
+      )
+     }
   
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+     {
+      selectedUserCategory && selectedUserMarks && selectedUserCategory && (
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         {isEligible && eligibleData ? (
           <div className="flex flex-col">
             <span className="text-green-700 font-medium">
@@ -130,6 +148,8 @@ const DraggableCollegeItem = ({
           <span className="text-gray-400">Not Eligible</span>
         )}
       </td>
+      )
+     }
 
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         {college.city ? college.city.toUpperCase() : 'N/A'}
