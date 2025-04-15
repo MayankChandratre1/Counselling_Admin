@@ -462,7 +462,7 @@ const FormProgressTracker = () => {
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg  hover:bg-gray-100"
                     
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-1 max-w-[40%] items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium">
                         {step.number}
                       </div>

@@ -94,7 +94,7 @@ const ActivityModal = ({ adminId, onClose }) => {
                     <tr key={activity.id} className="hover:bg-gray-50">
                       <td className="px-4 py-2">{new Date(activity.timestamp).toLocaleString()}</td>
                       <td className="px-4 py-2">{activity.method}</td>
-                      <td className="px-4 py-2">{activity.path}</td>
+                      <td className="px-4 py-2 ">{activity.path}</td>
                       <td className="px-4 py-2">
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           activity.status >= 200 && activity.status < 300 ? 'bg-green-100 text-green-800' :

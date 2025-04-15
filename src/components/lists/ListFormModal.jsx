@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Search, Trash2, GraduationCap, List, Filter, ArrowBigLeft, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Plus, Search, Trash2, GraduationCap, List, Filter, ArrowLeft, ChevronLeft, ChevronRight, Undo } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import CollegeSearchForm from './CollegeSearchForm';
@@ -42,6 +42,7 @@ const ListFormModal = ({
   const [activeTab, setActiveTab] = useState('search');
   const [selectedForDrag, setSelectedForDrag] = useState([]);
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] = useState(false);
+  const [collegeHistory, setCollegeHistory] = useState([]);
 
   const clearColleges = () => {
     if (window.confirm('Are you sure you want to clear all selected colleges?')) {
@@ -69,6 +70,23 @@ const ListFormModal = ({
         newColleges.splice(hoverIndex, 0, draggedCollege);
         return newColleges;
       });
+    }
+  };
+
+  const handleUndo = () => {
+    if (collegeHistory.length > 0) {
+      const previousState = collegeHistory[collegeHistory.length - 1];
+      setSelectedColleges(previousState);
+      setCollegeHistory(prev => prev.slice(0, -1));
+    }
+  };
+
+  const handleCollegeMove = (dragIndex, hoverIndex, newOrder = null) => {
+    setCollegeHistory(prev => [...prev, selectedColleges]);
+    if (newOrder) {
+      setSelectedColleges(newOrder);
+    } else {
+      moveCollege(dragIndex, hoverIndex);
     }
   };
 
@@ -199,10 +217,21 @@ const ListFormModal = ({
               p-4 flex flex-col h-full
             `}>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-medium text-gray-800 flex items-center">
-                  <GraduationCap size={20} className="text-blue-600 mr-2" />
-                  Selected Colleges ({selectedColleges.length})
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-medium text-gray-800 flex items-center">
+                    <GraduationCap size={20} className="text-blue-600 mr-2" />
+                    Selected Colleges ({selectedColleges.length})
+                  </h3>
+                  {collegeHistory.length > 0 && (
+                    <button
+                      onClick={handleUndo}
+                      className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                      title="Undo last change"
+                    >
+                      <Undo size={16} />
+                    </button>
+                  )}
+                </div>
                 {selectedColleges.length > 0 && (
                   <button
                     onClick={clearColleges}
@@ -217,7 +246,7 @@ const ListFormModal = ({
                 <SelectedColleges
                   selectedCategory={selectedCategory}
                   selectedColleges={selectedColleges}
-                  moveCollege={moveCollege}
+                  moveCollege={handleCollegeMove}
                   removeCollegeFromList={removeCollegeFromList}
                   isSearchPanelCollapsed={isSearchPanelCollapsed}
                 />

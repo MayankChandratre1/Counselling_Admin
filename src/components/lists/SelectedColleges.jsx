@@ -15,6 +15,7 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
   const [highlightedIndices, setHighlightedIndices] = useState(new Set());
   const [eligibleBranches, setEligibleBranches] = useState([]);
   const [selectedCollegesCutoffs, setSelectedCollegesCutoffs] = useState([]);
+  const [recentlyMoved, setRecentlyMoved] = useState(new Set());
 
   const fetchCutoffs2 = async (callback) => {
     try {
@@ -180,6 +181,30 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
     }
   };
 
+  const handleMove = (dragIndex, hoverIndex) => {
+    // Save current state and perform move
+    moveCollege(dragIndex, hoverIndex);
+    
+    // Track moved items for highlighting
+    setRecentlyMoved(new Set([dragIndex, hoverIndex]));
+    
+    // Clear highlight after animation
+    setTimeout(() => {
+      setRecentlyMoved(new Set());
+    }, 1000);
+
+    // Scroll to the moved item
+    setTimeout(() => {
+      const element = document.getElementById(`college-row-${hoverIndex}`);
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+    }, 100);
+  };
+
   const handleBulkMove = (targetIndex) => {
     if (selectedItems.length === 0) return;
     
@@ -223,6 +248,24 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
     moveCollege(null, null, newColleges);
     setShowMoveBox(false);
     setMoveToIndex('');
+
+    const movedIndices = new Set(newSelectedIndices);
+    setRecentlyMoved(movedIndices);
+    
+    setTimeout(() => {
+      setRecentlyMoved(new Set());
+    }, 1000);
+
+    // Scroll to first moved item
+    setTimeout(() => {
+      const element = document.getElementById(`college-row-${targetPosition}`);
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+    }, 100);
   };
 
   const moveToTop = () => {
@@ -246,6 +289,23 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
     const newSelectedIndices = Array.from({ length: itemsToMove.length }, (_, i) => i);
     setSelectedItems(newSelectedIndices);
     moveCollege(null, null, newColleges);
+
+    // Add highlight effect
+    setRecentlyMoved(new Set(newSelectedIndices));
+    setTimeout(() => {
+      setRecentlyMoved(new Set());
+    }, 1000);
+
+    // Scroll to top
+    setTimeout(() => {
+      const element = document.getElementById(`college-row-0`);
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }, 100);
   };
 
   const moveToBottom = () => {
@@ -269,6 +329,23 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
     const newSelectedIndices = Array.from({ length: itemsToMove.length }, (_, i) => newColleges.length - itemsToMove.length + i);
     setSelectedItems(newSelectedIndices);
     moveCollege(null, null, newColleges);
+
+    // Add highlight effect
+    setRecentlyMoved(new Set(newSelectedIndices));
+    setTimeout(() => {
+      setRecentlyMoved(new Set());
+    }, 1000);
+
+    // Scroll to bottom
+    setTimeout(() => {
+      const element = document.getElementById(`college-row-${newColleges.length - 1}`);
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'end'
+        });
+      }
+    }, 100);
   };
 
   const branchNameFormatter = (branchName) => {
@@ -506,6 +583,8 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
                         eligibleData={eligibleCollege?.eligibleBranches.find(
                           branch => branch.branchCode === college.selectedBranchCode
                         )}
+                        recentlyMoved={recentlyMoved.has(index)}
+                        onMove={handleMove}
                       />
                     );
                   })}

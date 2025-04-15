@@ -17,7 +17,9 @@ const DraggableCollegeItem = ({
   selectedUserCategory,
   isEligible,
   eligibleData,
-  selectedCategoryCuttoff
+  selectedCategoryCuttoff,
+  recentlyMoved,
+  onMove
 }) => {
   const branchNameFormatter = (branchName) => {
     const commonWords = ['and', 'of', 'the', 'in', 'for', 'with', 'on', 'at', 'by', 'from'];
@@ -44,7 +46,7 @@ const DraggableCollegeItem = ({
     hover(item, monitor) {
       if (!monitor.isOver({ shallow: true })) return;
       if (item.index === index) return;
-      moveCollege(item.index, index);
+      onMove(item.index, index);
       item.index = index;
     },
     collect: monitor => ({
@@ -60,7 +62,7 @@ const DraggableCollegeItem = ({
         ${isDragging ? 'opacity-50' : ''}
         ${isOver ? 'bg-blue-50' : ''}
         ${isSelected ? 'bg-blue-100' : ''}
-        
+        ${recentlyMoved ? 'animate-highlight bg-yellow-100' : ''}
         ${isEligible ? 'bg-green-50 border-l-4 !border-l-green-500 hover:bg-green-100' : 'hover:bg-gray-50'}
         ${highlightedIndices?.has(index) ? '!bg-yellow-50 border-l-4 !border-yellow-500' : ''}
         transition-all duration-200

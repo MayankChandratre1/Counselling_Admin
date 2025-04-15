@@ -1,27 +1,49 @@
 import React, { useState } from 'react';
-import { Pencil, Trash2, Activity, Download } from 'lucide-react';
+import { Pencil, Trash2, Activity, Download, Loader2 } from 'lucide-react';
 import ActivityModal from './ActivityModal';
 import axiosInstance from '../../utils/axios';
 
 const AdminList = ({ admins, onEdit, onDelete }) => {
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [downloadingCSV, setDownloadingCSV] = useState(null); // Store admin ID that's being downloaded
+
+  const formatFieldForCSV = (field, maxLength = 500) => {
+    if (!field) return '';
+    const stringified = JSON.stringify(field).replaceAll(',', ';').replaceAll('"', '');
+    if (stringified.length > maxLength) {
+      return stringified.substring(0, maxLength) + '... [truncated]';
+    }
+    return stringified.replace(/,/g, ';');
+  };
 
   const handleExportCSV = async (adminId) => {
     try {
+      setDownloadingCSV(adminId);
       const response = await axiosInstance.get(`/api/admin/activity/${adminId}`);
       const data = await response.data;
       
       const csvContent = [
-        ['Timestamp', 'Method', 'Path','Status', 'Body','Response'],
-        ...data.activities.map(activity => [
-          activity.timestamp,
-          activity.method,
-          activity.path,
-          activity.status,
-          `${JSON.stringify(activity.body).replace(/,/g, ';')}`,
-          `${JSON.stringify(activity.response).replace(/,/g, ';')}`,
-        ])
+        ['Timestamp', 'Method', 'Path', 'Status', 'Body', 'Response'],
+        ...data.activities.map(activity => {
+          // Skip body and response if they're too large (over 1MB)
+          const body = activity.body && JSON.stringify(activity.body).length > 1000000 
+            ? '[Content too large]' 
+            : formatFieldForCSV(activity.body);
+          
+          const response = activity.response && JSON.stringify(activity.response).length > 1000000
+            ? '[Content too large]'
+            : formatFieldForCSV(activity.response);
+
+          return [
+            activity.timestamp,
+            activity.method,
+            activity.path,
+            activity.status,
+            body,
+            response,
+          ];
+        })
       ].map(row => row.join(',')).join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -35,6 +57,9 @@ const AdminList = ({ admins, onEdit, onDelete }) => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting CSV:', error);
+      // Show error toast or alert here
+    } finally {
+      setDownloadingCSV(null);
     }
   };
 
@@ -61,17 +86,23 @@ const AdminList = ({ admins, onEdit, onDelete }) => {
                       setSelectedAdmin(admin);
                       setShowActivityModal(true);
                     }} 
-                    className="text-green-600 hover:text-green-900"
+                    className="text-green-600 hover:text-green-900 transition-colors"
                     title="View Activities"
                   >
                     <Activity className="w-4 h-4 inline" />
                   </button>
                   <button 
                     onClick={() => handleExportCSV(admin.id)} 
-                    className="text-purple-600 hover:text-purple-900"
-                    title="Export Activities"
+                    disabled={downloadingCSV === admin.id}
+                    className={`text-purple-600 hover:text-purple-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                      ${downloadingCSV === admin.id ? 'animate-pulse' : ''}`}
+                    title={downloadingCSV === admin.id ? "Downloading..." : "Export Activities"}
                   >
-                    <Download className="w-4 h-4 inline" />
+                    {downloadingCSV === admin.id ? (
+                      <Loader2 className="w-4 h-4 inline animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4 inline" />
+                    )}
                   </button>
                   <button onClick={() => onEdit(admin)} className="text-blue-600 hover:text-blue-900">
                     <Pencil className="w-4 h-4 inline" />
