@@ -261,101 +261,11 @@ const UserDetailsPage = () => {
           )}
 
             {/* Steps Progress */}
-           <div className='mb-12'>
+          { user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
            <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step)=> handleAddVerdict(step.number)} />
-           </div>
+           </div>}
 
-           {user.stepsData && (
-            <div className="bg-white rounded-lg shadow-md mb-6">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold">Progress Steps</h2>
-              </div>
-              <div className="divide-y divide-gray-200">
-                {user.stepsData.steps.map((step, index) => (
-                  <div key={index} className="px-6 py-4">
-                    <div 
-                      className="flex justify-between items-center cursor-pointer"
-                      onClick={() => toggleStepExpand(step.number)}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 flex items-center justify-center rounded-full 
-                          ${step.status === 'Yes' ? 'bg-green-100 text-green-800' : 
-                            step.status === 'No' ? 'bg-red-100 text-red-800' : 
-                            'bg-gray-100 text-gray-800'}`}
-                        >
-                          {step.number}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-medium text-gray-900">{step.title}</h3>
-                          <div className="flex items-center mt-1 gap-2">
-                            {getStepStatusBadge(step.status)}
-                            {getStepTypeBadges(step)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {step.isVerdict && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddVerdict(step.number);
-                            }}
-                            className="px-3 py-1 bg-purple-50 text-purple-700 rounded-md hover:bg-purple-100 flex items-center gap-1"
-                          >
-                            <MessageSquare size={14} />
-                            Add Verdict
-                          </button>
-                        )}
-                        {expandedStep === step.number ? (
-                          <ChevronUp size={20} className="text-gray-500" />
-                        ) : (
-                          <ChevronDown size={20} className="text-gray-500" />
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Expanded Step Content */}
-                    {expandedStep === step.number && (
-                      <div className="mt-4 ml-11 border-l-2 border-gray-200 pl-4 space-y-3">
-                        {/* Display step data when available */}
-                        {step.isVerdict && step.verdict && (
-                          <div className="bg-purple-50 border border-purple-100 rounded-md p-3">
-                            <div className="font-medium text-sm text-purple-800 mb-1">Verdict:</div>
-                            <div className="text-gray-800">{step.verdict}</div>
-                          </div>
-                        )}
-                        
-                        {step.isCapQuery && (
-                          <div className="space-y-2">
-                            {step.collegeName && (
-                              <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
-                                <div className="font-medium text-sm text-blue-800 mb-1">College:</div>
-                                <div className="text-gray-800">{step.collegeName}</div>
-                              </div>
-                            )}
-                            
-                            {step.branchCode && (
-                              <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
-                                <div className="font-medium text-sm text-blue-800 mb-1">Branch:</div>
-                                <div className="text-gray-800">{step.branchCode} - {step.branchName || ''}</div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Show timestamp if available */}
-                        {step.timestamp && (
-                          <div className="text-xs text-gray-500 italic">
-                            Last updated: {new Date(step.timestamp._seconds * 1000).toLocaleString()}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          
 
           
 
