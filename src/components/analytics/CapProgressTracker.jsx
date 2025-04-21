@@ -5,7 +5,7 @@ import { useUsers } from '../../contexts/UsersContext';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
-const FormProgressTracker = () => {
+const CapProgressTracker = () => {
   const {users} = useUsers();
   const [selectedForm, setSelectedForm] = useState(null);
   const [forms, setForms] = useState([]);
@@ -21,10 +21,14 @@ const FormProgressTracker = () => {
   const [paginatedData, setPaginatedData] = useState({
     complete: { data: [], page: 1, totalPages: 1 },
     rejected: { data: [], page: 1, totalPages: 1 },
-    unattended: { data: [], page: 1, totalPages: 1 }
+    unattended: { data: [], page: 1, totalPages: 1 },
+    verdictAssigned: { data: [], page: 1, totalPages: 1 },
+    verdictNotAssigned: { data: [], page: 1, totalPages: 1 },
   });
   const ITEMS_PER_PAGE = 50;
   const navigate = useNavigate();
+  const [activeCapRound, setActiveCapRound] = useState(1); // Default to CAP round 1
+  const [capRoundSteps, setCapRoundSteps] = useState({ 1: [], 2: [], 3: [] });
 
   useEffect(() => {
     console.log(users);
@@ -38,6 +42,22 @@ const FormProgressTracker = () => {
     }
   }, [selectedForm]);
 
+  useEffect(() => {
+    if (formSteps.length > 0) {
+      // Group steps by CAP round
+      const groupedSteps = { 1: [], 2: [], 3: [] };
+      formSteps.forEach(step => {
+        if (step.isCapQuery || step.isVerdict || step.isCapSpecific) {
+          const capRound = step.cap || 1; // Default to round 1 if not specified
+          if (groupedSteps[capRound]) {
+            groupedSteps[capRound].push(step);
+          }
+        }
+      });
+      setCapRoundSteps(groupedSteps);
+    }
+  }, [formSteps]);
+
   const fetchForms = async () => {
     try {
       const response = await axiosInstance.get('/api/admin/formsteps');
@@ -45,7 +65,8 @@ const FormProgressTracker = () => {
       if (selectedForm) {
         const selectedFormData = response.data.find(form => form.id === selectedForm);
         if (selectedFormData) {
-          setFormSteps(selectedFormData.steps.sort((a, b) => a.number - b.number));
+          const capSteps = selectedFormData.steps.filter(s => s.isCapQuery || s.isVerdict || s.isCapSpecific);
+          setFormSteps(capSteps.sort((a, b) => a.number - b.number));
         }
       }
     } catch (err) {
@@ -60,19 +81,24 @@ const FormProgressTracker = () => {
     users.forEach(user => {
       if (user.stepsData?.steps) {
         // Process steps summary
-        user.stepsData.steps.forEach(step => {
+        user.stepsData.steps.filter(s => s.isCapQuery || s.isVerdict ||s.isCapSpecific).forEach(step => {
           if (!stepsProgress[step.number]) {
             stepsProgress[step.number] = {
               title: step.title,
               completedCount: 0,
               online:0,
               offline:0,
+              verdictAssignedOnline: 0,
+              verdictAssignedOffline: 0,
               totalCount: users.length
             };
           }
           if (step.status === 'Yes') {
             user.batch === 'online' ? stepsProgress[step.number].online++ : stepsProgress[step.number].offline++;
             stepsProgress[step.number].completedCount++;
+          }
+          if(step.isVerdict && step.verdict != '') {
+            user.batch === 'online' ? stepsProgress[step.number].verdictAssignedOnline++ : stepsProgress[step.number].verdictAssignedOffline++;
           }
         });
 
@@ -107,7 +133,9 @@ const FormProgressTracker = () => {
     setSelectedForm(formId);
     const selectedFormData = forms.find(form => form.id === formId);
     if (selectedFormData) {
-      setFormSteps(selectedFormData.steps.sort((a, b) => a.number - b.number));
+      setFormSteps(selectedFormData.steps
+        .filter(s => s.isCapQuery || s.isVerdict || s.isCapSpecific)
+        .sort((a, b) => a.number - b.number));
     } else {
       setFormSteps([]);
     }
@@ -123,10 +151,14 @@ const FormProgressTracker = () => {
     const complete = [];
     const rejected = [];
     const unattended = [];
+    const verdictAssigned = [];
+    const verdictNotAssigned = [];
 
     userProgress.forEach(user => {
       if (batch && user.batch !== batch) return; // Filter by batch if specified
       const step = user.steps.find(s => s.number === stepNumber);
+      
+      // Handle complete, rejected, unattended status
       if (!step || !step.status) {
         unattended.push(user);
       } else if (step.status === 'Yes') {
@@ -136,15 +168,34 @@ const FormProgressTracker = () => {
       } else {
         unattended.push(user);
       }
+
+      // Handle verdict status separately
+      if (step) {
+        const isVerdict = formSteps.find(fs => fs.number === stepNumber)?.isVerdict;
+        if (isVerdict) {
+          if (step.verdict && step.verdict.trim() !== '') {
+            verdictAssigned.push(user);
+          } else {
+            verdictNotAssigned.push(user);
+          }
+        }
+      }
     });
 
-    return { complete, rejected, unattended };
+    return { complete, rejected, unattended, verdictAssigned, verdictNotAssigned };
   };
 
   const handleStepClick = (stepNumber, batch) => {
     setSelectedStep(stepNumber);
     setShowStepUsers(true);
     setActiveTab('complete');
+    setActiveBatch(batch);
+  };
+
+  const handleVerdictClick = (stepNumber, batch) => {
+    setSelectedStep(stepNumber);
+    setShowStepUsers(true);
+    setActiveTab('verdictAssigned'); // Set to verdict tab by default
     setActiveBatch(batch);
   };
 
@@ -207,8 +258,10 @@ const FormProgressTracker = () => {
 
   const StepUsersModal = () => {
     if (!selectedStep) return null;
-    const { complete, rejected, unattended } = getStepUsers(selectedStep, activeBatch);
+    const { complete, rejected, unattended, verdictAssigned, verdictNotAssigned } = getStepUsers(selectedStep, activeBatch);
     const stepDetails = formSteps.find(step => step.number === selectedStep);
+    const isVerdictStep = stepDetails?.isVerdict || false;
+    const isCapQueryStep = stepDetails?.isCapQuery || false;
 
     // Move data preparation outside useEffect
     const getPaginatedData = (data, page) => {
@@ -224,11 +277,13 @@ const FormProgressTracker = () => {
       const dataMap = {
         complete,
         rejected,
-        unattended
+        unattended,
+        verdictAssigned,
+        verdictNotAssigned
       };
-      const currentData = dataMap[activeTab];
-      const totalPages = Math.ceil(currentData.length / ITEMS_PER_PAGE);
-      const currentPage = paginatedData[activeTab].page;
+      const currentData = dataMap[activeTab] || [];
+      const totalPages = Math.ceil(currentData.length / ITEMS_PER_PAGE) || 1;
+      const currentPage = paginatedData[activeTab]?.page || 1;
 
       return {
         data: getPaginatedData(currentData, currentPage),
@@ -244,7 +299,7 @@ const FormProgressTracker = () => {
     // Only update pagination state if necessary
     useEffect(() => {
       const newState = getCurrentData();
-      const currentState = paginatedData[activeTab];
+      const currentState = paginatedData[activeTab] || { page: 1, totalPages: 1, data: [] };
 
       if (currentState.totalPages !== newState.totalPages || 
           currentState.data.length !== newState.data.length) {
@@ -259,13 +314,35 @@ const FormProgressTracker = () => {
       }
     }, [selectedStep, activeTab]); // Only depend on tab changes and step selection
 
+    const getStatusLabel = (tab) => {
+      switch(tab) {
+        case 'complete': return 'Completed';
+        case 'rejected': return 'Rejected';
+        case 'unattended': return 'Pending';
+        case 'verdictAssigned': return 'Verdict Assigned';
+        case 'verdictNotAssigned': return 'No Verdict';
+        default: return tab;
+      }
+    };
+
+    const getStatusColor = (tab) => {
+      switch(tab) {
+        case 'complete': return 'bg-green-100 text-green-800';
+        case 'rejected': return 'bg-red-100 text-red-800';
+        case 'unattended': return 'bg-gray-100 text-gray-800';
+        case 'verdictAssigned': return 'bg-purple-100 text-purple-800';
+        case 'verdictNotAssigned': return 'bg-yellow-100 text-yellow-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    };
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-semibold">
-                Step {selectedStep}: {stepDetails?.title} - {activeBatch} Batch
+                Step {selectedStep}: {stepDetails?.title} - {activeBatch || 'All'} Batch
               </h3>
               <button
                 onClick={() => setShowStepUsers(false)}
@@ -276,7 +353,7 @@ const FormProgressTracker = () => {
             </div>
             
             {/* Tabs */}
-            <div className="flex gap-4 mt-6">
+            <div className="flex flex-wrap gap-2 mt-6">
               <button
                 onClick={() => setActiveTab('complete')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium ${
@@ -307,6 +384,31 @@ const FormProgressTracker = () => {
               >
                 Unattended ({unattended.length})
               </button>
+              
+              {isVerdictStep && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('verdictAssigned')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                      activeTab === 'verdictAssigned'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Verdict Assigned ({verdictAssigned.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('verdictNotAssigned')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                      activeTab === 'verdictNotAssigned'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    No Verdict ({verdictNotAssigned.length})
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -317,7 +419,10 @@ const FormProgressTracker = () => {
             <button
               onClick={() => exportToCSV(
                 activeTab === 'complete' ? complete :
-                activeTab === 'rejected' ? rejected : unattended,
+                activeTab === 'rejected' ? rejected : 
+                activeTab === 'verdictAssigned' ? verdictAssigned :
+                activeTab === 'verdictNotAssigned' ? verdictNotAssigned :
+                unattended,
                 activeTab
               )}
               className="px-4 py-2 border-2 border-green-500 bg-green-50 text-green-600 rounded-lg flex items-center gap-2 hover:bg-green-100"
@@ -335,74 +440,128 @@ const FormProgressTracker = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  {isVerdictStep && (activeTab === 'verdictAssigned' || activeTab === 'complete') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Verdict</th>
+                  )}
+                  {isCapQueryStep && (activeTab === 'complete') && (
+                    <>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">College</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {currentViewData.data.map(user => (
-                  <tr 
-                    key={user.id} 
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/users/${user.id}`)}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center gap-2">
-                      {user.name}
-                      <div className="flex items-center gap-2 w-[10rem] flex-wrap">
-                          {formSteps.map(step => {
-                            const userStep = user.steps.find(s => s.number === step.number);
-                            return (
-                              <div key={step.number} className="relative group">
-                                <div
-                                  className={`w-6 h-6 rounded-full ${getStepStatusColor(userStep?.status)} cursor-help`}
-                                >
-                                  <span className="text-white flex items-center justify-center h-full text-xs">
-                                    {step.number}
-                                  </span>
-                                </div>
-                                {/* Tooltip */}
-                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {step.title}
-                                </div>
+                {currentViewData.data.length > 0 ? (
+                  currentViewData.data.map(user => {
+                    const userStep = user.steps.find(s => s.number === selectedStep);
+                    
+                    return (
+                      <tr 
+                        key={user.id} 
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => navigate(`/users/${user.id}`)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center gap-2">
+                          {user.name}
+                          <div className="flex items-center gap-2 w-[10rem] flex-wrap">
+                            {formSteps
+                              .filter(step => step.isCapQuery || step.isVerdict || step.isCapSpecific)
+                              .map(step => {
+                                const userStep = user.steps.find(s => s.number === step.number);
+                                return (
+                                  <div key={step.number} className="relative group">
+                                    <div
+                                      className={`w-6 h-6 rounded-full ${getStepStatusColor(userStep?.status)} cursor-help`}
+                                    >
+                                      <span className="text-white flex items-center justify-center h-full text-xs">
+                                        {step.number}
+                                      </span>
+                                    </div>
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {step.title}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.phone}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.batch || 'No Batch'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(activeTab)}`}>
+                            {getStatusLabel(activeTab)}
+                          </span>
+                        </td>
+                        {isVerdictStep && (activeTab === 'verdictAssigned' || activeTab === 'complete') && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {userStep?.verdict ? (
+                              <div className="max-w-xs overflow-hidden text-ellipsis">
+                                {userStep.verdict.length > 50 
+                                  ? `${userStep.verdict.substring(0, 50)}...` 
+                                  : userStep.verdict}
                               </div>
-                            );
-                          })}
-                        </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.phone}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.batch || 'No Batch'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        activeTab === 'complete' ? 'bg-green-100 text-green-800' :
-                        activeTab === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {activeTab === 'complete' ? 'Completed' :
-                         activeTab === 'rejected' ? 'Rejected' : 'Pending'}
-                      </span>
+                            ) : '—'}
+                          </td>
+                        )}
+                        {isCapQueryStep && (activeTab === 'complete') && (
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {userStep?.collegeName ? (
+                                <div className="max-w-xs overflow-hidden text-ellipsis">
+                                  {userStep.collegeName}
+                                </div>
+                              ) : '—'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div className="flex flex-col">
+                                {userStep?.branchCode && (
+                                  <span className="font-medium">{userStep.branchCode}</span>
+                                )}
+                                {userStep?.branchName && (
+                                  <span className="text-xs text-gray-400">{userStep.branchName}</span>
+                                )}
+                                {!userStep?.branchCode && !userStep?.branchName && '—'}
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={
+                      isCapQueryStep && activeTab === 'complete' ? 6 : 
+                      isVerdictStep ? 5 : 4
+                    } className="px-6 py-8 text-center text-gray-500">
+                      No users found in this category
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
 
             <div className="mt-4 flex items-center justify-between">
               <div className="text-sm text-gray-500">
-                Showing {((paginatedData[activeTab].page - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(paginatedData[activeTab].page * ITEMS_PER_PAGE, (activeTab === 'complete' ? complete : activeTab === 'rejected' ? rejected : unattended).length)} of {(activeTab === 'complete' ? complete : activeTab === 'rejected' ? rejected : unattended).length} entries
+                Showing {currentViewData.data.length === 0 ? 0 : ((currentViewData.page - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentViewData.page * ITEMS_PER_PAGE, currentViewData.total)} of {currentViewData.total} entries
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => handlePageChange(activeTab, paginatedData[activeTab].page - 1)}
-                  disabled={paginatedData[activeTab].page === 1}
+                  disabled={paginatedData[activeTab]?.page === 1}
                   className="px-3 py-1 rounded bg-gray-100 disabled:opacity-50"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => handlePageChange(activeTab, paginatedData[activeTab].page + 1)}
-                  disabled={paginatedData[activeTab].page === paginatedData[activeTab].totalPages}
+                  disabled={paginatedData[activeTab]?.page === paginatedData[activeTab]?.totalPages}
                   className="px-3 py-1 rounded bg-gray-100 disabled:opacity-50"
                 >
                   Next
@@ -440,13 +599,38 @@ const FormProgressTracker = () => {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* CAP Round Tabs */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <h3 className="text-lg font-medium mb-4">CAP Round Progress</h3>
+            <div className="flex border-b border-gray-200">
+              {[1, 2, 3].map((round) => (
+                <button
+                  key={round}
+                  onClick={() => setActiveCapRound(round)}
+                  className={`px-4 py-2 font-medium text-sm ${
+                    activeCapRound === round
+                      ? 'border-b-2 border-blue-600 text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  CAP Round {round}
+                  {capRoundSteps[round]?.length > 0 && (
+                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+                      {capRoundSteps[round].length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Collapsible Steps Summary */}
           <div className="bg-white rounded-lg shadow p-4">
             <button
               onClick={() => setIsStepsCollapsed(!isStepsCollapsed)}
               className="flex items-center justify-between w-full"
             >
-              <h3 className="text-lg font-medium">Steps Overview</h3>
+              <h3 className="text-lg font-medium">CAP Round {activeCapRound} Steps</h3>
               {isStepsCollapsed ? (
                 <ChevronDown className="w-5 h-5 text-gray-500" />
               ) : (
@@ -456,7 +640,7 @@ const FormProgressTracker = () => {
 
             {!isStepsCollapsed && (
               <div className="mt-4 space-y-3">
-                {formSteps.map((step) => (
+                {capRoundSteps[activeCapRound]?.map((step) => (
                   <div 
                     key={step.number} 
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg  hover:bg-gray-100"
@@ -467,39 +651,71 @@ const FormProgressTracker = () => {
                         {step.number}
                       </div>
                       <span className="font-medium">{step.title}</span>
+                      {
+                        step.isVerdict && (
+                          <span
+                          className='bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full'
+                          >Verdict</span>
+                        )
+                      }
                     </div>
 
                     <div className='flex-1 max-w-[70%] grid grid-cols-3 gap-4'>
+                      {step.isVerdict && (
+                        <>
+                          <button className='bg-purple-100 text-purple-600 rounded-lg px-2 py-1 text-sm font-medium'
+                            onClick={() => handleVerdictClick(step.number, 'online')}
+                          >
+                            <h4>Verdict (Online)</h4>
+                            <span className="text-sm text-gray-600">
+                              {stepData[step.number]?.verdictAssignedOnline || 0} / {users.filter(u => u.isPremium && u.batch === 'online').length || 0}
+                            </span>
+                          </button>
+                          <button className='bg-purple-100 text-purple-600 rounded-lg px-2 py-1 text-sm font-medium'
+                            onClick={() => handleVerdictClick(step.number, 'offline')}
+                          >
+                            <h4>Verdict (Offline)</h4>
+                            <span className="text-sm text-gray-600">
+                              {stepData[step.number]?.verdictAssignedOffline || 0} / {users.filter(u => u.isPremium && u.batch === 'offline').length || 0}
+                            </span>
+                          </button>
+                        </>
+                      )}
                       <button className='bg-blue-100 text-blue-600 rounded-lg px-2 py-1 text-sm font-medium'
-                      onClick={() => handleStepClick(step.number, 'online')}
+                        onClick={() => handleStepClick(step.number, 'online')}
                       >
                         <h4>Online</h4>
-                            <span className="text-sm text-gray-600">
-                          {stepData[step.number]?.online || 0} / {users.filter(u => u.isPremium && u.batch == 'online').length || 0}
+                        <span className="text-sm text-gray-600">
+                          {stepData[step.number]?.online || 0} / {users.filter(u => u.isPremium && u.batch === 'online').length || 0}
                         </span>
                       </button>
 
                       <button className='bg-blue-100 text-blue-600 rounded-lg px-2 py-1 text-sm font-medium'
-                      onClick={() => handleStepClick(step.number, 'offline')}
+                        onClick={() => handleStepClick(step.number, 'offline')}
                       >
                         <h4>Offline</h4>
-                            <span className="text-sm text-gray-600">
-                          {stepData[step.number]?.offline || 0} / {users.filter(u => u.isPremium && u.batch == 'offline').length || 0}
+                        <span className="text-sm text-gray-600">
+                          {stepData[step.number]?.offline || 0} / {users.filter(u => u.isPremium && u.batch === 'offline').length || 0}
                         </span>
-                        </button>
+                      </button>
 
                       <button className='bg-blue-100 text-blue-600 rounded-lg px-2 py-1 text-sm font-medium'
-                      onClick={() => handleStepClick(step.number, null)}
+                        onClick={() => handleStepClick(step.number, null)}
                       >
                         <h4>Total</h4>
-                            <span className="text-sm text-gray-600 font-bold">
+                        <span className="text-sm text-gray-600 font-bold">
                           {stepData[step.number]?.completedCount || 0} / {users.filter(u => u.isPremium).length || 0}
                         </span>
                       </button>
-
                     </div>
                   </div>
                 ))}
+                
+                {capRoundSteps[activeCapRound]?.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    No steps found for CAP Round {activeCapRound}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -511,4 +727,4 @@ const FormProgressTracker = () => {
   );
 };
 
-export default FormProgressTracker;
+export default CapProgressTracker;

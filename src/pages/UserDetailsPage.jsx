@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Copy, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useUsers } from '../contexts/UsersContext';
+import VerdictModal from '../components/users/VerdictModal';
+import ProgressTracker from '../components/users/ProgressTracker';
+import axiosInstance from '../utils/axios';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
-
-
 
 const UserDetailsPage = () => {
   const { id } = useParams();
@@ -19,6 +20,8 @@ const UserDetailsPage = () => {
   const [copiedField, setCopiedField] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const {notes} = useUsers();
+  const [verdictModal, setVerdictModal] = useState({ isOpen: false, stepNumber: null });
+  const [expandedStep, setExpandedStep] = useState(null);
 
   useEffect(() => {
     fetchUserDetails();
@@ -69,6 +72,88 @@ const UserDetailsPage = () => {
       .join('\n');
     
     copyToClipboard(formattedData, 'all');
+  };
+
+  const handleAddVerdict = (stepNumber) => {
+    console.log(`Adding verdict for step ${stepNumber}`);
+    
+    setVerdictModal({ isOpen: true, stepNumber });
+  };
+
+  const handleVerdictConfirm = async (stepNumber, verdict) => {
+    try {
+      // Data will be sent to backend here
+      console.log(`Submitting verdict for step ${stepNumber}:`, verdict);
+
+      const desiredStep = user.stepsData.steps.find(step => step.number === stepNumber);
+      if (!desiredStep) {
+        console.error(`Step ${stepNumber} not found in user data`);
+        return;
+      }
+      
+      const updatedStep = {
+        ...desiredStep,
+        verdict: verdict,
+      }
+      
+      const updatedUserSteps = user.stepsData.steps.map(step =>
+        step.number === stepNumber ? updatedStep : step)
+      // TODO: Implement backend call
+      const response = await axiosInstance.put(`${API_URL}/api/admin/update-user-step-data/${id}`, {
+        ...user.stepsData,
+        steps: updatedUserSteps,
+      }, { headers: { token: localStorage.getItem('adminToken') } });
+      
+      console.log("Response from backend:", response.data);
+      if(response.data.error) {
+        console.error("Error from backend:", response.data.error);
+        return;
+      }
+      // Close modal on success
+      setVerdictModal({ isOpen: false, stepNumber: null });
+      fetchUserDetails();
+    } catch (err) {
+      console.error("Error adding verdict:", err);
+      // Optional: Show error message
+      // alert("Failed to add verdict");
+    }
+  };
+
+  const toggleStepExpand = (stepNumber) => {
+    setExpandedStep(expandedStep === stepNumber ? null : stepNumber);
+  };
+
+  const getStepStatusBadge = (status) => {
+    switch (status) {
+      case 'Yes':
+        return <span className="px-2 py-1 rounded-full text-sm bg-green-100 text-green-800">Completed</span>;
+      case 'No':
+        return <span className="px-2 py-1 rounded-full text-sm bg-red-100 text-red-800">Rejected</span>;
+      default:
+        return <span className="px-2 py-1 rounded-full text-sm bg-yellow-100 text-yellow-800">Pending</span>;
+    }
+  };
+
+  const getStepTypeBadges = (step) => {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {step.isCapSpecific && (
+          <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+            CAP {step.cap || ''}
+          </span>
+        )}
+        {step.isVerdict && (
+          <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+            Verdict
+          </span>
+        )}
+        {step.isCapQuery && (
+          <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
+            CAP Query
+          </span>
+        )}
+      </div>
+    );
   };
 
   if (loading) return (
@@ -176,30 +261,103 @@ const UserDetailsPage = () => {
           )}
 
             {/* Steps Progress */}
-            {user.stepsData && (
-            <div className="bg-white rounded-lg shadow-md mb-6 p-6">
-              <h2 className="text-xl font-semibold mb-4">Progress Steps</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+           <div className='mb-12'>
+           <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step)=> handleAddVerdict(step.number)} />
+           </div>
+
+           {user.stepsData && (
+            <div className="bg-white rounded-lg shadow-md mb-6">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-xl font-semibold">Progress Steps</h2>
+              </div>
+              <div className="divide-y divide-gray-200">
                 {user.stepsData.steps.map((step, index) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-800 text-sm">
-                        {step.number}
-                      </span>
-                      <p className="font-medium">{step.title}</p>
+                  <div key={index} className="px-6 py-4">
+                    <div 
+                      className="flex justify-between items-center cursor-pointer"
+                      onClick={() => toggleStepExpand(step.number)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-8 h-8 flex items-center justify-center rounded-full 
+                          ${step.status === 'Yes' ? 'bg-green-100 text-green-800' : 
+                            step.status === 'No' ? 'bg-red-100 text-red-800' : 
+                            'bg-gray-100 text-gray-800'}`}
+                        >
+                          {step.number}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">{step.title}</h3>
+                          <div className="flex items-center mt-1 gap-2">
+                            {getStepStatusBadge(step.status)}
+                            {getStepTypeBadges(step)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {step.isVerdict && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddVerdict(step.number);
+                            }}
+                            className="px-3 py-1 bg-purple-50 text-purple-700 rounded-md hover:bg-purple-100 flex items-center gap-1"
+                          >
+                            <MessageSquare size={14} />
+                            Add Verdict
+                          </button>
+                        )}
+                        {expandedStep === step.number ? (
+                          <ChevronUp size={20} className="text-gray-500" />
+                        ) : (
+                          <ChevronDown size={20} className="text-gray-500" />
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-2">
-                      <span className={`px-2 py-1 rounded-full text-sm ${
-                        step.status === 'Yes' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {step.status}
-                      </span>
-                    </div>
+                    
+                    {/* Expanded Step Content */}
+                    {expandedStep === step.number && (
+                      <div className="mt-4 ml-11 border-l-2 border-gray-200 pl-4 space-y-3">
+                        {/* Display step data when available */}
+                        {step.isVerdict && step.verdict && (
+                          <div className="bg-purple-50 border border-purple-100 rounded-md p-3">
+                            <div className="font-medium text-sm text-purple-800 mb-1">Verdict:</div>
+                            <div className="text-gray-800">{step.verdict}</div>
+                          </div>
+                        )}
+                        
+                        {step.isCapQuery && (
+                          <div className="space-y-2">
+                            {step.collegeName && (
+                              <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
+                                <div className="font-medium text-sm text-blue-800 mb-1">College:</div>
+                                <div className="text-gray-800">{step.collegeName}</div>
+                              </div>
+                            )}
+                            
+                            {step.branchCode && (
+                              <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
+                                <div className="font-medium text-sm text-blue-800 mb-1">Branch:</div>
+                                <div className="text-gray-800">{step.branchCode} - {step.branchName || ''}</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Show timestamp if available */}
+                        {step.timestamp && (
+                          <div className="text-xs text-gray-500 italic">
+                            Last updated: {new Date(step.timestamp._seconds * 1000).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          
 
           {/* Counselling Data Card */}
           {user.counsellingData && (
@@ -267,9 +425,13 @@ const UserDetailsPage = () => {
             </div>
           )}
 
-        
-
-        
+          {/* Verdict Modal */}
+          <VerdictModal
+            isOpen={verdictModal.isOpen}
+            onClose={() => setVerdictModal({ isOpen: false, stepNumber: null })}
+            onConfirm={handleVerdictConfirm}
+            stepNumber={verdictModal.stepNumber}
+          />
         </div>
       </div>
     </div>

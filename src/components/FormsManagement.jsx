@@ -34,9 +34,39 @@ const FormStepsManagement = () => {
 
   const handleChange = (formIndex, stepIndex, field, value) => {
     const updatedForms = [...forms];
+    
+    // Special handling for mutually exclusive fields and automatic cap specific assignment
+    if ((field === 'isVerdict' || field === 'isCapQuery') && value === true) {
+      // Make the fields mutually exclusive
+      if (field === 'isVerdict') {
+        updatedForms[formIndex].steps[stepIndex].isCapQuery = false;
+      } else {
+        updatedForms[formIndex].steps[stepIndex].isVerdict = false;
+      }
+      
+      // Automatically set isCapSpecific to true for verdict or cap query steps
+      updatedForms[formIndex].steps[stepIndex].isCapSpecific = true;
+      
+      // Ensure cap round is set (default to 1 if not already set)
+      if (!updatedForms[formIndex].steps[stepIndex].cap) {
+        updatedForms[formIndex].steps[stepIndex].cap = 1;
+      }
+    }
+    
+    // If turning off both verdict and cap query, optionally allow turning off isCapSpecific
+    if ((field === 'isVerdict' || field === 'isCapQuery') && value === false) {
+      const step = updatedForms[formIndex].steps[stepIndex];
+      if (!step.isVerdict && !step.isCapQuery) {
+        // Optional: Uncomment this to automatically turn off isCapSpecific when neither verdict nor cap query
+        // step.isCapSpecific = false;
+      }
+    }
+    
     updatedForms[formIndex].steps[stepIndex] = { 
       ...updatedForms[formIndex].steps[stepIndex], 
-      [field]: field === 'showListButton' || field === 'isLocked' ? value === true : value 
+      [field]: field === 'showListButton' || field === 'isLocked' || 
+                field === 'premiumOnly' || field === 'isCapSpecific' || 
+                field === 'isVerdict' || field === 'isCapQuery' ? value === true : value 
     };
     setForms(updatedForms);
   };
@@ -67,7 +97,12 @@ const FormStepsManagement = () => {
       title: `New Step ${newStepNumber}`,
       description: '',
       showListButton: false,
-      isLocked: false
+      isLocked: false,
+      premiumOnly: false,
+      isCapSpecific: false,
+      cap: 1,
+      isVerdict: false,
+      isCapQuery: false
     });
     
     setForms(updatedForms);
@@ -216,28 +251,105 @@ const FormStepsManagement = () => {
                                 />
                               </div>
 
-                              {/* Checkboxes */}
-                              <div className="flex gap-6">
-                                <label className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={step.showListButton || false}
-                                    onChange={(e) => handleChange(formIndex, stepIndex, "showListButton", e.target.checked)}
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                  />
-                                  <span className="text-sm text-gray-700">Show List Button</span>
-                                </label>
-                                
-                                <label className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={step.isLocked || false}
-                                    onChange={(e) => handleChange(formIndex, stepIndex, "isLocked", e.target.checked)}
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                  />
-                                  <span className="text-sm text-gray-700">Lock Step</span>
-                                </label>
+                              {/* Modified UI to clarify the relationship between verdict, cap query, and cap specific */}
+                              <div className="flex flex-wrap gap-6 mb-4">
+                                {/* Basic step options */}
+                                <div className="flex flex-col gap-2">
+                                  <p className="text-sm font-medium text-gray-700">Basic Options:</p>
+                                  <label className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={step.showListButton || false}
+                                      onChange={(e) => handleChange(formIndex, stepIndex, "showListButton", e.target.checked)}
+                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Show List Button</span>
+                                  </label>
+                                  
+                                  <label className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={step.isLocked || false}
+                                      onChange={(e) => handleChange(formIndex, stepIndex, "isLocked", e.target.checked)}
+                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Lock Step</span>
+                                  </label>
+                                  
+                                  <label className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={step.premiumOnly || false}
+                                      onChange={(e) => handleChange(formIndex, stepIndex, "premiumOnly", e.target.checked)}
+                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Premium Only</span>
+                                  </label>
+                                </div>
+
+                                {/* CAP-related options grouped together */}
+                                <div className="flex flex-col gap-2 border-l-2 border-gray-200 pl-4">
+                                  <p className="text-sm font-medium text-gray-700 mb-1">CAP Step Type:</p>
+                                  <div className="space-y-2">
+                                    <label className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={step.isVerdict || false}
+                                        onChange={(e) => handleChange(formIndex, stepIndex, "isVerdict", e.target.checked)}
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-sm text-gray-700">Verdict</span>
+                                    </label>
+                                    
+                                    <label className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={step.isCapQuery || false}
+                                        onChange={(e) => handleChange(formIndex, stepIndex, "isCapQuery", e.target.checked)}
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-sm text-gray-700">CAP Query</span>
+                                    </label>
+                                    
+                                    <label className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={step.isCapSpecific || false}
+                                        onChange={(e) => handleChange(formIndex, stepIndex, "isCapSpecific", e.target.checked)}
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        disabled={step.isVerdict || step.isCapQuery}
+                                      />
+                                      <span className={`text-sm ${(step.isVerdict || step.isCapQuery) ? 'text-gray-500' : 'text-gray-700'}`}>
+                                        CAP Specific
+                                        {(step.isVerdict || step.isCapQuery) && 
+                                          <span className="text-xs text-gray-500 ml-1">(Auto-enabled for Verdict/Query)</span>
+                                        }
+                                      </span>
+                                    </label>
+                                  </div>
+
+                                  {/* CAP Round Dropdown - shown if isCapSpecific, isVerdict, or isCapQuery is true */}
+                                  {(step.isCapSpecific || step.isVerdict || step.isCapQuery) && (
+                                    <div className="mt-2">
+                                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        CAP Round
+                                      </label>
+                                      <select
+                                        value={step.cap || 1}
+                                        onChange={(e) => handleChange(formIndex, stepIndex, "cap", parseInt(e.target.value))}
+                                        className="border p-2 rounded bg-white w-32"
+                                      >
+                                        <option value={1}>Round 1</option>
+                                        <option value={2}>Round 2</option>
+                                        <option value={3}>Round 3</option>
+                                      </select>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
+
+                              {/* Remove the old duplicate CAP Round dropdown */}
+                              {/* Rest of existing code... */}
                             </>
                           ) : (
                             <>
@@ -262,10 +374,45 @@ const FormStepsManagement = () => {
                                 {step.isLocked && (
                                   <span className="text-yellow-600 flex items-center gap-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                      <rect x="3" y="11" width="18" height="11" rx="2"></rect>
                                       <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                                     </svg>
                                     Locked
+                                  </span>
+                                )}
+                                {/* Display tags for new properties */}
+                                {step.premiumOnly && (
+                                  <span className="text-purple-600 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                    </svg>
+                                    Premium
+                                  </span>
+                                )}
+                                {step.isCapSpecific && (
+                                  <span className="text-green-600 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M12 8V4H8"></path>
+                                      <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+                                    </svg>
+                                    CAP {step.cap || 1}
+                                  </span>
+                                )}
+                                {step.isVerdict && (
+                                  <span className="text-red-600 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <circle cx="12" cy="12" r="10"></circle>
+                                      <path d="m9 12 2 2 4-4"></path>
+                                    </svg>
+                                    Verdict
+                                  </span>
+                                )}
+                                {step.isCapQuery && (
+                                  <span className="text-amber-600 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.5 3 3 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"></path>
+                                    </svg>
+                                    CAP Query
                                   </span>
                                 )}
                               </div>
