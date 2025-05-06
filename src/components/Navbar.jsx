@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home, FormInputIcon, FileLineChart,CheckCheck, Settings2 } from 'lucide-react';
+import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home, FormInputIcon, FileLineChart,CheckCheck, Settings2, Tent, Globe2, Crown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const VerticalNavbar = ({ onClose }) => {
@@ -60,6 +60,8 @@ const VerticalNavbar = ({ onClose }) => {
       { name: 'Forms', icon: <FormInput className="mr-3 text-green-400" />, path: '/forms', permission: 'forms' },
       { name: 'Data Collection Form', icon: <FileLineChart className="mr-3 text-green-400" />, path: '/registrationform', permission: 'registrationform' },
       { name: 'Lists', icon: <List className="mr-3 text-green-400" />, path: '/lists', permission: 'lists' },
+      { name: 'Static Details', icon: <Globe2 className="mr-3 text-yellow-400" />, path: '/landing-page', permission: 'landing-page' },
+      { name: 'Premium Plans & Screens', icon: <Crown className="mr-3 text-yellow-400" />, path: '/premium-plans', permission: 'premium-plans' },
       { name: 'Cutoff', icon: <CheckCheck className="mr-3 text-green-400" />, path: '/cutoff', permission: 'cutoff' },
       { name: 'Change Password', icon: <Lock className="mr-3 text-yellow-400" />, path: '/change-password', permission: 'change-password' },
       { name: 'Admin Settings', icon: <Settings2 className="mr-3 text-yellow-400" />, path: '/admin-settings', permission: 'admin-settings' },

@@ -16,6 +16,9 @@ import AddUsers from "./pages/AddUsers";
 import AdminSettings from "./pages/AdminSettings";
 import ProtectedRoute from './components/ProtectedRoute';
 import Unauthorized from './pages/Unauthorized';
+import LandingPage from "./pages/LandingPage";
+import StaticPagesManagement from "./pages/StaticPagesManagement";
+import PremiumPageManagement from "./pages/PremiumPageManagement";
 
 function App() {
   return (
@@ -80,6 +83,16 @@ function App() {
         <Route path="/admin-settings" element={
           <ProtectedRoute requiredPermission="admin-settings">
             <AdminSettings />
+          </ProtectedRoute>
+        } />
+        <Route path="/landing-page" element={
+          <ProtectedRoute requiredPermission="landing-page">
+            <StaticPagesManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/premium-plans" element={
+          <ProtectedRoute requiredPermission="landing-page">
+            <PremiumPageManagement />
           </ProtectedRoute>
         } />
         <Route path="/unauthorized" element={<Unauthorized />} />

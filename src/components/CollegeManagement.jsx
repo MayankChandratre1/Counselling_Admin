@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { PlusCircle, MinusCircle, Plus, X, Eye } from 'lucide-react';
+import CollegeDetailsModal from './colleges/CollegeDetailsModal';
 
-const API_URL = import.meta.env.VITE_REACT_APP_COLLEGE_API_URL || 'http://localhost:3002';
+const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL || 'http://localhost:3008';
 
 const CollegeManagement = () => {
   const [colleges, setColleges] = useState([]);
@@ -18,14 +20,24 @@ const CollegeManagement = () => {
   });
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [editingCollege, setEditingCollege] = useState(null);
+  const [viewingCollege, setViewingCollege] = useState(null);
   const [formData, setFormData] = useState({
     instituteName: '',
     instituteCode: '',
     city: '',
-    status: ''
+    status: '',
+    additionalMetadata: {
+      status: '',
+      totalIntake: 0,
+      autonomyStatus: '',
+      minorityStatus: '',
+      address: '',
+      region: '',
+      university: ''
+    },
+    branches: []
   });
 
-  // Fetch colleges on initial load and pagination changes
   useEffect(() => {
     if (!isSearchMode) {
       fetchColleges();
@@ -60,7 +72,6 @@ const CollegeManagement = () => {
       setLoading(true);
       setIsSearchMode(true);
       
-      // Filter out empty search params
       const filteredParams = Object.entries(searchParams)
         .filter(([_, value]) => value !== '')
         .reduce((obj, [key, value]) => {
@@ -68,7 +79,7 @@ const CollegeManagement = () => {
           return obj;
         }, {});
       
-      filteredParams.page = 1;
+      filteredParams.page = currentPage? currentPage : 1;
       filteredParams.limit = pageSize;
       
       const response = await axios.get(`${API_URL}/api/colleges/search`, {
@@ -76,8 +87,8 @@ const CollegeManagement = () => {
       });
       
       setColleges(response.data.colleges);
-      setHasMore(response.data.pagination.hasMore);
-      setCurrentPage(response.data.pagination.currentPage);
+      setHasMore(response.data.hasMore);
+      setCurrentPage(response.data.currentPage);
       setLoading(false);
     } catch (err) {
       setError('Failed to search colleges');
@@ -104,8 +115,26 @@ const CollegeManagement = () => {
       instituteName: college.instituteName || '',
       instituteCode: college.instituteCode || '',
       city: college.city || '',
-      status: college.status || ''
+      status: college.status || '',
+      additionalMetadata: {
+        status: college.additionalMetadata?.status || '',
+        totalIntake: college.additionalMetadata?.totalIntake || 0,
+        autonomyStatus: college.additionalMetadata?.autonomyStatus || '',
+        minorityStatus: college.additionalMetadata?.minorityStatus || '',
+        address: college.additionalMetadata?.address || '',
+        region: college.additionalMetadata?.region || '',
+        university: college.additionalMetadata?.university || ''
+      },
+      branches: Array.isArray(college.branches) 
+        ? college.branches.map(branch => ({
+            branchCode: branch.branchCode || '',
+            branchName: branch.branchName || '',
+            branchShort: branch.branchShort || '',
+            cutoffs: Array.isArray(branch.cutoffs) ? [...branch.cutoffs] : []
+          })) 
+        : []
     });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id) => {
@@ -123,23 +152,36 @@ const CollegeManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const collegeData = {
+        ...formData,
+        instituteCode: parseInt(formData.instituteCode) || formData.instituteCode,
+      };
+
       if (editingCollege && editingCollege.id) {
-        // Update existing college
-        await axios.put(`${API_URL}/api/colleges/${editingCollege.id}`, formData);
+        await axios.put(`${API_URL}/api/colleges/${editingCollege.id}`, collegeData);
         setColleges(colleges.map(college => 
-          college.id === editingCollege.id ? { ...college, ...formData } : college
-         ));
+          college.id === editingCollege.id ? { ...college, ...collegeData } : college
+        ));
       } else {
-        // Add new college
-        const response = await axios.post(`${API_URL}/api/colleges`, formData);
+        const response = await axios.post(`${API_URL}/api/colleges`, collegeData);
         setColleges([...colleges, response.data]);
       }
-      setEditingCollege(null);  // Reset editing state
+      setEditingCollege(null);
       setFormData({
         instituteName: '',
         instituteCode: '',
         city: '',
-        status: ''
+        status: '',
+        additionalMetadata: {
+          status: '',
+          totalIntake: 0,
+          autonomyStatus: '',
+          minorityStatus: '',
+          address: '',
+          region: '',
+          university: ''
+        },
+        branches: []
       });
     } catch (err) {
       setError(editingCollege?.id ? 'Failed to update college' : 'Failed to add college');
@@ -155,11 +197,90 @@ const CollegeManagement = () => {
     });
   };
 
-  const handleKeywordsChange = (e) => {
-    const keywords = e.target.value.split(',').map(keyword => keyword.trim());
+  const handleMetadataChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      keywords
+      additionalMetadata: {
+        ...formData.additionalMetadata,
+        [name]: value
+      }
+    });
+  };
+
+  const handleAddBranch = () => {
+    setFormData({
+      ...formData,
+      branches: [
+        ...formData.branches, 
+        {
+          branchCode: '',
+          branchName: '',
+          branchShort: '',
+          cutoffs: []
+        }
+      ]
+    });
+  };
+
+  const handleRemoveBranch = (index) => {
+    const newBranches = [...formData.branches];
+    newBranches.splice(index, 1);
+    setFormData({
+      ...formData,
+      branches: newBranches
+    });
+  };
+
+  const handleBranchChange = (index, field, value) => {
+    const newBranches = [...formData.branches];
+    newBranches[index][field] = value;
+    setFormData({
+      ...formData,
+      branches: newBranches
+    });
+  };
+
+  const handleAddCutoff = (branchIndex) => {
+    const newBranches = [...formData.branches];
+    if (!newBranches[branchIndex].cutoffs) {
+      newBranches[branchIndex].cutoffs = [];
+    }
+    
+    newBranches[branchIndex].cutoffs.push({
+      category: '',
+      percentile: 0,
+      rank: 0,
+      capRound: 'cap1',
+      year: new Date().getFullYear()
+    });
+
+    setFormData({
+      ...formData,
+      branches: newBranches
+    });
+  };
+
+  const handleRemoveCutoff = (branchIndex, cutoffIndex) => {
+    const newBranches = [...formData.branches];
+    newBranches[branchIndex].cutoffs.splice(cutoffIndex, 1);
+    setFormData({
+      ...formData,
+      branches: newBranches
+    });
+  };
+
+  const handleCutoffChange = (branchIndex, cutoffIndex, field, value) => {
+    const newBranches = [...formData.branches];
+    
+    if (field === 'percentile' || field === 'rank' || field === 'year') {
+      value = Number(value);
+    }
+    
+    newBranches[branchIndex].cutoffs[cutoffIndex][field] = value;
+    setFormData({
+      ...formData,
+      branches: newBranches
     });
   };
 
@@ -177,16 +298,28 @@ const CollegeManagement = () => {
       instituteName: '',
       instituteCode: '',
       city: '',
-      status: ''
+      status: '',
+      additionalMetadata: {
+        status: '',
+        totalIntake: 0,
+        autonomyStatus: '',
+        minorityStatus: '',
+        address: '',
+        region: '',
+        university: ''
+      },
+      branches: []
     });
-    // Smooth scroll to the form section
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleView = (college) => {
+    setViewingCollege(college);
   };
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header with Add New College button */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">College Management System</h1>
           {!editingCollege && (
@@ -202,7 +335,6 @@ const CollegeManagement = () => {
           )}
         </div>
         
-        {/* Edit Form */}
         {editingCollege && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
@@ -211,74 +343,329 @@ const CollegeManagement = () => {
                 onClick={() => setEditingCollege(null)}
                 className="text-gray-500 hover:text-gray-700"
               >
-                ✕
+                <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Primary Information */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Institute Name</label>
-                  <input
-                    type="text"
-                    name="instituteName"
-                    value={formData.instituteName}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Institute Code</label>
-                  <input
-                    type="text"
-                    name="instituteCode"
-                    value={formData.instituteCode}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <input
-                    type="text"
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Basic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Institute Name*</label>
+                    <input
+                      type="text"
+                      name="instituteName"
+                      value={formData.instituteName}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Institute Code*</label>
+                    <input
+                      type="text"
+                      name="instituteCode"
+                      value={formData.instituteCode}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">This will be used as the unique identifier</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">City*</label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
               
-              <div className="flex justify-end">
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Additional Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                      name="status"
+                      value={formData.additionalMetadata.status}
+                      onChange={handleMetadataChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select Status</option>
+                      <option value="Government">Government</option>
+                      <option value="Private">Private</option>
+                      <option value="Government-Aided">Government-Aided</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Total Intake</label>
+                    <input
+                      type="number"
+                      name="totalIntake"
+                      value={formData.additionalMetadata.totalIntake}
+                      onChange={handleMetadataChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Autonomy Status</label>
+                    <select
+                      name="autonomyStatus"
+                      value={formData.additionalMetadata.autonomyStatus}
+                      onChange={handleMetadataChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select Status</option>
+                      <option value="Autonomous">Autonomous</option>
+                      <option value="Non-Autonomous">Non-Autonomous</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Minority Status</label>
+                    <select
+                      name="minorityStatus"
+                      value={formData.additionalMetadata.minorityStatus}
+                      onChange={handleMetadataChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select Status</option>
+                      <option value="Minority">Minority</option>
+                      <option value="Non-Minority">Non-Minority</option>
+                    </select>
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <input
+                      type="text"
+                      name="address"
+                      value={formData.additionalMetadata.address}
+                      onChange={handleMetadataChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                    <input
+                      type="text"
+                      name="region"
+                      value={formData.additionalMetadata.region}
+                      onChange={handleMetadataChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">University</label>
+                    <input
+                      type="text"
+                      name="university"
+                      value={formData.additionalMetadata.university}
+                      onChange={handleMetadataChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-medium text-gray-800">Branches</h3>
+                  <button
+                    type="button"
+                    onClick={handleAddBranch}
+                    className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center text-sm"
+                  >
+                    <PlusCircle size={16} className="mr-1" /> Add Branch
+                  </button>
+                </div>
+                
+                {formData.branches.length === 0 ? (
+                  <div className="text-center py-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-gray-500">No branches added. Click the button above to add a branch.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {formData.branches.map((branch, branchIndex) => (
+                      <div key={branchIndex} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div className="flex justify-between items-start mb-4">
+                          <h4 className="font-medium text-gray-700">Branch #{branchIndex + 1}</h4>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBranch(branchIndex)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Branch Code*</label>
+                            <input
+                              type="text"
+                              value={branch.branchCode}
+                              onChange={(e) => handleBranchChange(branchIndex, 'branchCode', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Branch Name*</label>
+                            <input
+                              type="text"
+                              value={branch.branchName}
+                              onChange={(e) => handleBranchChange(branchIndex, 'branchName', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Short Name</label>
+                            <input
+                              type="text"
+                              value={branch.branchShort}
+                              onChange={(e) => handleBranchChange(branchIndex, 'branchShort', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="e.g. CSE"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <h5 className="font-medium text-gray-600 text-sm">Cutoffs</h5>
+                            <button
+                              type="button"
+                              onClick={() => handleAddCutoff(branchIndex)}
+                              className="px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 flex items-center text-xs"
+                            >
+                              <Plus size={12} className="mr-1" /> Add Cutoff
+                            </button>
+                          </div>
+                          
+                          {branch.cutoffs && branch.cutoffs.length > 0 ? (
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead className="bg-gray-100">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Percentile</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">CAP Round</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Year</th>
+                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {branch.cutoffs.map((cutoff, cutoffIndex) => (
+                                    <tr key={cutoffIndex}>
+                                      <td className="px-3 py-2">
+                                        <input
+                                          type="text"
+                                          value={cutoff.category || ''}
+                                          onChange={(e) => handleCutoffChange(branchIndex, cutoffIndex, 'category', e.target.value)}
+                                          className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                          placeholder="e.g. GOPENS"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <input
+                                          type="number"
+                                          step="0.0001"
+                                          value={cutoff.percentile || 0}
+                                          onChange={(e) => handleCutoffChange(branchIndex, cutoffIndex, 'percentile', e.target.value)}
+                                          className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <input
+                                          type="number"
+                                          value={cutoff.rank || 0}
+                                          onChange={(e) => handleCutoffChange(branchIndex, cutoffIndex, 'rank', e.target.value)}
+                                          className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <select
+                                          value={cutoff.capRound || 'cap1'}
+                                          onChange={(e) => handleCutoffChange(branchIndex, cutoffIndex, 'capRound', e.target.value)}
+                                          className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                        >
+                                          <option value="cap1">CAP 1</option>
+                                          <option value="cap2">CAP 2</option>
+                                          <option value="cap3">CAP 3</option>
+                                        </select>
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <input
+                                          type="number"
+                                          value={cutoff.year || new Date().getFullYear()}
+                                          onChange={(e) => handleCutoffChange(branchIndex, cutoffIndex, 'year', e.target.value)}
+                                          className="w-20 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2 text-right">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveCutoff(branchIndex, cutoffIndex)}
+                                          className="text-red-500 hover:text-red-700"
+                                        >
+                                          <MinusCircle size={16} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div className="text-center py-2 bg-gray-100 rounded text-sm text-gray-500">
+                              No cutoffs added. Click the button above to add a cutoff.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end gap-4">
+                <button 
+                  type="button"
+                  onClick={() => setEditingCollege(null)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
                 <button 
                   type="submit" 
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {editingCollege.id ? 'Update' : 'Add'} College
+                  {editingCollege.id ? 'Update College' : 'Add College'}
                 </button>
               </div>
             </form>
           </div>
         )}
         
-        {/* Search Section */}
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Search Colleges</h2>
           <form onSubmit={handleSearch} className="space-y-4">
@@ -338,7 +725,6 @@ const CollegeManagement = () => {
           </form>
         </div>
         
-        {/* Colleges List */}
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
           <h2 className="text-xl font-semibold mb-6 text-gray-800">Colleges List</h2>
           
@@ -404,6 +790,14 @@ const CollegeManagement = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
+                          onClick={() => handleView(college)}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4 transition-colors duration-200"
+                          title="View college details"
+                        >
+                          <Eye size={16} className="inline mr-1" />
+                          View
+                        </button>
+                        <button
                           onClick={() => handleEdit(college)}
                           className="text-blue-600 hover:text-blue-900 mr-4 transition-colors duration-200"
                         >
@@ -423,7 +817,6 @@ const CollegeManagement = () => {
             </div>
           )}
           
-          {/* Pagination */}
           {!loading && colleges.length > 0 && (
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
               <div className="flex items-center space-x-2">
@@ -464,8 +857,11 @@ const CollegeManagement = () => {
                 </button>
                 <button
                   onClick={() => {
-                    if (hasMore) {
+                    if (hasMore && !isSearchMode) {
                       setCurrentPage(currentPage + 1);
+                    }
+                    if(hasMore && isSearchMode){
+                      handleSearch({preventDefault: () => {}});
                     }
                   }}
                   disabled={!hasMore}
@@ -482,6 +878,14 @@ const CollegeManagement = () => {
           )}
         </div>
       </div>
+
+      {/* College Details Modal */}
+      {viewingCollege && (
+        <CollegeDetailsModal 
+          college={viewingCollege}
+          onClose={() => setViewingCollege(null)}
+        />
+      )}
     </div>
   );
 };

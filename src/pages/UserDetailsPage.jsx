@@ -33,10 +33,18 @@ const UserDetailsPage = () => {
       const response = await axios.get(`${API_URL}/api/admin/user/${id}`, {
         headers: { token }
       });
+      
       setUser(response.data);
       if(notes){
         console.log(notes[`${id}`]);
         setNotesToShow(notes[`${id}`]?.notes);
+      }
+      if(response.data?.phone){
+        const response2 = await axios.get(`${API_URL}/api/admin/payments/${response.data.phone}`, {
+          headers: { token }
+        });
+        console.log("Respinse 2",response2.data);
+        
       }
       setLoading(false);
     } catch (err) {
@@ -264,10 +272,6 @@ const UserDetailsPage = () => {
           { user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
            <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step)=> handleAddVerdict(step.number)} />
            </div>}
-
-          
-
-          
 
           {/* Counselling Data Card */}
           {user.counsellingData && (

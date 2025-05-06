@@ -226,7 +226,7 @@ const EditListModal = ({
         {/* Add Debug Button */}
         {selectedUser && (
           <button
-            onClick={() => console.log('Selected User:', editListFormData)}
+            onClick={() => console.log('Selected User:', selectedUser)}
             className="px-4 py-2 bg-white/10 text-white rounded-md hover:bg-white/20 transition-all"
           >
             Debug User Info
@@ -322,7 +322,7 @@ const EditListModal = ({
               p-4 flex flex-col h-full
             `}>
               <SelectedColleges
-                selectedColleges={editListFormData.colleges}
+                selectedColleges={editListFormData.colleges ? editListFormData.colleges : []}
                 moveCollege={handleMoveSelectedColleges}
                 removeCollegeFromList={handleRemoveCollegeFromUserList}
                 clearColleges={clearColleges}

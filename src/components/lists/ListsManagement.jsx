@@ -255,6 +255,126 @@ const PREDEFINED_CATEGORIES = [
   "TFWs"
 ];
 
+const PREDEFINED_CITIES= [
+  "AHMEDNAGAR",
+  "AKOLA",
+  "AMRAVATI",
+  "BEED",
+  "BHANDARA",
+  "BULDHANA",
+  "CHANDRAPUR",
+  "CHHATRAPATI SAMBHAJINAGAR",
+  "DHARASHIV",
+  "DHULE",
+  "JALGAON",
+  "JALNA",
+  "KOLHAPUR",
+  "LATUR",
+  "MUMBAI CITY",
+  "MUMBAI SUBURBAN",
+  "NAGPUR",
+  "NANDED",
+  "NANDURBAR",
+  "NASHIK",
+  "PALGHAR",
+  "PARBHANI",
+  "PUNE",
+  "RAIGAD",
+  "RATNAGIRI",
+  "SANGLI",
+  "SATARA",
+  "SINDHUDURG",
+  "SOLAPUR",
+  "THANE",
+  "WARDHA",
+  "WASHIM",
+  "YAVATMAL"
+]
+
+const PREDEFINED_BRANCHES = [
+  '5G',
+  'Aeronautical Engineering',
+  'Agricultural Engineering',
+  'Artificial Intelligence',
+  'Artificial Intelligence and Data Science',
+  'Artificial Intelligence and Machine Learning',
+  'Automation and Robotics',
+  'Automobile Engineering',
+  'Bio Medical Engineering',
+  'Bio Technology',
+  'Chemical Engineering',
+  'Civil and Environmental Engineering',
+  'Civil and infrastructure Engineering',
+  'Civil Engineering',
+  'Civil Engineering and Planning',
+  'ComComputer Science and Engineering',
+  'Computer Engineering',
+  'Computer Science',
+  'Computer Science and Business Systems',
+  'Computer Science and Design',
+  'Computer Science and Engineering',
+  'Computer Science and Information Technology',
+  'Computer Science and Technology',
+  'Computer Technology',
+  'Cyber Security',
+  'Data Engineering',
+  'Data Science',
+  'Dyestuff Technology',
+  'Electrical and Computer Engineering',
+  'Electrical and Electronics Engineering',
+  'Electrical Engg',
+  'Electrical Engineering',
+  'Electronics & Telecom Engineering',
+  'Electronics & Telecommunication Engineering',
+  'Electronics and Biomedical Engineering',
+  'Electronics and Communication',
+  'Electronics and Communication Engineering',
+  'Electronics and Computer Engineering',
+  'Electronics and Computer Science',
+  'Electronics and Telecommunication Engineering',
+  'Electronics Engineering',
+  'Fashion Technology',
+  'Fibres and Textile Processing Technology',
+  'Food Engineering and Technology',
+  'Food Technology',
+  'Food Technology And Management',
+  'Industrial IoT',
+  'Information Technology',
+  'Instrumentation and Control Engineering',
+  'Instrumentation Engineering',
+  'Internet of Things',
+  'Man Made Textile Technology',
+  'Mechanical & Automation Engineering',
+  'Mechanical and Mechatronics Engineering',
+  'Mechanical Engineering',
+  'Mechatronics Engineering',
+  'Mining Engineering',
+  'nstrumentation Engineering',
+  'Oil and Paints Technology',
+  'Oil Fats and Waxes Technology',
+  'Oil,Oleochemicals and Surfactants Technology',
+  'Paints Technology',
+  'Paper and Pulp Technology',
+  'Petro Chemical Engineering',
+  'Pharmaceutical and Fine Chemical Technology',
+  'Pharmaceuticals Chemistry and Technology',
+  'Plastic and Polymer Engineering',
+  'Plastic Technology',
+  'Polymer Engineering and Technology',
+  'Printing Technology',
+  'Production Engineering',
+  'Robotics and Artificial Intelligence',
+  'Robotics and Automation',
+  'Safety and Fire Engineering',
+  'Structural Engineering',
+  'Surface Coating Technology',
+  'Textile Chemistry',
+  'Textile Engineering / Technology',
+  'Textile Plant Engineering',
+  'Textile Technology',
+  'VLSI'
+]
+
 const ListsManagement = () => {
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -274,10 +394,10 @@ const ListsManagement = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [expandedListId, setExpandedListId] = useState(null);
   const [usersInList, setUsersInList] = useState({});
-  const [availableCities, setAvailableCities] = useState([]);
+  const [availableCities, setAvailableCities] = useState(PREDEFINED_CITIES.map(c => c.toLowerCase()));
   const [showCityFilter, setShowCityFilter] = useState(false);
   const [selectedCity, setSelectedCity] = useState('');
-  const [availableBranches, setAvailableBranches] = useState([]);
+  const [availableBranches, setAvailableBranches] = useState(PREDEFINED_BRANCHES);
   const [showBranchFilter, setShowBranchFilter] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState('');
   const [expandedColleges, setExpandedColleges] = useState({});
@@ -290,8 +410,6 @@ const ListsManagement = () => {
 
   useEffect(() => {
     fetchLists();
-    fetchAllCities();
-    fetchAllBranches();
   }, []);
 
   const fetchLists = async () => {
@@ -333,57 +451,9 @@ const ListsManagement = () => {
     }
   };
 
-  // Function to fetch all unique cities
-  const fetchAllCities = async () => {
-    try {
-      const response = await axiosInstance.get('/api/admin/search-colleges', {
-        params: { fetchAllCities: true }
-      });
-      
-      // Extract unique cities from the response
-      if (response.data && response.data.length > 0) {
-        // Get unique cities and sort them alphabetically
-        const cities = [...new Set(response.data
-          .filter(college => college.city)
-          .map(college => college.city))]
-          .sort();
-          
-        setAvailableCities(cities);
-      }
-    } catch (err) {
-      console.error('Error fetching city list:', err);
-    }
-  };
+  
 
-  // Function to fetch all unique branches
-  const fetchAllBranches = async () => {
-    try {
-      const response = await axiosInstance.get('/api/admin/search-colleges', {
-        params: { fetchAllBranches: true }
-      });
-      
-      // Extract unique branches from the response
-      if (response.data && response.data.length > 0) {
-        // Get unique branch names from all colleges
-        let allBranches = [];
-        response.data.forEach(college => {
-          if (college.branches && Array.isArray(college.branches)) {
-            college.branches.forEach(branch => {
-              if (branch.branchName) {
-                allBranches.push(branch.branchName);
-              }
-            });
-          }
-        });
-        
-        // Filter unique branch names and sort alphabetically
-        const branches = [...new Set(allBranches)].sort();
-        setAvailableBranches(branches);
-      }
-    } catch (err) {
-      console.error('Error fetching branch list:', err);
-    }
-  };
+
 
   const handleBranchSelect = (branch) => {
     setSelectedBranch(branch);
@@ -462,8 +532,8 @@ const ListsManagement = () => {
       
       // Always make the API call regardless of whether we have parameters
       // This allows searching all colleges when no filters are applied
-      const response = await axiosInstance.get('/api/admin/search-colleges', { params });
-      let results = response.data;
+      const response = await axiosInstance.get('/api/colleges/search', { params });
+      let results = response.data.colleges;
       
       // If branch filter is applied, filter colleges with matching branches on client side
       // This is because branch is a nested property that might be harder to filter on the backend
@@ -550,8 +620,7 @@ const ListsManagement = () => {
           branches: undefined, // Remove branches from the college object before sending,
           searchIndex: undefined, // Remove searchIndex if it exists
           additionalMetadata: undefined, // Remove additional metadata if it exists,
-           keywords: undefined,
-
+          keywords: undefined,
         })),
         userIds: formData.userIds || [],
         category: selectedCategory

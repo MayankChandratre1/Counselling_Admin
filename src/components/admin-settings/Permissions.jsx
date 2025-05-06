@@ -12,7 +12,8 @@ const ALL_PAGES = [
   'registrationform',
   'add-user',
   'cutoff',
-  'admin-settings'
+  'admin-settings',
+  'landing-page'
 ];
 
 const Permissions = ({ permissions }) => {

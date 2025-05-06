@@ -33,6 +33,8 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
 
   useEffect(() => {
     fetchCutoffs2 && fetchCutoffs2(setSelectedCollegesCutoffs);
+    console.log('Selected colleges cutoffs:', selectedColleges);
+    
   },[selectedColleges])
 
   useEffect(() => {    
@@ -51,6 +53,8 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
             branchName: branch.branchName,
             cutoffData: branch.cutoffs.find(c => c.category === selectedUserCategory)
           }));
+
+          
 
         return {
           collegeId: college.id,
