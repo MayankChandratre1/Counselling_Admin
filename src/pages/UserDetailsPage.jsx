@@ -343,6 +343,7 @@ const UserDetailsPage = () => {
                     <thead className="bg-gray-50">
                       <tr>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -358,6 +359,9 @@ const UserDetailsPage = () => {
                           <tr key={payment.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                               {formatDateTime(payment.timestamp)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {payment.eventType}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                               {notes.planTitle || 'N/A'}

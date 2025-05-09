@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Search, ChevronLeft, ChevronRight, AlertCircle, Check, X, Clock } from 'lucide-react';
+import { Menu, Search, ChevronLeft, ChevronRight, AlertCircle, Check, X, Clock, Copy, CheckCircle } from 'lucide-react';
 import axiosInstance from '../utils/axios';
 import Navbar from '../components/Navbar';
 
@@ -19,6 +19,9 @@ const PaymentLogs = () => {
   const [searchType, setSearchType] = useState('phone'); // 'phone', 'order-id', 'payment-id'
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchMode, setIsSearchMode] = useState(false);
+
+  // Add state to track copied field
+  const [copiedField, setCopiedField] = useState(null);
 
   useEffect(() => {
     if (!isSearchMode) {
@@ -178,6 +181,16 @@ const PaymentLogs = () => {
     }
   };
 
+  const copyToClipboard = async (text, field) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Mobile menu button */}
@@ -327,7 +340,22 @@ const PaymentLogs = () => {
                             {formatDate(payment.timestamp)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatPhoneNumber(contact)}
+                            <div className="flex items-center group">
+                              <span className="mr-2">{formatPhoneNumber(contact)}</span>
+                              {contact && (
+                                <button
+                                  onClick={() => copyToClipboard(contact, `contact-${payment.id}`)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Copy contact"
+                                >
+                                  {copiedField === `contact-${payment.id}` ? (
+                                    <CheckCircle size={16} className="text-green-500" />
+                                  ) : (
+                                    <Copy size={16} className="text-gray-400 hover:text-gray-600" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
@@ -352,18 +380,47 @@ const PaymentLogs = () => {
                             {formatAmount(amount)}
                           </td>
                           
-                          
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
                             {method || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <div className="max-w-[140px] overflow-hidden text-ellipsis">
-                              {paymentId}
+                            <div className="flex items-center group">
+                              <div className="max-w-[120px] overflow-hidden text-ellipsis mr-2">
+                                {paymentId}
+                              </div>
+                              {paymentId && (
+                                <button
+                                  onClick={() => copyToClipboard(paymentId, `payment-${payment.id}`)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Copy payment ID"
+                                >
+                                  {copiedField === `payment-${payment.id}` ? (
+                                    <CheckCircle size={16} className="text-green-500" />
+                                  ) : (
+                                    <Copy size={16} className="text-gray-400 hover:text-gray-600" />
+                                  )}
+                                </button>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <div className="max-w-[140px] overflow-hidden text-ellipsis">
-                              {orderId}
+                            <div className="flex items-center group">
+                              <div className="max-w-[120px] overflow-hidden text-ellipsis mr-2">
+                                {orderId}
+                              </div>
+                              {orderId && (
+                                <button
+                                  onClick={() => copyToClipboard(orderId, `order-${payment.id}`)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Copy order ID"
+                                >
+                                  {copiedField === `order-${payment.id}` ? (
+                                    <CheckCircle size={16} className="text-green-500" />
+                                  ) : (
+                                    <Copy size={16} className="text-gray-400 hover:text-gray-600" />
+                                  )}
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

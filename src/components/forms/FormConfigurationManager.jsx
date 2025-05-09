@@ -52,7 +52,7 @@ const FormConfigurationManager = () => {
       id: `field_${Date.now()}`,
       type: 'text',
       label: 'New Field',
-      key: '',
+      key: `field_${Date.now()}`, // Set a default key based on timestamp
       required: false,
       options: [],
       additionalRemarks: '' // Added new field
@@ -246,6 +246,20 @@ const FormConfigurationManager = () => {
                                 <option key={type.id} value={type.id}>{type.label}</option>
                               ))}
                             </select>
+                          </div>
+                          
+                          {/* New input for field key */}
+                          <div className="col-span-2 sm:col-span-1">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Field Key (database field name)
+                            </label>
+                            <input
+                              type="text"
+                              value={field.key}
+                              onChange={(e) => updateField(stepIndex, fieldIndex, { key: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              placeholder="Field Key"
+                            />
                           </div>
 
                           {field.type === 'select' && (
