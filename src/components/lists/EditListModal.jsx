@@ -69,7 +69,7 @@ const EditListModal = ({
   const fetchCutoffs = async (callback) => {
     try {
       const collegeIds = editListFormData.colleges.map(college => college.id);
-      const response = await axiosInstance.post('/api/admin/getcutoff', { collegeIds });
+      const response = await axiosInstance.post('/api/admin/getcutoff', { collegeIds: [...new Set(collegeIds)] });
       if (response.data && response.data.length > 0) {
         const cutoffs = response.data
         setSelectedCollegesCutoffs(cutoffs);

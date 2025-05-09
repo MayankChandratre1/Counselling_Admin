@@ -20,7 +20,7 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
   const fetchCutoffs2 = async (callback) => {
     try {
       const collegeIds = selectedColleges.map(college => college.id);
-      const response = await axiosInstance.post('/api/admin/getcutoff', { collegeIds });
+      const response = await axiosInstance.post('/api/admin/getcutoff', { collegeIds: [...new Set(collegeIds)] });
       if (response.data && response.data.length > 0) {
         const cutoffs = response.data
         setSelectedCollegesCutoffs(cutoffs);
@@ -564,7 +564,7 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
                     );
 
                     const selectedCategoryCuttoff = selectedCollegesCutoffs?.find(clg => clg.id === college.id)?.branches?.find(
-                      branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.category === 'GOPENH');
+                      branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.year == 2025 && cutoff.category === selectedCategory);
 
                     console.log(selectedCategoryCuttoff, 'selectedCategoryCuttoff');
                         

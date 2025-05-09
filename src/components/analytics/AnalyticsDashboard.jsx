@@ -247,12 +247,7 @@ const AnalyticsDashboard = () => {
             icon="📋"
             color="bg-green-500"
           />
-          <MetricCard
-            title="Avg Lists/User"
-            value={metrics.averageListsPerUser.toFixed(2)}
-            icon="📊"
-            color="bg-yellow-500"
-          />
+        
         </div>
 
         {/* Metric Users Modal */}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign } from 'lucide-react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useUsers } from '../contexts/UsersContext';
@@ -22,6 +22,8 @@ const UserDetailsPage = () => {
   const {notes} = useUsers();
   const [verdictModal, setVerdictModal] = useState({ isOpen: false, stepNumber: null });
   const [expandedStep, setExpandedStep] = useState(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
 
   useEffect(() => {
     fetchUserDetails();
@@ -39,13 +41,22 @@ const UserDetailsPage = () => {
         console.log(notes[`${id}`]);
         setNotesToShow(notes[`${id}`]?.notes);
       }
+
+      // Fetch payment history if phone number available
       if(response.data?.phone){
-        const response2 = await axios.get(`${API_URL}/api/admin/payments/${response.data.phone}`, {
-          headers: { token }
-        });
-        console.log("Respinse 2",response2.data);
-        
+        setLoadingPayments(true);
+        try {
+          const response2 = await axios.get(`${API_URL}/api/admin/payments/phone/+91${response.data.phone}`, {
+            headers: { token }
+          });
+          setPaymentHistory(response2.data || []);
+        } catch (paymentError) {
+          console.error("Error fetching payment history:", paymentError);
+        } finally {
+          setLoadingPayments(false);
+        }
       }
+      
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch user details');
@@ -56,6 +67,26 @@ const UserDetailsPage = () => {
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
     return new Date(timestamp._seconds * 1000).toLocaleDateString();
+  };
+
+  const formatDateTime = (timestamp) => {
+    if (!timestamp || !timestamp._seconds) return 'N/A';
+    const date = new Date(timestamp._seconds * 1000);
+    return date.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatAmount = (amount) => {
+    if (!amount && amount !== 0) return 'N/A';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR'
+    }).format(amount / 100); // Converting paise to rupees
   };
 
   const copyToClipboard = async (text, field) => {
@@ -162,6 +193,22 @@ const UserDetailsPage = () => {
         )}
       </div>
     );
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'captured':
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'refunded':
+        return 'bg-amber-100 text-amber-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      case 'pending':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   if (loading) return (
@@ -272,6 +319,69 @@ const UserDetailsPage = () => {
           { user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
            <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step)=> handleAddVerdict(step.number)} />
            </div>}
+
+          {/* Payment History Section */}
+          {paymentHistory.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold flex items-center">
+                  <DollarSign size={20} className="mr-2 text-green-600" />
+                  Payment History
+                </h2>
+                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-sm">
+                  {paymentHistory.length} transactions
+                </span>
+              </div>
+
+              {loadingPayments ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paymentHistory.filter(payment => payment.eventType === 'payment.captured').map((payment, index) => {
+                        const paymentData = payment.data || {};
+                        const notes = paymentData.notes || {};
+                        
+                        return (
+                          <tr key={payment.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {formatDateTime(payment.timestamp)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {notes.planTitle || 'N/A'}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {formatAmount(paymentData.amount)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(paymentData.status)}`}>
+                                {paymentData.status || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 capitalize">
+                              {paymentData.method || 'N/A'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Counselling Data Card */}
           {user.counsellingData && (

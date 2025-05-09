@@ -19,6 +19,7 @@ import Unauthorized from './pages/Unauthorized';
 import LandingPage from "./pages/LandingPage";
 import StaticPagesManagement from "./pages/StaticPagesManagement";
 import PremiumPageManagement from "./pages/PremiumPageManagement";
+import PaymentLogs from "./pages/PaymentLogs";
 
 function App() {
   return (
@@ -93,6 +94,11 @@ function App() {
         <Route path="/premium-plans" element={
           <ProtectedRoute requiredPermission="landing-page">
             <PremiumPageManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/payment-logs" element={
+          <ProtectedRoute requiredPermission="landing-page">
+            <PaymentLogs />
           </ProtectedRoute>
         } />
         <Route path="/unauthorized" element={<Unauthorized />} />

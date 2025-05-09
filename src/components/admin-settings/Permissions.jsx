@@ -13,7 +13,8 @@ const ALL_PAGES = [
   'add-user',
   'cutoff',
   'admin-settings',
-  'landing-page'
+  'landing-page',
+  'payment-logs'
 ];
 
 const Permissions = ({ permissions }) => {
