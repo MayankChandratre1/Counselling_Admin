@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign } from 'lucide-react';
+import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit } from 'lucide-react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useUsers } from '../contexts/UsersContext';
 import VerdictModal from '../components/users/VerdictModal';
+import UserEditModal from '../components/users/UserEditModal';
 import ProgressTracker from '../components/users/ProgressTracker';
 import axiosInstance from '../utils/axios';
 
@@ -24,6 +25,7 @@ const UserDetailsPage = () => {
   const [expandedStep, setExpandedStep] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     fetchUserDetails();
@@ -211,6 +213,21 @@ const UserDetailsPage = () => {
     }
   };
 
+  const handleUpdateUser = async (updatedUserData) => {
+    try {
+      setLoading(true);
+      await axiosInstance.put(`/api/admin/update-user/${id}`, updatedUserData);
+      // Refresh user data after update
+      fetchUserDetails();
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      // You could set an error state here if you want to display the error
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex justify-center items-center h-screen">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -253,6 +270,13 @@ const UserDetailsPage = () => {
               Back to Users
             </button>
             <h1 className="text-3xl font-bold text-gray-900">{user.name}'s Profile</h1>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="ml-auto flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              <Edit size={18} />
+              Edit User
+            </button>
           </div>
 
           {/* Basic Info Card */}
@@ -451,6 +475,16 @@ const UserDetailsPage = () => {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Edit User Modal */}
+          {isEditModalOpen && (
+            <UserEditModal
+              isOpen={isEditModalOpen}
+              onClose={() => setIsEditModalOpen(false)}
+              user={user}
+              onSave={handleUpdateUser}
+            />
           )}
 
           {/* Verdict Modal */}

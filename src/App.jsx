@@ -101,6 +101,12 @@ function App() {
             <PaymentLogs />
           </ProtectedRoute>
         } />
+    
+        <Route path="/edit-user-list/:id" element={
+          <ProtectedRoute requiredPermission="edit-user-list">
+            <PaymentLogs />
+          </ProtectedRoute>
+        } />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

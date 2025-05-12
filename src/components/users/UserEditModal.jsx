@@ -1,15 +1,11 @@
-import React, { useState } from 'react';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import axiosInstance from '../utils/axios';
+import React, { useState, useEffect } from 'react';
+import { X, AlertCircle } from 'lucide-react';
 
-const AddUsers = () => {
-  const navigate = useNavigate();
+const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPremiumFields, setShowPremiumFields] = useState(false);
   const [isPaymentPending, setIsPaymentPending] = useState(false);
-  
   const [formData, setFormData] = useState({
     // Basic Information
     name: '',
@@ -52,6 +48,54 @@ const AddUsers = () => {
     }
   });
 
+  // Initialize form data with user data
+  useEffect(() => {
+    if (user) {
+      const preprocessedUser = {
+        name: user.name || '',
+        phone: user.phone || '',
+        batch: user.batch || 'online',
+        isPremium: user.isPremium || false,
+        counsellingData: { ...user.counsellingData } || {}
+      };
+
+      // Format DOB from dd/mm/yyyy to yyyy-mm-dd for the date input if it exists
+      if (preprocessedUser.counsellingData?.dob) {
+        const dobParts = preprocessedUser.counsellingData.dob.split('/');
+        if (dobParts.length === 3) {
+          preprocessedUser.counsellingData.dob = `${dobParts[2]}-${dobParts[1].padStart(2, '0')}-${dobParts[0].padStart(2, '0')}`;
+        }
+      }
+
+      // Handle premium plan data
+      if (user.premiumPlan) {
+        setShowPremiumFields(true);
+        
+        const premiumPlan = { ...user.premiumPlan };
+        
+        // Format dates for the date inputs
+        if (premiumPlan.purchasedDate && premiumPlan.purchasedDate._seconds) {
+          const purchaseDate = new Date(premiumPlan.purchasedDate._seconds * 1000);
+          premiumPlan.purchasedDate = purchaseDate.toISOString().split('T')[0];
+        }
+        
+        if (premiumPlan.expiryDate && premiumPlan.expiryDate._seconds) {
+          const expiryDate = new Date(premiumPlan.expiryDate._seconds * 1000);
+          premiumPlan.expiryDate = expiryDate.toISOString().split('T')[0];
+        }
+
+        // Check if payment is pending
+        if (premiumPlan.isPaymentPending) {
+          setIsPaymentPending(true);
+        }
+
+        preprocessedUser.premiumPlan = premiumPlan;
+      }
+
+      setFormData(preprocessedUser);
+    }
+  }, [user]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
@@ -93,16 +137,8 @@ const AddUsers = () => {
       return;
     }
     
-    if (!formData.counsellingData.email.trim() || !formData.counsellingData.email.includes('@')) {
-      setError('Valid email is required');
-      return;
-    }
-    
     try {
       setLoading(true);
-      
-      // Generate a random password for the user
-      const password = Math.random().toString(36).slice(-8);
       
       // Prepare the user data for submission
       const userData = {
@@ -110,76 +146,79 @@ const AddUsers = () => {
         phone: formData.phone,
         batch: formData.batch,
         isPremium: formData.isPremium,
-        email: formData.email,
-        counsellingData: {
-          ...formData.counsellingData,
-          email: formData.email,
-          fullName: formData.name, // Set fullName same as name if not provided
-          mobile: formData.phone, // Set mobile same as phone
-          termsAccepted: true,
-          dob: new Date(formData.counsellingData.dob).toLocaleDateString("en-US").replaceAll("-","/") || null,
-          password // Include password in counsellingData
-        },
-        password, // Include password at root level
-        hasLoggedIn: false,
-        createdAt: new Date()
+        counsellingData: { ...formData.counsellingData }
       };
       
-      // Add premium plan data if isPremium is checked
-      if (formData.isPremium) {
-        // Current timestamp in seconds
-        const now = Math.floor(Date.now() / 1000);
-        
-        // Purchased date timestamp
-        let purchasedSeconds = now;
-        if (formData.premiumPlan.purchasedDate) {
-          purchasedSeconds = Math.floor(new Date(formData.premiumPlan.purchasedDate).getTime() / 1000);
-        }
-        
-        // Expiry date timestamp (if provided)
-        let expirySeconds = null;
-        if (formData.premiumPlan.expiryDate) {
-          expirySeconds = Math.floor(new Date(formData.premiumPlan.expiryDate).getTime() / 1000);
-        }
-        
-        userData.premiumPlan = {
-          planTitle: formData.premiumPlan.planTitle,
-          purchasedDate: new Date(formData.premiumPlan.purchasedDate),
-          expiryDate: new Date(formData.premiumPlan.expiryDate),
-          form: formData.premiumPlan.form
-        };
-        
-        // Add payment pending info if checked
-        if (isPaymentPending) {
-          userData.premiumPlan.isPaymentPending = true;
-          userData.premiumPlan.amountPaid = parseFloat(formData.premiumPlan.amountPaid) || 0;
-          userData.premiumPlan.amountRemaining = parseFloat(formData.premiumPlan.amountRemaining) || 0;
+      // Format DOB back to dd/mm/yyyy
+      if (userData.counsellingData.dob) {
+        const dobDate = new Date(userData.counsellingData.dob);
+        if (!isNaN(dobDate.getTime())) {
+          const day = dobDate.getDate().toString().padStart(2, '0');
+          const month = (dobDate.getMonth() + 1).toString().padStart(2, '0');
+          const year = dobDate.getFullYear();
+          userData.counsellingData.dob = `${day}/${month}/${year}`;
         }
       }
 
-      await axiosInstance.post('/api/admin/user/add', userData);
-      navigate('/users');
+      // Add premium plan data if isPremium is checked
+      if (formData.isPremium) {
+        const premiumPlan = { ...formData.premiumPlan };
+        
+        // Format dates as Firebase timestamps
+        if (premiumPlan.purchasedDate) {
+          const purchasedSeconds = Math.floor(new Date(premiumPlan.purchasedDate).getTime() / 1000);
+          premiumPlan.purchasedDate = {
+            _seconds: purchasedSeconds,
+            _nanoseconds: 0
+          };
+        }
+        
+        if (premiumPlan.expiryDate) {
+          const expirySeconds = Math.floor(new Date(premiumPlan.expiryDate).getTime() / 1000);
+          premiumPlan.expiryDate = {
+            _seconds: expirySeconds,
+            _nanoseconds: 0
+          };
+        }
+        
+        // Add payment pending info if checked
+        premiumPlan.isPaymentPending = isPaymentPending;
+        if (isPaymentPending) {
+          premiumPlan.amountPaid = parseFloat(formData.premiumPlan.amountPaid) || 0;
+          premiumPlan.amountRemaining = parseFloat(formData.premiumPlan.amountRemaining) || 0;
+        }
+        
+        userData.premiumPlan = premiumPlan;
+      } else {
+        // If user is no longer premium, remove premium plan
+        userData.premiumPlan = null;
+      }
+
+      await onSave(userData);
     } catch (error) {
-      console.error('Error adding user:', error);
-      setError(error.response?.data?.message || 'Failed to add user');
+      console.error('Error updating user:', error);
+      setError(error.response?.data?.message || 'Failed to update user');
     } finally {
       setLoading(false);
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <Link to="/users" className="inline-flex items-center text-blue-600 hover:text-blue-700">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Users
-          </Link>
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex justify-center items-start overflow-y-auto pt-10 pb-10">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 relative max-h-full overflow-y-auto">
+        <div className="sticky top-0 bg-white p-6 border-b z-10 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Edit User</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-md hover:bg-gray-100"
+          >
+            <X size={24} />
+          </button>
         </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Add New User</h1>
-
+        
+        <div className="p-6">
           {error && (
             <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 flex items-start">
               <AlertCircle className="w-5 h-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
@@ -190,7 +229,7 @@ const AddUsers = () => {
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">Basic Information</h2>
+              <h3 className="text-xl font-semibold text-gray-800 border-b pb-2">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
@@ -212,7 +251,6 @@ const AddUsers = () => {
                     value={formData.phone}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g. 7843065181"
                   />
                 </div>
                 <div>
@@ -248,7 +286,7 @@ const AddUsers = () => {
             {/* Premium Plan Info - Conditional */}
             {showPremiumFields && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">Premium Plan Details</h2>
+                <h3 className="text-xl font-semibold text-gray-800 border-b pb-2">Premium Plan Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Plan Title *</label>
@@ -256,10 +294,9 @@ const AddUsers = () => {
                       type="text"
                       name="premiumPlan.planTitle"
                       required={formData.isPremium}
-                      value={formData.premiumPlan.planTitle}
+                      value={formData.premiumPlan?.planTitle || ''}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="e.g. Counselling"
                     />
                   </div>
                   <div>
@@ -267,10 +304,9 @@ const AddUsers = () => {
                     <input
                       type="text"
                       name="premiumPlan.form"
-                      value={formData.premiumPlan.form}
+                      value={formData.premiumPlan?.form || ''}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="e.g. elite-1234567"
                     />
                   </div>
                   <div>
@@ -278,18 +314,17 @@ const AddUsers = () => {
                     <input
                       type="date"
                       name="premiumPlan.purchasedDate"
-                      value={formData.premiumPlan.purchasedDate}
+                      value={formData.premiumPlan?.purchasedDate || ''}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1">If not set, today will be used</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
                     <input
                       type="date"
                       name="premiumPlan.expiryDate"
-                      value={formData.premiumPlan.expiryDate}
+                      value={formData.premiumPlan?.expiryDate || ''}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -314,7 +349,7 @@ const AddUsers = () => {
                         <input
                           type="number"
                           name="premiumPlan.amountPaid"
-                          value={formData.premiumPlan.amountPaid}
+                          value={formData.premiumPlan?.amountPaid || 0}
                           onChange={handleChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                           min="0"
@@ -326,7 +361,7 @@ const AddUsers = () => {
                         <input
                           type="number"
                           name="premiumPlan.amountRemaining"
-                          value={formData.premiumPlan.amountRemaining}
+                          value={formData.premiumPlan?.amountRemaining || 0}
                           onChange={handleChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                           min="0"
@@ -341,7 +376,7 @@ const AddUsers = () => {
 
             {/* Counselling Data */}
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">Counselling Information</h2>
+              <h3 className="text-xl font-semibold text-gray-800 border-b pb-2">Counselling Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
@@ -349,10 +384,9 @@ const AddUsers = () => {
                     type="email"
                     name="counsellingData.email"
                     required
-                    value={formData.counsellingData.email}
+                    value={formData.counsellingData?.email || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g. user@example.com"
                   />
                 </div>
                 <div>
@@ -360,7 +394,7 @@ const AddUsers = () => {
                   <input
                     type="date"
                     name="counsellingData.dob"
-                    value={formData.counsellingData.dob}
+                    value={formData.counsellingData?.dob || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -370,7 +404,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.city"
-                    value={formData.counsellingData.city}
+                    value={formData.counsellingData?.city || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -380,7 +414,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.state"
-                    value={formData.counsellingData.state}
+                    value={formData.counsellingData?.state || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -389,7 +423,7 @@ const AddUsers = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Board Type</label>
                   <select
                     name="counsellingData.boardType"
-                    value={formData.counsellingData.boardType}
+                    value={formData.counsellingData?.boardType || 'State Board'}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -403,7 +437,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.boardMarks"
-                    value={formData.counsellingData.boardMarks}
+                    value={formData.counsellingData?.boardMarks || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -413,7 +447,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.cetMarks"
-                    value={formData.counsellingData.cetMarks}
+                    value={formData.counsellingData?.cetMarks || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -423,7 +457,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.cetPercentile"
-                    value={formData.counsellingData.cetPercentile}
+                    value={formData.counsellingData?.cetPercentile || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -433,7 +467,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.jeeMarks"
-                    value={formData.counsellingData.jeeMarks}
+                    value={formData.counsellingData?.jeeMarks || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -443,7 +477,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.jeePercentile"
-                    value={formData.counsellingData.jeePercentile}
+                    value={formData.counsellingData?.jeePercentile || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -453,7 +487,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.cetSeatNumber"
-                    value={formData.counsellingData.cetSeatNumber}
+                    value={formData.counsellingData?.cetSeatNumber || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -463,7 +497,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.jeeSeatNumber"
-                    value={formData.counsellingData.jeeSeatNumber}
+                    value={formData.counsellingData?.jeeSeatNumber || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -472,7 +506,7 @@ const AddUsers = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <select
                     name="counsellingData.category"
-                    value={formData.counsellingData.category}
+                    value={formData.counsellingData?.category || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -490,7 +524,7 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.preferredField"
-                    value={formData.counsellingData.preferredField}
+                    value={formData.counsellingData?.preferredField || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -500,10 +534,9 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.preferredLocations"
-                    value={formData.counsellingData.preferredLocations}
+                    value={formData.counsellingData?.preferredLocations || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g. Latur, Mumbai"
                   />
                 </div>
                 <div>
@@ -511,17 +544,16 @@ const AddUsers = () => {
                   <input
                     type="text"
                     name="counsellingData.budget"
-                    value={formData.counsellingData.budget}
+                    value={formData.counsellingData?.budget || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g. 1L - 2L"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Person with Disability</label>
                   <select
                     name="counsellingData.isPwd"
-                    value={formData.counsellingData.isPwd}
+                    value={formData.counsellingData?.isPwd || 'NO'}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -533,7 +565,7 @@ const AddUsers = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Defense Category</label>
                   <select
                     name="counsellingData.isDefense"
-                    value={formData.counsellingData.isDefense}
+                    value={formData.counsellingData?.isDefense || 'NO'}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -544,19 +576,20 @@ const AddUsers = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-4">
-              <Link
-                to="/users"
+            <div className="flex justify-end gap-4 sticky bottom-0 bg-white pt-4 border-t">
+              <button
+                type="button"
+                onClick={onClose}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               >
                 Cancel
-              </Link>
+              </button>
               <button
                 type="submit"
                 disabled={loading}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
               >
-                {loading ? 'Adding...' : 'Add User'}
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
@@ -566,4 +599,4 @@ const AddUsers = () => {
   );
 };
 
-export default AddUsers;
+export default UserEditModal;
