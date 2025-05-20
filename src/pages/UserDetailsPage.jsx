@@ -307,6 +307,50 @@ const UserDetailsPage = () => {
             </div>
           </div>
 
+          {
+            user.isPremium && user.premiumPlan && (
+               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Premium Plan</h2>
+              
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Plan</p>
+                <p className="font-medium">{user.premiumPlan.planTitle}</p>
+              </div>
+             <div>
+                  <p className="text-sm text-gray-600">Purchased Date</p>
+                  <p className="font-medium">{formatDate(user.premiumPlan.purchaseDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Expiry Date</p>
+                  <p className="font-medium">{formatDate(user.premiumPlan.expiryDate)}</p>
+                </div>
+                {
+                  user.premiumPlan.isPaymentPending && (
+                    <>
+                <div>
+                  <p className="text-sm text-gray-600">Amount Paid</p>
+                  <p className="font-medium text-green-500">{user.premiumPlan.amountPaid}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Amount Remaining</p>
+                  <p className="font-medium text-red-500">{user.premiumPlan.amountRemaining}</p>
+                </div>
+                    </>
+                  )
+                }
+
+               
+              
+            </div>
+          </div>
+            )
+         
+          
+          }
+
           {notesToShow && Object.keys(notesToShow).length > 0 && (
             <div className="bg-white rounded-lg shadow-md p-6  mb-6">
               <h2 className="text-xl font-semibold mb-4">Notes</h2>
@@ -467,7 +511,7 @@ const UserDetailsPage = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Purchased Date</p>
-                  <p className="font-medium">{formatDate(user.premiumPlan.purchasedDate)}</p>
+                  <p className="font-medium">{formatDate(user.premiumPlan.purchaseDate)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Expiry Date</p>

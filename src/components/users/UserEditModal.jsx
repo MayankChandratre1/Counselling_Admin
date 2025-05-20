@@ -165,21 +165,21 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
         const premiumPlan = { ...formData.premiumPlan };
         
         // Format dates as Firebase timestamps
-        if (premiumPlan.purchasedDate) {
-          const purchasedSeconds = Math.floor(new Date(premiumPlan.purchasedDate).getTime() / 1000);
-          premiumPlan.purchasedDate = {
-            _seconds: purchasedSeconds,
-            _nanoseconds: 0
-          };
-        }
+        // if (premiumPlan.purchasedDate) {
+        //   const purchasedSeconds = Math.floor(new Date(premiumPlan.purchasedDate).getTime() / 1000);
+        //   premiumPlan.purchasedDate = {
+        //     _seconds: purchasedSeconds,
+        //     _nanoseconds: 0
+        //   };
+        // }
         
-        if (premiumPlan.expiryDate) {
-          const expirySeconds = Math.floor(new Date(premiumPlan.expiryDate).getTime() / 1000);
-          premiumPlan.expiryDate = {
-            _seconds: expirySeconds,
-            _nanoseconds: 0
-          };
-        }
+        // if (premiumPlan.expiryDate) {
+        //   const expirySeconds = Math.floor(new Date(premiumPlan.expiryDate).getTime() / 1000);
+        //   premiumPlan.expiryDate = {
+        //     _seconds: expirySeconds,
+        //     _nanoseconds: 0
+        //   };
+        // }
         
         // Add payment pending info if checked
         premiumPlan.isPaymentPending = isPaymentPending;

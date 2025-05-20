@@ -7,6 +7,8 @@ import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import FormProgressTracker from './FormProgressTracker';
 import ListTracking from './ListTracking';
 import CapProgressTracker from './CapProgressTracker';
+import axios from 'axios';
+import axiosInstance from '../../utils/axios';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -22,6 +24,18 @@ const AnalyticsDashboard = () => {
     averageListsPerUser: 0,
     batchWiseUsers: {},
   });
+  const [analyticsData, setAnalyticsData] = useState({
+    totalUsers: 0,
+    metrics: {
+      installs: 0,
+      enrolled: { total: 0, users: [] },
+      todayEnrolled: { total: 0, users: [] },
+      paymentPending: { total: 0, users: [] }
+    },
+    premiumPlanDistribution: {},
+    usersWithLists: 0,
+    usersWithoutLists: 0
+  });
   const [filterPlan, setFilterPlan] = useState('all');
   const [filterList, setFilterList] = useState('all');
   const [filterBatch, setFilterBatch] = useState('all');
@@ -29,12 +43,25 @@ const AnalyticsDashboard = () => {
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(true);
   const [selectedMetric, setSelectedMetric] = useState(null);
   const [showMetricUsers, setShowMetricUsers] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAnalyticsData = async () => {
+    try {
+      const response = await axiosInstance('/api/admin/get-analytics');
+      setAnalyticsData(response.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching analytics data:', error);
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
       await Promise.all([
         fetchUsers(),
-        fetchLists()
+        fetchLists(),
+        fetchAnalyticsData()
       ]);
     };
     loadData();
@@ -133,20 +160,13 @@ const AnalyticsDashboard = () => {
   };
 
   const getMetricUsers = (metricType) => {
-    const today = new Date().toISOString().split('T')[0];
     switch (metricType) {
-      case 'installs':
-        return users;
       case 'enrolled':
-        return users.filter(user => user.isPremium);
+        return analyticsData.metrics.enrolled.users || [];
       case 'todayEnrolled':
-        return users.filter(user => {
-          if (!user.premiumPlan?.purchasedDate) return false;
-          const purchaseDate = new Date(
-            user.premiumPlan.purchasedDate._seconds * 1000
-          ).toISOString().split('T')[0];
-          return purchaseDate === today;
-        });
+        return analyticsData.metrics.todayEnrolled.users || [];
+      case 'paymentPending':
+        return analyticsData.metrics.paymentPending.users || [];
       default:
         return [];
     }
@@ -196,7 +216,7 @@ const AnalyticsDashboard = () => {
     }],
   };
 
-  if (usersLoading || listsLoading) {
+  if (loading || usersLoading || listsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -213,17 +233,13 @@ const AnalyticsDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
             title="Installs"
-            value={metrics.totalUsers}
+            value={analyticsData.metrics.installs}
             icon="📱"
             color="bg-blue-500"
-            onClick={() => {
-              setSelectedMetric('installs');
-              setShowMetricUsers(true);
-            }}
           />
           <MetricCard
             title="Enrolled"
-            value={metrics.premiumUsers}
+            value={analyticsData.metrics.enrolled.total}
             icon="✅"
             color="bg-purple-500"
             onClick={() => {
@@ -233,7 +249,7 @@ const AnalyticsDashboard = () => {
           />
           <MetricCard
             title="Today Enrolled"
-            value={metrics.todayEnrolled || 0}
+            value={analyticsData.metrics.todayEnrolled.total}
             icon="🎯"
             color="bg-green-500"
             onClick={() => {
@@ -242,12 +258,15 @@ const AnalyticsDashboard = () => {
             }}
           />
           <MetricCard
-            title="Users with Lists"
-            value={metrics.usersWithLists}
-            icon="📋"
-            color="bg-green-500"
+            title="Payment Pending"
+            value={analyticsData.metrics.paymentPending.total}
+            icon="💰"
+            color="bg-yellow-500"
+            onClick={() => {
+              setSelectedMetric('paymentPending');
+              setShowMetricUsers(true);
+            }}
           />
-        
         </div>
 
         {/* Metric Users Modal */}
@@ -256,9 +275,9 @@ const AnalyticsDashboard = () => {
             <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[80vh] overflow-hidden">
               <div className="p-6 border-b border-gray-200 flex justify-between items-center">
                 <h3 className="text-xl font-semibold">
-                  {selectedMetric === 'installs' && 'All Installs'}
                   {selectedMetric === 'enrolled' && 'All Enrolled Users'}
                   {selectedMetric === 'todayEnrolled' && "Today's Enrollments"}
+                  {selectedMetric === 'paymentPending' && "Payment Pending Users"}
                 </h3>
                 <button
                   onClick={() => setShowMetricUsers(false)}
@@ -274,8 +293,14 @@ const AnalyticsDashboard = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                      {selectedMetric !== 'installs' && (
+                      {selectedMetric === 'enrolled' && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
+                      )}
+                      {selectedMetric === 'enrolled' && (
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enrolled Date</th>
+                      )}
+                      {selectedMetric === 'paymentPending' && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount Due</th>
                       )}
                     </tr>
                   </thead>
@@ -285,13 +310,19 @@ const AnalyticsDashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.phone}</td>
-                        {selectedMetric !== 'installs' && (
+                        {selectedMetric === 'enrolled' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{user.planTitle}</td>
+                        )}
+                        {selectedMetric === 'enrolled' && (
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {user.premiumPlan?.purchasedDate ? 
-                              new Date(user.premiumPlan.purchasedDate._seconds * 1000).toLocaleDateString() 
+                            {user.purchasedDate ? 
+                              new Date(user.purchasedDate._seconds * 1000).toLocaleDateString() 
                               : 'N/A'
                             }
                           </td>
+                        )}
+                        {selectedMetric === 'paymentPending' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">₹{user.amountRemaining}</td>
                         )}
                       </tr>
                     ))}
@@ -519,7 +550,7 @@ const AnalyticsDashboard = () => {
 // Metric Card Component
 const MetricCard = ({ title, value, icon, color, onClick }) => (
   <div 
-    className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow"
+    className={`bg-white rounded-lg shadow p-6 ${onClick ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
     onClick={onClick}
   >
     <div className="flex items-center">

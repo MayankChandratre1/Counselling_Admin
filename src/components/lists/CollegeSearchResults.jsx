@@ -124,7 +124,7 @@ const CollegeSearchResults = ({ searchResults, selectedColleges, addCollegeToLis
                               <div className='grid grid-cols-3 gap-2 mt-2 ml-4'>
                                 {branch.cutoffs && branch.cutoffs.map((cutoff, index) => (
                                   <>
-                                    {cutoff && cutoff.category === selectedCategory && (
+                                    {cutoff && cutoff.year == 2024 && cutoff.category === selectedCategory && (
                                       <div 
                                         key={index} 
                                         className='bg-blue-50 border border-blue-100 rounded-lg p-2 flex w-fit items-center gap-1'

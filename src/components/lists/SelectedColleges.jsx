@@ -39,7 +39,9 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
 
   useEffect(() => {    
     if (selectedCollegesCutoffs && selectedCollegesCutoffs.length > 0) {
-      const extractedData = selectedCollegesCutoffs.map(college => {
+      let extractedData;
+      if(selectedUserCategory)
+      extractedData = selectedCollegesCutoffs.map(college => {
         const eligibleBranches = college.branches
           .filter(branch => {
             const categoryData = branch.cutoffs.find(
@@ -61,7 +63,30 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
           eligibleBranches
         };
       }).filter(college => college.eligibleBranches.length > 0);
+      else
+      extractedData = selectedCollegesCutoffs.map(college => {
+        const eligibleBranches = college.branches
+          .filter(branch => {
+            const categoryData = branch.cutoffs.find(
+              c => c.category === selectedCategory
+            );
+            return categoryData && selectedUserMarks >= categoryData.percentile;
+          })
+          .map(branch => ({
+            collegeId: college.id,
+            branchCode: branch.branchCode,
+            branchName: branch.branchName,
+            cutoffData: branch.cutoffs.find(c => c.category === selectedCategory)
+          }));
 
+          
+          
+          return {
+            collegeId: college.id,
+            eligibleBranches
+          };
+        });
+        console.log(extractedData, 'extractedData');
       setEligibleBranches(extractedData);
     }
   }, [selectedCollegesCutoffs, selectedUserCategory, selectedUserMarks]);
@@ -564,10 +589,12 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
                     );
 
                     const selectedCategoryCuttoff = selectedCollegesCutoffs?.find(clg => clg.id === college.id)?.branches?.find(
-                      branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.year == 2025 && cutoff.category === selectedCategory);
-
+                      branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.year == 2024 && cutoff.category === selectedCategory);
                     console.log(selectedCategoryCuttoff, 'selectedCategoryCuttoff');
-                        
+                    
+                    
+                    
+
                     return (
                       <DraggableCollegeItem
                         key={college.uniqueId || `${college.id}_${index}`}

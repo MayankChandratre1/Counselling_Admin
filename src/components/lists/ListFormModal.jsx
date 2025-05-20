@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Plus, Search, Trash2, GraduationCap, List, Filter, ArrowLeft, ChevronLeft, ChevronRight, Undo } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Plus, Search, Trash2, GraduationCap, List, Filter, ArrowLeft, ChevronLeft, ChevronRight, Undo, ChevronDown } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import CollegeSearchForm from './CollegeSearchForm';
@@ -43,6 +43,42 @@ const ListFormModal = ({
   const [selectedForDrag, setSelectedForDrag] = useState([]);
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] = useState(false);
   const [collegeHistory, setCollegeHistory] = useState([]);
+  const [categorySearchInput, setCategorySearchInput] = useState('');
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [filteredCategories, setFilteredCategories] = useState(categories);
+  const categoryDropdownRef = useRef(null);
+
+  useEffect(() => {
+    // Filter categories based on search input
+    if (categorySearchInput.trim() === '') {
+      setFilteredCategories(categories);
+    } else {
+      const filtered = categories.filter(category => 
+        category.toLowerCase().includes(categorySearchInput.toLowerCase())
+      );
+      setFilteredCategories(filtered);
+    }
+  }, [categorySearchInput, categories]);
+
+  useEffect(() => {
+    // Close dropdown when clicking outside
+    function handleClickOutside(event) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
+        setShowCategoryDropdown(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    setCategorySearchInput(category);
+    setShowCategoryDropdown(false);
+  };
 
   const clearColleges = () => {
     if (window.confirm('Are you sure you want to clear all selected colleges?')) {
@@ -114,22 +150,50 @@ const ListFormModal = ({
           required
         />
         <div className="flex items-center gap-2">
-          <select
-            id="category"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 text-sm bg-white/10 text-white border border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-transparent appearance-none cursor-pointer w-32"
-          >
-            {categories.map((category) => (
-              <option key={category} value={category} className="text-gray-900">
-                {category}
-              </option>
-            ))}
-          </select>
+          <div className="relative" ref={categoryDropdownRef}>
+            <div 
+              className="px-3 py-2 text-sm bg-white/10 text-white border border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-transparent cursor-pointer min-w-[200px] flex items-center justify-between"
+              onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+            >
+              <input 
+                type="text" 
+                value={categorySearchInput}
+                onChange={(e) => {
+                  setCategorySearchInput(e.target.value);
+                  setShowCategoryDropdown(true);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCategoryDropdown(true);
+                }}
+                placeholder="Search category..."
+                className="bg-transparent text-white placeholder-white/60 focus:outline-none w-full"
+              />
+              <ChevronDown size={16} className="text-white/70" />
+            </div>
+            
+            {showCategoryDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                {filteredCategories.length > 0 ? (
+                  filteredCategories.map((category) => (
+                    <div
+                      key={category}
+                      className={`px-4 py-2 cursor-pointer hover:bg-blue-50 ${
+                        selectedCategory === category ? 'bg-blue-100' : ''
+                      }`}
+                      onClick={() => handleCategorySelect(category)}
+                    >
+                      {category}
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-2 text-gray-500">No categories found</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      
 
       {/* Search Bar and Filters - Horizontal */}
         {!isSearchPanelCollapsed && <div className="bg-white border-b border-gray-200 px-6 py-3">
