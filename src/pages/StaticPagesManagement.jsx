@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Globe } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import LandingPageManager from '../components/staticpage/LandingPageManager';
 import HomePageManagement from '../components/staticpage/HomePageManagement';

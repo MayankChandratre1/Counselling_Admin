@@ -643,15 +643,6 @@ const UsersManagement = () => {
             onSave={handleSaveOrder}
           />
         )}
-
-        <UserDetailsModal
-          user={selectedUser}
-          showModal={showDetailsModal}
-          onClose={() => {
-            setShowDetailsModal(false);
-            setSelectedUser(null);
-          }}
-        />
       </div>
 
       {/* Add Confirmation Modal */}

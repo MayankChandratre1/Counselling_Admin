@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, Plus, Trash2, Youtube, Save } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {  ChevronDown, ChevronUp, Plus, Trash2, Youtube, Save, Globe } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 
 const LandingPageManager = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedLanguage, setSelectedLanguage] = useState('english');
   const [successMessages, setSuccessMessages] = useState({
     header: false,
     video: false,
@@ -22,25 +23,26 @@ const LandingPageManager = () => {
     cta: false
   });
 
-  // Form data
+  // Form data - updated to match multilingual structure
   const [landingPageData, setLandingPageData] = useState({
-    title: '',
-    slogan: '',
+    title: { english: '', marathi: '' },
+    slogan: { english: '', marathi: '' },
     videoUrl: '',
     testimonials: [],
     features: [],
-    ctaText: ''
+    ctaText: { english: '', marathi: '' },
+    updatedAt: ''
   });
 
-  // New testimonial form data
+  // New testimonial form data (feedback remains a simple string)
   const [newTestimonial, setNewTestimonial] = useState({
     name: '',
     designation: '',
     feedback: ''
   });
 
-  // New feature text
-  const [newFeature, setNewFeature] = useState('');
+  // New feature text - with multilingual structure
+  const [newFeature, setNewFeature] = useState({ english: '', marathi: '' });
 
   useEffect(() => {
     fetchLandingPageData();
@@ -67,11 +69,27 @@ const LandingPageManager = () => {
     }));
   };
 
-  const handleInputChange = (section, field, value) => {
-    setLandingPageData(prev => ({
-      ...prev,
-      [section]: value
-    }));
+  const handleInputChange = (section, field, value, language = null) => {
+    if (language) {
+      // For multilingual fields - preserve numeric keys if they exist
+      setLandingPageData(prev => {
+        const currentSection = prev[section] || {};
+        // Create a copy that keeps any numeric keys or other special keys
+        const updatedSection = { ...currentSection };
+        // Update only the specific language
+        updatedSection[language] = value;
+        return {
+          ...prev,
+          [section]: updatedSection
+        };
+      });
+    } else {
+      // For non-multilingual fields like videoUrl
+      setLandingPageData(prev => ({
+        ...prev,
+        [section]: value
+      }));
+    }
   };
 
   const handleTestimonialChange = (index, field, value) => {
@@ -97,7 +115,7 @@ const LandingPageManager = () => {
     if (newTestimonial.name && newTestimonial.designation && newTestimonial.feedback) {
       setLandingPageData(prev => ({
         ...prev,
-        testimonials: [...prev.testimonials, { ...newTestimonial }]
+        testimonials: [...(prev.testimonials || []), { ...newTestimonial }]
       }));
       // Reset the form
       setNewTestimonial({
@@ -117,13 +135,35 @@ const LandingPageManager = () => {
     }));
   };
 
+  const handleNewFeatureChange = (language, value) => {
+    setNewFeature(prev => ({
+      ...prev,
+      [language]: value
+    }));
+  };
+
+  const handleFeatureChange = (index, language, value) => {
+    const updatedFeatures = [...landingPageData.features];
+    // Preserve existing structure including numeric keys
+    const existingFeature = updatedFeatures[index] || {};
+    updatedFeatures[index] = {
+      ...existingFeature,
+      [language]: value
+    };
+    
+    setLandingPageData(prev => ({
+      ...prev,
+      features: updatedFeatures
+    }));
+  };
+
   const addFeature = () => {
-    if (newFeature.trim()) {
+    if (newFeature.english.trim() || newFeature.marathi.trim()) {
       setLandingPageData(prev => ({
         ...prev,
-        features: [...prev.features, newFeature.trim()]
+        features: [...(prev.features || []), { ...newFeature }]
       }));
-      setNewFeature('');
+      setNewFeature({ english: '', marathi: '' });
     }
   };
 
@@ -164,15 +204,23 @@ const LandingPageManager = () => {
           return;
       }
       
+      // Additional logging to debug what's being sent to the API
+      console.log(`Saving ${section} data:`, dataToSave);
+      
       await axiosInstance.put('/api/admin/edit-landing-page', {
         section,
         data: dataToSave
       });
       
-      // Show success message
+      // Show success message and update updatedAt timestamp
       setSuccessMessages(prev => ({
         ...prev,
         [section]: true
+      }));
+      
+      setLandingPageData(prev => ({
+        ...prev,
+        updatedAt: new Date().toISOString()
       }));
       
       // Clear success message after 3 seconds
@@ -218,11 +266,36 @@ const LandingPageManager = () => {
     </div>
   );
 
+  // Helper function to get display value for multilingual fields
+  const getDisplayValue = (field, language) => {
+    if (!field) return '';
+    return field[language] || '';
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Language Selector */}
+      <div className="mb-4 flex justify-end items-center">
+        <Globe className="mr-2 text-gray-600" size={18} />
+        <select 
+          value={selectedLanguage}
+          onChange={(e) => setSelectedLanguage(e.target.value)}
+          className="p-2 border border-gray-300 rounded-md text-sm"
+        >
+          <option value="english">English</option>
+          <option value="marathi">मराठी (Marathi)</option>
+        </select>
+      </div>
+
       {error && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
           <p>{error}</p>
+        </div>
+      )}
+
+      {landingPageData.updatedAt && (
+        <div className="text-sm text-gray-500 mb-4">
+          Last updated: {new Date(landingPageData.updatedAt).toLocaleString()}
         </div>
       )}
 
@@ -232,30 +305,72 @@ const LandingPageManager = () => {
         
         {expandedSections.header && (
           <div className="p-6 border-t border-gray-200 space-y-4">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700">
                 Page Title
               </label>
-              <input
-                type="text"
-                id="title"
-                value={landingPageData.title}
-                onChange={(e) => handleInputChange('title', 'title', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="mr-1">English</span> 
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">EN</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={getDisplayValue(landingPageData.title, 'english')}
+                    onChange={(e) => handleInputChange('title', null, e.target.value, 'english')}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter title in English"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="mr-1">Marathi</span>
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">MR</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={getDisplayValue(landingPageData.title, 'marathi')}
+                    onChange={(e) => handleInputChange('title', null, e.target.value, 'marathi')}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter title in Marathi"
+                  />
+                </div>
+              </div>
             </div>
             
-            <div>
-              <label htmlFor="slogan" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700">
                 Page Slogan
               </label>
-              <textarea
-                id="slogan"
-                value={landingPageData.slogan}
-                onChange={(e) => handleInputChange('slogan', 'slogan', e.target.value)}
-                rows="2"
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              ></textarea>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="mr-1">English</span> 
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">EN</span>
+                  </label>
+                  <textarea
+                    value={getDisplayValue(landingPageData.slogan, 'english')}
+                    onChange={(e) => handleInputChange('slogan', null, e.target.value, 'english')}
+                    rows="2"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter slogan in English"
+                  ></textarea>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="mr-1">Marathi</span>
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">MR</span>
+                  </label>
+                  <textarea
+                    value={getDisplayValue(landingPageData.slogan, 'marathi')}
+                    onChange={(e) => handleInputChange('slogan', null, e.target.value, 'marathi')}
+                    rows="2"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter slogan in Marathi"
+                  ></textarea>
+                </div>
+              </div>
             </div>
             
             <div className="flex justify-end">
@@ -289,7 +404,7 @@ const LandingPageManager = () => {
                   type="url"
                   id="videoUrl"
                   value={landingPageData.videoUrl}
-                  onChange={(e) => handleInputChange('videoUrl', 'videoUrl', e.target.value)}
+                  onChange={(e) => handleInputChange('videoUrl', null, e.target.value)}
                   placeholder="https://www.youtube.com/watch?v=..."
                   className="w-full p-2 border border-gray-300 rounded-r-md focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -337,7 +452,7 @@ const LandingPageManager = () => {
             <div className="mb-6">
               <h3 className="text-lg font-medium text-gray-800 mb-4">Current Testimonials</h3>
               
-              {landingPageData.testimonials.length === 0 ? (
+              {!landingPageData.testimonials || landingPageData.testimonials.length === 0 ? (
                 <p className="text-gray-500 italic">No testimonials added yet.</p>
               ) : (
                 <div className="space-y-4">
@@ -351,7 +466,7 @@ const LandingPageManager = () => {
                             </label>
                             <input
                               type="text"
-                              value={testimonial.name}
+                              value={testimonial.name || ''}
                               onChange={(e) => handleTestimonialChange(index, 'name', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
                             />
@@ -363,7 +478,7 @@ const LandingPageManager = () => {
                             </label>
                             <input
                               type="text"
-                              value={testimonial.designation}
+                              value={testimonial.designation || ''}
                               onChange={(e) => handleTestimonialChange(index, 'designation', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
                             />
@@ -374,7 +489,7 @@ const LandingPageManager = () => {
                               Feedback
                             </label>
                             <textarea
-                              value={testimonial.feedback}
+                              value={testimonial.feedback || ''}
                               onChange={(e) => handleTestimonialChange(index, 'feedback', e.target.value)}
                               rows="3"
                               className="w-full p-2 border border-gray-300 rounded-md"
@@ -473,20 +588,47 @@ const LandingPageManager = () => {
             <div className="mb-6">
               <h3 className="text-lg font-medium text-gray-800 mb-4">Current Features</h3>
               
-              {landingPageData.features.length === 0 ? (
+              {!landingPageData.features || landingPageData.features.length === 0 ? (
                 <p className="text-gray-500 italic">No features added yet.</p>
               ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {landingPageData.features.map((feature, index) => (
-                    <li key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                      <span>{feature}</span>
-                      <button
-                        onClick={() => removeFeature(index)}
-                        className="text-red-500 hover:text-red-700"
-                        title="Remove feature"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    <li key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-3 w-full">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                              <span className="mr-1">English</span> 
+                              <span className="px-1.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">EN</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={getDisplayValue(feature, 'english')}
+                              onChange={(e) => handleFeatureChange(index, 'english', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                              <span className="mr-1">Marathi</span>
+                              <span className="px-1.5 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">MR</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={getDisplayValue(feature, 'marathi')}
+                              onChange={(e) => handleFeatureChange(index, 'marathi', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeFeature(index)}
+                          className="ml-4 text-red-500 hover:text-red-700 self-start"
+                          title="Remove feature"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -495,22 +637,45 @@ const LandingPageManager = () => {
             
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-medium text-gray-800 mb-4">Add New Feature</h3>
-              <div className="flex">
-                <input
-                  type="text"
-                  value={newFeature}
-                  onChange={(e) => setNewFeature(e.target.value)}
-                  className="flex-1 p-2 border border-r-0 border-gray-300 rounded-l-md"
-                  placeholder="Enter feature description..."
-                />
-                <button
-                  onClick={addFeature}
-                  disabled={!newFeature.trim()}
-                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  <Plus size={16} className="mr-2" />
-                  Add
-                </button>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="mr-1">English</span> 
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">EN</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newFeature.english}
+                    onChange={(e) => handleNewFeatureChange('english', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    placeholder="Enter feature in English..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="mr-1">Marathi</span>
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">MR</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newFeature.marathi}
+                    onChange={(e) => handleNewFeatureChange('marathi', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    placeholder="Enter feature in Marathi..."
+                  />
+                </div>
+                
+                <div className="mt-2">
+                  <button
+                    onClick={addFeature}
+                    disabled={!newFeature.english.trim() && !newFeature.marathi.trim()}
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Add Feature
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -533,18 +698,38 @@ const LandingPageManager = () => {
         
         {expandedSections.cta && (
           <div className="p-6 border-t border-gray-200 space-y-4">
-            <div>
-              <label htmlFor="ctaText" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700">
                 CTA Text
               </label>
-              <textarea
-                id="ctaText"
-                value={landingPageData.ctaText}
-                onChange={(e) => handleInputChange('ctaText', 'ctaText', e.target.value)}
-                rows="3"
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter call to action text..."
-              ></textarea>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="mr-1">English</span> 
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">EN</span>
+                  </label>
+                  <textarea
+                    value={getDisplayValue(landingPageData.ctaText, 'english')}
+                    onChange={(e) => handleInputChange('ctaText', null, e.target.value, 'english')}
+                    rows="3"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter CTA text in English..."
+                  ></textarea>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="mr-1">Marathi</span>
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">MR</span>
+                  </label>
+                  <textarea
+                    value={getDisplayValue(landingPageData.ctaText, 'marathi')}
+                    onChange={(e) => handleInputChange('ctaText', null, e.target.value, 'marathi')}
+                    rows="3"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter CTA text in Marathi..."
+                  ></textarea>
+                </div>
+              </div>
             </div>
             
             <div className="flex justify-end">

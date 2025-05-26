@@ -20,9 +20,24 @@ import LandingPage from "./pages/LandingPage";
 import StaticPagesManagement from "./pages/StaticPagesManagement";
 import PremiumPageManagement from "./pages/PremiumPageManagement";
 import PaymentLogs from "./pages/PaymentLogs";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function App() {
   return (
+    <>
+    {/* Add ToastContainer for react-toastify */}
+      <ToastContainer
+        position="top-right"
+        autoClose={1500}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
@@ -111,6 +126,8 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </>
+
   );
 }
 
