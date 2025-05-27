@@ -39,6 +39,7 @@ function App() {
         pauseOnHover
       />
     <BrowserRouter>
+         <UsersProvider>
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/home" element={
@@ -54,16 +55,12 @@ function App() {
           />
         <Route path="/users" element={
           <ProtectedRoute requiredPermission="users">
-            <UsersProvider>
               <Users />
-            </UsersProvider>
           </ProtectedRoute>
         } />
         <Route path="/users/:id" element={
           <ProtectedRoute requiredPermission="users">
-            <UsersProvider>
               <UserDetailsPage />
-            </UsersProvider>
           </ProtectedRoute>
         } />
         <Route path="/forms" element={
@@ -125,6 +122,7 @@ function App() {
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </UsersProvider>
     </BrowserRouter>
     </>
 

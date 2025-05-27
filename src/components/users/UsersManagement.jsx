@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUsers } from '../../contexts/UsersContext';
 import axios from "axios"
-import { ChevronDown, ChevronUp, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, X, RefreshCw } from 'lucide-react';
 
 // Import all extracted components
 import DraggableCollegeItem from './DraggableCollegeItem';
@@ -25,6 +25,8 @@ const UsersManagement = () => {
     currentPage,
     pageSize,
     hasMore,
+    dataLoaded,
+    
     setCurrentPage,
     setPageSize,
     fetchUsers,
@@ -33,7 +35,8 @@ const UsersManagement = () => {
     deleteUser,
     setLoading,
     setError,
-    setUsers
+    setUsers,
+    refreshUsers
   } = useUsers();
 
   const getAuthAxios = () => {
@@ -88,10 +91,10 @@ const UsersManagement = () => {
 
   // Remove fetchUsers implementation and use context's fetchUsers
   useEffect(() => {
-    if (!isSearchMode) {
+    if (!isSearchMode && !dataLoaded) {
       fetchUsers(currentPage);
     }
-  }, [currentPage, pageSize, fetchUsers, isSearchMode]);
+  }, [currentPage, pageSize, fetchUsers, isSearchMode, dataLoaded]);
 
   // Add this effect to extract unique batches
   useEffect(() => {
@@ -489,16 +492,60 @@ const UsersManagement = () => {
     setShowDetailsModal(true);
   };
 
+  // Add refresh handler
+  const handleRefresh = () => {
+    if (isSearchMode) {
+      // If in search mode, re-run the current search
+      const filteredParams = Object.entries(searchParams)
+        .filter(([_, value]) => value !== '')
+        .reduce((obj, [key, value]) => {
+          obj[key] = value;
+          return obj;
+        }, {});
+      searchUsers(filteredParams);
+    } else {
+      // Otherwise, force refresh the user data
+      refreshUsers();
+    }
+  };
+
+  // Add explicit handlers for pagination
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    refreshUsers(newPage); // Fetch data for the new page
+  };
+  
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    refreshUsers(1); // Reset to first page with new size
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* Header with Refresh Button */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Users Management</h1>
 
-          <Link to={"/add-user"} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-200">
-            Add User
-          </Link>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleRefresh}
+              disabled={loading}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md ${
+                loading 
+                  ? 'bg-gray-300 cursor-not-allowed' 
+                  : 'bg-blue-50 text-blue-600 hover:bg-blue-100 transition duration-200'
+              }`}
+              title="Refresh data"
+            >
+              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+              {loading ? 'Loading...' : 'Refresh'}
+            </button>
+            <Link to={"/add-user"} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-200">
+              Add User
+            </Link>
+          </div>
         </div>
         
         {/* Error display */}
@@ -581,11 +628,8 @@ const UsersManagement = () => {
             currentPage={currentPage}
             pageSize={pageSize}
             hasMore={hasMore}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setCurrentPage(1);
-            }}
+            onPageChange={handlePageChange} // Use explicit handler instead of setCurrentPage
+            onPageSizeChange={handlePageSizeChange} // Use explicit handler instead of inline function
             onAddToList={handleAddToList}
             onViewLists={handleViewUserLists}
             onEdit={handleEdit}

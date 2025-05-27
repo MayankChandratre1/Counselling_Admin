@@ -7,26 +7,60 @@ export const UsersProvider = ({ children }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [lastDoc, setLastDoc] = useState(null); // Track the last document for pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [hasMore, setHasMore] = useState(false);
   const [notes, setNotes] = useState({});  // Add notes state as an object with userId as key
+  const [dataLoaded, setDataLoaded] = useState(false); // Track if data has been loaded
 
+  // Separate the initial fetch from explicit refresh operations
   const fetchUsers = useCallback(async (page = currentPage) => {
+    // Only fetch if data hasn't been loaded yet
+    if (!dataLoaded) {
+      try {
+        setLoading(true);
+        console.log(`Initial fetch - page ${page}, size ${pageSize}, ${currentPage > 1 ? users[0]?.id : undefined} pagination}`);
+        const response = await axiosInstance.get('/api/admin/all-users', {
+          params: {
+            page,
+            limit: pageSize,
+            lastDoc: lastDoc ? lastDoc: undefined // Use last user ID for pagination
+          }
+        });
+        setUsers(response.data.users);
+        setLastDoc(response.data.lastDoc); // Update lastDoc for future pagination
+        setHasMore(response.data.hasMore);
+        setError(null);
+        setDataLoaded(true); // Mark that data has been loaded
+      } catch (err) {
+        setError('Failed to fetch users');
+        console.error('Error fetching users:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  }, [currentPage, pageSize, dataLoaded]);
+
+  // New function for explicit refreshes
+  const refreshUsers = useCallback(async (page = currentPage) => {
     try {
       setLoading(true);
+      console.log(`Refreshing users data - page ${page}, size ${pageSize}`);
       const response = await axiosInstance.get('/api/admin/all-users', {
         params: {
           page,
-          limit: pageSize
+          limit: pageSize,
+           lastDoc: lastDoc ? lastDoc: undefined // Use last user ID for pagination
         }
       });
-      setUsers(response.data);
+      setUsers(response.data.users);
       setHasMore(response.data.hasMore);
+      setLastDoc(response.data.lastDoc); // Update lastDoc for future pagination
       setError(null);
     } catch (err) {
-      setError('Failed to fetch users');
-      console.error('Error fetching users:', err);
+      setError('Failed to refresh users');
+      console.error('Error refreshing users:', err);
     } finally {
       setLoading(false);
     }
@@ -106,7 +140,7 @@ export const UsersProvider = ({ children }) => {
     };
 
     if (users.length > 0) {
-      fetchAllNotes();
+      // fetchAllNotes();
     }
   }, [users]);
 
@@ -133,9 +167,11 @@ export const UsersProvider = ({ children }) => {
     currentPage,
     pageSize,
     hasMore,
+    dataLoaded,
     setCurrentPage,
     setPageSize,
     fetchUsers,
+    refreshUsers, // Add the new function to the context
     searchUsers,
     updateUser,
     deleteUser,
