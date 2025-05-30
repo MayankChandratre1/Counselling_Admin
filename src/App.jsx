@@ -22,6 +22,9 @@ import PremiumPageManagement from "./pages/PremiumPageManagement";
 import PaymentLogs from "./pages/PaymentLogs";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import OrdersCheck from "./pages/OrdersCheck";
+import UserDetailsByPhone from "./pages/UsersDetailsPhone";
+import { PremiumPageProvider } from "./contexts/PremiumPageContext";
 
 function App() {
   return (
@@ -61,6 +64,11 @@ function App() {
         <Route path="/users/:id" element={
           <ProtectedRoute requiredPermission="users">
               <UserDetailsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/users/phone/:id" element={
+          <ProtectedRoute requiredPermission="users">
+              <UserDetailsByPhone />
           </ProtectedRoute>
         } />
         <Route path="/forms" element={
@@ -110,15 +118,22 @@ function App() {
         } />
         <Route path="/payment-logs" element={
           <ProtectedRoute requiredPermission="landing-page">
+            <PremiumPageProvider>
             <PaymentLogs />
+            </PremiumPageProvider>
+          </ProtectedRoute>
+        } />
+        <Route path="/check-orders" element={
+          <ProtectedRoute requiredPermission="landing-page">
+            <OrdersCheck />
           </ProtectedRoute>
         } />
     
-        <Route path="/edit-user-list/:id" element={
+        {/* <Route path="/edit-user-list/:id" element={
           <ProtectedRoute requiredPermission="edit-user-list">
             <PaymentLogs />
           </ProtectedRoute>
-        } />
+        } /> */}
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

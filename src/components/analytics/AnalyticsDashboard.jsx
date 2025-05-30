@@ -9,6 +9,7 @@ import ListTracking from './ListTracking';
 import CapProgressTracker from './CapProgressTracker';
 import axios from 'axios';
 import axiosInstance from '../../utils/axios';
+import { useNavigate } from 'react-router-dom';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -44,6 +45,7 @@ const AnalyticsDashboard = () => {
   const [selectedMetric, setSelectedMetric] = useState(null);
   const [showMetricUsers, setShowMetricUsers] = useState(false);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const fetchAnalyticsData = async () => {
     try {
@@ -306,7 +308,9 @@ const AnalyticsDashboard = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {getMetricUsers(selectedMetric).map(user => (
-                      <tr key={user.id} className="hover:bg-gray-50">
+                      <tr onClick={()=>{
+                        navigate(`/users/${user.id}`)
+                      }} key={user.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.phone}</td>
