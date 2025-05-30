@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, Trash2, ExternalLink, Save, Calendar, Film, Newspaper, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2, ExternalLink, Save, Calendar, Film, Newspaper, Search, Youtube } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -16,14 +16,16 @@ const HomePageManagement = () => {
   const [expandedSections, setExpandedSections] = useState({
     events: true,
     updates: false,
-    colleges: false
+    colleges: false,
+    cutoff_video: false
   });
 
   // Form data
   const [homePageData, setHomePageData] = useState({
     events: [],
     updates: [],
-    recommended_colleges: []
+    recommended_colleges: [],
+    cutoff_video: ''
   });
 
   // New items form data
@@ -830,6 +832,51 @@ const HomePageManagement = () => {
               >
                 <Save size={16} className="mr-2" />
                 Save Recommended Colleges
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+       {/* Section 2: Youtube Video URL */}
+      <div className="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
+        {renderSectionHeader('Cutoff video', 'cutoff_video')}
+        
+        {expandedSections.cutoff_video && (
+          <div className="p-6 border-t border-gray-200 space-y-4">
+            <div>
+              <label htmlFor="videoUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                YouTube Video URL
+              </label>
+              <div className="flex">
+                <div className="flex-shrink-0 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md flex items-center px-3">
+                  <Youtube size={20} className="text-red-600" />
+                </div>
+                <input
+                  type="url"
+                  id="videoUrl"
+                  value={homePageData.cutoff_video || ''}
+                  onChange={(e) => setHomePageData(prev => ({
+                    ...prev,
+                    cutoff_video: e.target.value
+                  }))}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="w-full p-2 border border-gray-300 rounded-r-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Enter the full YouTube video URL, for example: https://www.youtube.com/watch?v=AbCdEfGhIjK
+              </p>
+            </div>
+            
+          
+            
+            <div className="flex justify-end">
+              <button
+                onClick={() => saveSection('video')}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                <Save size={16} className="mr-2" />
+                Save Video
               </button>
             </div>
           </div>

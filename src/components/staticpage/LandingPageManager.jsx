@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import {  ChevronDown, ChevronUp, Plus, Trash2, Youtube, Save, Globe } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
+import { FaHeartPulse } from 'react-icons/fa6';
+import { set } from 'lodash';
 
 const LandingPageManager = () => {
   const [loading, setLoading] = useState(true);
@@ -20,7 +22,8 @@ const LandingPageManager = () => {
     video: false,
     testimonials: false,
     features: false,
-    cta: false
+    cta: false,
+    cutoff_video: false
   });
 
   // Form data - updated to match multilingual structure
@@ -43,6 +46,8 @@ const LandingPageManager = () => {
 
   // New feature text - with multilingual structure
   const [newFeature, setNewFeature] = useState({ english: '', marathi: '' });
+
+  const [cutoffVideo, setCutoffVideo] = useState("");
 
   useEffect(() => {
     fetchLandingPageData();
@@ -311,7 +316,7 @@ const LandingPageManager = () => {
               </label>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                  <label className=" text-sm font-medium text-gray-700 mb-1 flex items-center">
                     <span className="mr-1">English</span> 
                     <span className="px-1.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">EN</span>
                   </label>
@@ -324,7 +329,7 @@ const LandingPageManager = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                  <label className=" text-sm font-medium text-gray-700 mb-1 flex items-center">
                     <span className="mr-1">Marathi</span>
                     <span className="px-1.5 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">MR</span>
                   </label>
@@ -345,7 +350,7 @@ const LandingPageManager = () => {
               </label>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                  <label className=" text-sm font-medium text-gray-700 mb-1 flex items-center">
                     <span className="mr-1">English</span> 
                     <span className="px-1.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">EN</span>
                   </label>
@@ -414,21 +419,7 @@ const LandingPageManager = () => {
               </p>
             </div>
             
-            {landingPageData.videoUrl && (
-              <div className="mt-4 bg-gray-50 p-4 rounded-md">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Preview:</h3>
-                <div className="aspect-video w-full max-w-md mx-auto">
-                  <iframe
-                    src={landingPageData.videoUrl.replace('watch?v=', 'embed/')}
-                    className="w-full h-full rounded-md"
-                    title="YouTube video"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
-                </div>
-              </div>
-            )}
+            
             
             <div className="flex justify-end">
               <button
@@ -743,7 +734,11 @@ const LandingPageManager = () => {
             </div>
           </div>
         )}
+
+
+        
       </div>
+     
     </div>
   );
 };
