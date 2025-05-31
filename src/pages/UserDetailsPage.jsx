@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit } from 'lucide-react';
+import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit, Eye } from 'lucide-react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useUsers } from '../contexts/UsersContext';
@@ -26,6 +26,8 @@ const UserDetailsPage = () => {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [expandedOrders, setExpandedOrders] = useState(new Set());
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
 
   useEffect(() => {
     fetchUserDetails();
@@ -44,31 +46,51 @@ const UserDetailsPage = () => {
         setNotesToShow(notes[`${id}`]?.notes);
       }
 
-      // Fetch payment history if phone number available
-      if(response.data?.phone){
-        setLoadingPayments(true);
-        try {
-          const response2 = await axios.get(`${API_URL}/api/admin/payments/phone/+91${response.data.phone}`, {
-            headers: { token }
-          });
-          setPaymentHistory(response2.data || []);
-        } catch (paymentError) {
-          console.error("Error fetching payment history:", paymentError);
-        } finally {
-          setLoadingPayments(false);
-        }
-      }
-      
-      setLoading(false);
+      // Only fetch payment history when explicitly requested
+      console.log("User data fetched:", response.data);
     } catch (err) {
       setError('Failed to fetch user details');
+      setLoading(false);
+    }finally {
       setLoading(false);
     }
   };
 
+  const fetchPaymentHistory = async () => {
+    if (!user?.phone) return;
+    
+    setLoadingPayments(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.get(`${API_URL}/api/admin/payments/phone/+91${user.phone}`, {
+        headers: { token }
+      });
+      setPaymentHistory(response.data || []);
+    } catch (paymentError) {
+      console.error("Error fetching payment history:", paymentError);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  const toggleOrderExpansion = (orderId) => {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
-    return new Date(timestamp._seconds * 1000).toLocaleDateString();
+    if (timestamp._seconds) {
+      return new Date(timestamp._seconds * 1000).toLocaleString('en-IN');
+    }
+    return new Date(timestamp * 1000).toLocaleString('en-IN');
   };
 
   const formatDateTime = (timestamp) => {
@@ -88,7 +110,7 @@ const UserDetailsPage = () => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR'
-    }).format(amount / 100); // Converting paise to rupees
+    }).format(amount); // Converting paise to rupees
   };
 
   const copyToClipboard = async (text, field) => {
@@ -198,16 +220,18 @@ const UserDetailsPage = () => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'captured':
+    switch (status?.toLowerCase()) {
       case 'paid':
+      case 'captured':
         return 'bg-green-100 text-green-800';
-      case 'refunded':
-        return 'bg-amber-100 text-amber-800';
+      case 'created':
+        return 'bg-blue-100 text-blue-800';
+      case 'attempted':
+        return 'bg-yellow-100 text-yellow-800';
       case 'failed':
         return 'bg-red-100 text-red-800';
       case 'pending':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -226,6 +250,115 @@ const UserDetailsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderOrderDetails = (order) => {
+    return (
+      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+        <h4 className="text-lg font-semibold text-gray-800 mb-3">Order Details</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-500">Order ID:</span>
+              <div className="flex items-center">
+                <span className="text-sm text-gray-900 mr-2">{order.orderId}</span>
+                <button
+                  onClick={() => copyToClipboard(order.orderId, `order-${order.orderId}`)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  {copiedField === `order-${order.orderId}` ? (
+                    <CheckCircle size={14} className="text-green-500" />
+                  ) : (
+                    <Copy size={14} />
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-500">Amount:</span>
+              <span className="text-sm text-gray-900 font-semibold">
+                {formatAmount(order.amount)}
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-500">Currency:</span>
+              <span className="text-sm text-gray-900">{order.currency}</span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-500">Status:</span>
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
+                {order.status}
+              </span>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-500">Receipt:</span>
+              <div className="flex items-center">
+                <span className="text-sm text-gray-900 mr-2">{order.receipt}</span>
+                <button
+                  onClick={() => copyToClipboard(order.receipt, `receipt-${order.orderId}`)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  {copiedField === `receipt-${order.orderId}` ? (
+                    <CheckCircle size={14} className="text-green-500" />
+                  ) : (
+                    <Copy size={14} />
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-500">Created At:</span>
+              <span className="text-sm text-gray-900">{formatDate(order.createdAt)}</span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-500">Payment Status:</span>
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.paymentStatus)}`}>
+                {order.paymentStatus}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Notes Section */}
+        {order.notes && (
+          <div className="mt-4">
+            <h5 className="text-sm font-medium text-gray-700 mb-2">Order Notes:</h5>
+            <div className="bg-white rounded-md p-3 border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="font-medium text-gray-600">Plan:</span>
+                  <span className="ml-2 text-gray-800">{order.notes.planTitle}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Customer Plan:</span>
+                  <span className="ml-2 text-gray-800">{order.notes.customerPlan}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">User Phone:</span>
+                  <span className="ml-2 text-gray-800">{order.notes.userPhone}</span>
+                </div>
+              </div>
+              {order.notes.planDetails && (
+                <div className="mt-3">
+                  <span className="font-medium text-gray-600">Plan Details:</span>
+                  <pre className="mt-1 text-xs text-gray-700 bg-gray-50 p-2 rounded overflow-auto">
+                    {JSON.stringify(JSON.parse(order.notes.planDetails), null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) return (
@@ -388,72 +521,142 @@ const UserDetailsPage = () => {
            <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step)=> handleAddVerdict(step.number)} />
            </div>}
 
-          {/* Payment History Section */}
-          {paymentHistory.length > 0 && (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold flex items-center">
-                  <DollarSign size={20} className="mr-2 text-green-600" />
-                  Payment History
-                </h2>
-                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-sm">
-                  {paymentHistory.length} transactions
-                </span>
+          {/* Orders Section */}
+          {user?.orders && user.orders.length > 0 && (
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">Orders</h2>
+              <div className="space-y-4">
+                {user.orders.map((order, index) => (
+                  <div key={order.orderId || index} className="border border-gray-200 rounded-lg">
+                    <div className="p-4 flex items-center justify-between bg-gray-50 rounded-t-lg">
+                      <div className="flex items-center space-x-4">
+                        <div>
+                          <h3 className="font-medium text-gray-900">{order.notes?.planTitle || 'Order'}</h3>
+                          <p className="text-sm text-gray-500">Order ID: {order.orderId}</p>
+                        </div>
+                        <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(order.status)}`}>
+                          {order.status}
+                        </span>
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">{formatAmount(order.amount)}</p>
+                          <p className="text-sm text-gray-500">{formatDate(order.createdAt)}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleOrderExpansion(order.orderId)}
+                        className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        {expandedOrders.has(order.orderId) ? (
+                          <ChevronUp size={20} />
+                        ) : (
+                          <ChevronDown size={20} />
+                        )}
+                      </button>
+                    </div>
+                    
+                    {expandedOrders.has(order.orderId) && renderOrderDetails(order)}
+                  </div>
+                ))}
               </div>
-
-              {loadingPayments ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {paymentHistory.filter(payment => payment.eventType === 'payment.captured').map((payment, index) => {
-                        const paymentData = payment.data || {};
-                        const notes = paymentData.notes || {};
-                        
-                        return (
-                          <tr key={payment.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {formatDateTime(payment.timestamp)}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {payment.eventType}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {notes.planTitle || 'N/A'}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {formatAmount(paymentData.amount)}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(paymentData.status)}`}>
-                                {paymentData.status || 'N/A'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 capitalize">
-                              {paymentData.method || 'N/A'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
           )}
+
+          {/* Payment History Section */}
+          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Payment History</h2>
+          {!showPaymentHistory && (
+            <button
+              onClick={() => {
+                setShowPaymentHistory(true);
+                fetchPaymentHistory();
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            >
+              <Eye size={16} className="mr-2" />
+              View Payment History
+            </button>
+          )}
+        </div>
+
+        {showPaymentHistory && (
+          <>
+            {loadingPayments ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : paymentHistory.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No payment history found for this user.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date & Time
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Event Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Payment ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Order ID
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paymentHistory.map((payment, index) => {
+                      const isPaymentEvent = payment.eventType === 'payment.captured';
+                      const paymentData = isPaymentEvent ? payment.data : {};
+                      const orderData = !isPaymentEvent ? payment.data : {};
+                      
+                      const amount = paymentData.amount || orderData.amount;
+                      const status = paymentData.status || orderData.status;
+                      const orderId = paymentData.order_id || orderData.id;
+                      const paymentId = paymentData.id || '';
+                      
+                      return (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatDate(payment.timestamp)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
+                              {payment.eventType}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {formatAmount(amount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
+                              {status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {paymentId}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {orderId}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
           {/* Counselling Data Card */}
           {user.counsellingData && (

@@ -1,6 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Notebook, X, Download } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  X, 
+  Plus, 
+  MessageSquare, 
+  Eye, 
+  MoreVertical,
+  ChevronDown,
+  List,
+  Trash2,
+  Edit,
+  ExternalLink,
+  Users,
+  SortAsc,
+  SortDesc
+} from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axiosInstance from '../../utils/axios';
 import { useUsers } from '../../contexts/UsersContext';
@@ -109,6 +125,97 @@ const NotesModal = ({ isOpen, onClose, userNotes, userName }) => {
   );
 };
 
+const ActionsDropdown = ({ user, onAddToList, onViewLists, onEdit, onDelete, onViewDetails, isLastItem }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleAction = (action) => {
+    setIsOpen(false);
+    switch (action) {
+      case 'details':
+        navigate(`/users/${user.id}`);
+        break;
+      case 'addToList':
+        onAddToList(user);
+        break;
+      case 'viewLists':
+        onViewLists(user.id, user.name);
+        break;
+      case 'edit':
+        onEdit(user);
+        break;
+      case 'delete':
+        onDelete(user);
+        break;
+      default:
+        break;
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+      >
+        <MoreVertical size={16} />
+      </button>
+      
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-99" 
+            onClick={() => setIsOpen(false)}
+          />
+          
+          {/* Dropdown Menu */}
+          <div className={`absolute right-0 ${isLastItem ? "bottom-full":"top-full"} mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-99`}>
+            <div className="py-1">
+              <button
+                onClick={() => handleAction('details')}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+              >
+                <ExternalLink size={14} className="mr-2" />
+                View Details
+              </button>
+              <button
+                onClick={() => handleAction('addToList')}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+              >
+                <Plus size={14} className="mr-2" />
+                Add to List
+              </button>
+              <button
+                onClick={() => handleAction('viewLists')}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+              >
+                <List size={14} className="mr-2" />
+                View Lists
+              </button>
+              <div className="border-t border-gray-100 my-1" />
+              <button
+                onClick={() => handleAction('edit')}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+              >
+                <Edit size={14} className="mr-2" />
+                Edit User
+              </button>
+              <button
+                onClick={() => handleAction('delete')}
+                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
+              >
+                <Trash2 size={14} className="mr-2" />
+                Delete User
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const UsersTable = ({ 
   users, 
   loading, 
@@ -123,10 +230,13 @@ const UsersTable = ({
   onViewLists, 
   onEdit, 
   onDelete,
-  onViewDetails // Add this prop
+  onViewDetails
 }) => {
   const navigate = useNavigate();
-  const { notes, updateUserNotes } = useUsers();
+  const { notes, updateUserNotes, totalUsersNumber } = useUsers();
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+  const [sortedUsers, setSortedUsers] = useState([]);
+  
   const [noteModal, setNoteModal] = useState({
     isOpen: false,
     userId: null,
@@ -138,6 +248,45 @@ const UsersTable = ({
     userId: null,
     userName: ''
   });
+
+  // Sort users by createdAt
+  useEffect(() => {
+    if (users && users.length > 0) {
+      const sorted = [...users].sort((a, b) => {
+        const dateA = a.createdAt?._seconds || 0;
+        const dateB = b.createdAt?._seconds || 0;
+        
+        if (sortOrder === 'desc') {
+          return dateB - dateA; // Newest first
+        } else {
+          return dateA - dateB; // Oldest first
+        }
+      });
+      setSortedUsers(sorted);
+    } else {
+      setSortedUsers([]);
+    }
+  }, [users, sortOrder]);
+
+  const toggleSortOrder = () => {
+    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp?._seconds) return 'N/A';
+    return new Date(timestamp._seconds * 1000).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+
+    });
+  };
+
+  const handleUserNameClick = (userId) => {
+    navigate(`/users/${userId}`);
+  };
 
   const handleAddNote = (userId, userName) => {
     setNoteModal({
@@ -225,167 +374,296 @@ const UsersTable = ({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
       </div>
     );
   }
 
-  if (users.length === 0) {
+  if (error) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg">
-        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-        </svg>
-        <p className="mt-2 text-gray-500 text-lg">
-          No users found. {!isSearchMode && "Use the search function to find users."}
-        </p>
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="p-6 text-center text-red-600">
+          {error}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative">
-      {/* Add Export button above the table */}
-      <div className="mb-4 flex justify-end">
-        <button
-          onClick={exportToCSV}
-          className="px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-2 border border-green-200"
-        >
-          <Download size={16} />
-          Export Users & Notes
-        </button>
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Header with Total Users Count */}
+      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold text-gray-900">Users</h2>
+            {totalUsersNumber && (
+              <div className="flex items-center gap-2 ">
+                
+                  ( {totalUsersNumber.toLocaleString()} total users )
+                
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              Showing {sortedUsers.length} users
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="overflow-x-auto -mx-4 sm:-mx-6">
+      {/* Table */}
+      <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Name
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <button
+                  onClick={toggleSortOrder}
+                  className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                >
+                  Created Date
+                  {sortOrder === 'desc' ? (
+                    <SortDesc size={14} />
+                  ) : (
+                    <SortAsc size={14} />
+                  )}
+                </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Phone
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Premium
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Contact
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Assigned Lists
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Batch
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Lists
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Notes
               </th>
-              <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {users.map(user => (
-              <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-200">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {user.name}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {user.email || 'No email'}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                    {user.phone}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {user.isPremium ? (
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      Premium
-                    </span>
-                  ) : (
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                      Standard
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {user.lists && user.lists.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                        {user.lists.slice(0, 2).map((list, idx) => (
-                            <span key={idx} className="px-2 py-1 text-xs leading-tight rounded-full bg-indigo-100 text-indigo-800">
-                                {list.title}
-                            </span>
-                        ))}
-                        {user.lists.length > 2 && (
-                            <span className="px-2 py-1 text-xs leading-tight rounded-full bg-gray-100 text-gray-600">
-                                +{user.lists.length - 2} more
-                            </span>
-                        )}
-                    </div>
-                ) : (
-                    <span className="text-xs text-gray-500">No lists assigned</span>
-                )}
-                </td>
-
-
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button 
-                    onClick={() => handleViewNotes(user.id, user.name)}
-                    className="text-green-600 hover:text-green-900 mr-4 transition-colors duration-200 relative"
-                  >
-                    <Notebook className='w-5 h-5' />
-                    {notes[user.id]?.notes && Object.keys(notes[user.id]?.notes).length > 0 && (
-                      <span className="absolute top-0 transform translate-x-1/2 -translate-y-1/2 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
-                        {Object.keys(notes[user.id].notes).length}
-                      </span>
-                    )}
-                  </button>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                
-                  <button 
-                    onClick={() => navigate(`/users/${user.id}`)}
-                    className="text-blue-600 hover:text-blue-900 mr-4 transition-colors duration-200"
-                  >
-                    View Details
-                  </button>
-                  <button 
-                    onClick={() => handleAddNote(user.id, user.name)}
-                    className="text-green-600 hover:text-green-900 mr-4 transition-colors duration-200"
-                  >
-                    Add Note
-                  </button>
-                 
-                  <button 
-                    onClick={() => onAddToList(user.id, user.name)}
-                    className="text-green-600 hover:text-green-900 mr-4 transition-colors duration-200"
-                  >
-                    Add to List
-                  </button>
-                  <button 
-                    onClick={() => onViewLists(user.id, user.name)}
-                    className="text-blue-600 hover:text-blue-900 mr-4 transition-colors duration-200"
-                  >
-                    View Lists
-                  </button>
-                  <button 
-                    onClick={() => onEdit(user)}
-                    className="text-blue-600 hover:text-blue-900 mr-4 transition-colors duration-200"
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    onClick={() => onDelete(user.id)}
-                    className="text-red-600 hover:text-red-900 transition-colors duration-200"
-                  >
-                    Delete
-                  </button>
+            {sortedUsers.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
+                  No users found
                 </td>
               </tr>
-            ))}
+            ) : (
+              sortedUsers.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  {/* Created Date */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(user.createdAt)}
+                  </td>
+                  
+                  {/* User Info */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <button
+                        onClick={() => handleUserNameClick(user.id)}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                      >
+                        {user.name}
+                      </button>
+                      {user.email && (
+                        <div className="text-sm text-gray-500">{user.email}</div>
+                      )}
+                    </div>
+                  </td>
+                  
+                  {/* Contact */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {user.phone || 'N/A'}
+                  </td>
+                  
+                  {/* Status */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        user.isPremium 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {user.isPremium ? 'Premium' : 'Standard'}
+                      </span>
+                      {user.premiumPlan?.planTitle && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {user.premiumPlan.planTitle}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  
+                  {/* Batch */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      {user.batch || 'Unassigned'}
+                    </span>
+                  </td>
+                  
+                  {/* Lists */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {user.lists && user.lists.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {user.lists.slice(0, 2).map((list, idx) => (
+                          <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            {list.title}
+                          </span>
+                        ))}
+                        {user.lists.length > 2 && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            +{user.lists.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-500">No lists</span>
+                    )}
+                  </td>
+                  
+                  {/* Notes */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {notes && notes[user.id] && Object.keys(notes[user.id].notes || {}).length > 0 ? (
+                      <button
+                        onClick={() => setViewNotesModal({
+                          isOpen: true,
+                          userId: user.id,
+                          userName: user.name
+                        })}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors"
+                      >
+                        <MessageSquare size={12} className="mr-1" />
+                        {Object.keys(notes[user.id].notes).length}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setNoteModal({
+                          isOpen: true,
+                          userId: user.id,
+                          userName: user.name,
+                          note: ''
+                        })}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                      >
+                        <Plus size={12} className="mr-1" />
+                        Add Note
+                      </button>
+                    )}
+                  </td>
+                  
+                  {/* Actions Dropdown */}
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <ActionsDropdown
+                      user={user}
+                      onAddToList={onAddToList}
+                      onViewLists={onViewLists}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      onViewDetails={onViewDetails}
+                      isLastItem={sortedUsers.indexOf(user) >= sortedUsers.length/2}
+                    />
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {!isSearchMode && sortedUsers.length > 0 && (
+        <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
+              disabled={currentPage === 1}
+              className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={!hasMore}
+              className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                !hasMore ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Showing page <span className="font-medium">{currentPage}</span>
+                {totalUsersNumber && (
+                  <span className="text-gray-500 ml-2">
+                    (Total: {totalUsersNumber.toLocaleString()} users)
+                  </span>
+                )}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-700">Show:</label>
+                <select
+                  value={pageSize}
+                  onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                  className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
+                    currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="sr-only">Previous</span>
+                  <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                </button>
+                <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                  {currentPage}
+                </span>
+                <button
+                  onClick={() => onPageChange(currentPage + 1)}
+                  disabled={!hasMore}
+                  className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium ${
+                    !hasMore ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="sr-only">Next</span>
+                  <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Note Modal */}
       {noteModal.isOpen && (
@@ -445,12 +723,12 @@ const UsersTable = ({
       <NotesModal 
         isOpen={viewNotesModal.isOpen}
         onClose={() => setViewNotesModal(prev => ({ ...prev, isOpen: false }))}
-        userNotes={notes[viewNotesModal.userId] || { notes: {} }}
+        userNotes={notes && notes[viewNotesModal.userId] || { notes: {} }}
         userName={viewNotesModal.userName}
       />
 
       {/* Pagination */}
-      {users.length > 0 && (
+      {/* {users.length > 0 && (
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-700">
@@ -484,7 +762,7 @@ const UsersTable = ({
             </button>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

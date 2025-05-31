@@ -3,7 +3,7 @@ import { useUsers } from '../../contexts/UsersContext';
 import { useLists } from '../../contexts/ListsContext';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
-import { ChevronDown, ChevronUp, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, X, ArrowUpDown, ArrowUp, ArrowDown, Filter } from 'lucide-react';
 import FormProgressTracker from './FormProgressTracker';
 import ListTracking from './ListTracking';
 import CapProgressTracker from './CapProgressTracker';
@@ -45,6 +45,8 @@ const AnalyticsDashboard = () => {
   const [selectedMetric, setSelectedMetric] = useState(null);
   const [showMetricUsers, setShowMetricUsers] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedMetricFilter, setSelectedMetricFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
   const navigate = useNavigate();
 
   const fetchAnalyticsData = async () => {
@@ -162,69 +164,288 @@ const AnalyticsDashboard = () => {
   };
 
   const getMetricUsers = (metricType) => {
+    let users = [];
+    
     switch (metricType) {
       case 'enrolled':
-        return analyticsData.metrics.enrolled.users || [];
+        users = analyticsData.metrics.enrolled.users || [];
+        break;
       case 'todayEnrolled':
-        return analyticsData.metrics.todayEnrolled.users || [];
+        users = analyticsData.metrics.todayEnrolled.users || [];
+        break;
       case 'paymentPending':
-        return analyticsData.metrics.paymentPending.users || [];
+        users = analyticsData.metrics.paymentPending.users || [];
+        break;
       default:
-        return [];
+        users = [];
     }
+
+    // Filter by plan if a specific plan is selected
+    if (selectedMetricFilter !== 'all') {
+      users = users.filter(user => user.planTitle === selectedMetricFilter);
+    }
+
+    // Sort by purchasedDate
+    users = users.sort((a, b) => {
+      if(!a.purchasedDate._seconds && !b.purchasedDate?._seconds) {
+        const dataA = new Date(a.purchasedDate);
+        const dataB = new Date(b.purchasedDate);
+        if(isNaN(dataA.getTime()) || isNaN(dataB.getTime())) {
+          return 0; // If both dates are invalid, consider them equal
+        }
+        if (sortOrder === 'asc') {
+          return dataA.getTime() - dataB.getTime(); // Oldest first
+        }
+        return dataB.getTime() - dataA.getTime(); // Newest first
+      }
+      const dateA = a.purchasedDate?._seconds || 0;
+      const dateB = b.purchasedDate?._seconds || 0;
+      
+      if (sortOrder === 'desc') {
+        return dateB - dateA; // Newest first
+      } else {
+        return dateA - dateB; // Oldest first
+      }
+    });
+
+    return users;
   };
 
-  const userTypeData = {
-    labels: ['Premium Users', 'Standard Users'],
-    datasets: [{
-      data: [metrics.premiumUsers, metrics.standardUsers],
-      backgroundColor: ['#4F46E5', '#9333EA'],
-      borderColor: ['#4338CA', '#7E22CE'],
-      borderWidth: 1,
-    }],
+  const getUniquePlans = (metricType) => {
+    const users = (() => {
+      switch (metricType) {
+        case 'enrolled':
+          return analyticsData.metrics.enrolled.users || [];
+        case 'todayEnrolled':
+          return analyticsData.metrics.todayEnrolled.users || [];
+        case 'paymentPending':
+          return analyticsData.metrics.paymentPending.users || [];
+        default:
+          return [];
+      }
+    })();
+
+    const plans = [...new Set(users.map(user => user.planTitle).filter(Boolean))];
+    return plans.sort();
   };
 
-  const planWiseData = {
-    labels: Object.keys(metrics.planWiseUsers),
-    datasets: [{
-      label: 'Users per Plan',
-      data: Object.values(metrics.planWiseUsers),
-      backgroundColor: [
-        '#2563EB',
-        '#7C3AED',
-        '#EC4899',
-        '#EF4444',
-        '#F59E0B',
-      ],
-    }],
+  const formatDate = (timestamp) => {
+    if (!timestamp?._seconds){
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'N/A';
+      }
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+    return new Date(timestamp._seconds * 1000).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  const batchWiseData = {
-    labels: Object.keys(metrics.batchWiseUsers),
-    datasets: [{
-      label: 'Users per Batch',
-      data: Object.values(metrics.batchWiseUsers),
-      backgroundColor: [
-        '#3B82F6', // blue
-        '#10B981', // green
-        '#F59E0B', // yellow
-        '#EF4444', // red
-        '#8B5CF6', // purple
-        '#EC4899', // pink
-        '#6366F1', // indigo
-        '#14B8A6', // teal
-      ],
-      borderWidth: 1,
-    }],
+  const handleUserClick = (userId) => {
+    navigate(`/users/${userId}`);
   };
 
-  if (loading || usersLoading || listsLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+  const toggleSortOrder = () => {
+    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  };
+
+  const resetFilters = () => {
+    setSelectedMetricFilter('all');
+    setSortOrder('desc');
+  };
+
+  // ...existing code until Metric Users Modal...
+
+  {/* Metric Users Modal */}
+  {showMetricUsers && selectedMetric && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <h3 className="text-xl font-semibold">
+              {selectedMetric === 'enrolled' && 'All Enrolled Users'}
+              {selectedMetric === 'todayEnrolled' && "Today's Enrollments"}
+              {selectedMetric === 'paymentPending' && "Payment Pending Users"}
+            </h3>
+            <span className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+              {getMetricUsers(selectedMetric).length} users
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              setShowMetricUsers(false);
+              resetFilters();
+            }}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <X size={24} />
+          </button>
+        </div>
+        
+        {/* Filters and Controls */}
+        <div className="p-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* Plan Filter */}
+            <div className="flex items-center gap-2">
+              <Filter size={16} className="text-gray-500" />
+              <label className="text-sm font-medium text-gray-700">Plan:</label>
+              <select
+                value={selectedMetricFilter}
+                onChange={(e) => setSelectedMetricFilter(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Plans</option>
+                {getUniquePlans(selectedMetric).map(plan => (
+                  <option key={plan} value={plan}>{plan}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort Controls */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Sort by Date:</label>
+              <button
+                onClick={toggleSortOrder}
+                className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-100 transition-colors"
+              >
+                {sortOrder === 'desc' ? (
+                  <>
+                    <ArrowDown size={14} />
+                    Newest First
+                  </>
+                ) : (
+                  <>
+                    <ArrowUp size={14} />
+                    Oldest First
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Reset Filters */}
+            {(selectedMetricFilter !== 'all' || sortOrder !== 'desc') && (
+              <button
+                onClick={resetFilters}
+                className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors"
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-auto max-h-[calc(90vh-200px)]">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+                {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th> */}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Phone
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Plan
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center gap-1">
+                    Purchase Date
+                    <button onClick={toggleSortOrder} className="text-gray-400 hover:text-gray-600">
+                      <ArrowUpDown size={12} />
+                    </button>
+                  </div>
+                </th>
+                {selectedMetric === 'paymentPending' && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount Due
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {getMetricUsers(selectedMetric).length === 0 ? (
+                <tr>
+                  <td colSpan={selectedMetric === 'paymentPending' ? 6 : 5} className="px-6 py-8 text-center text-gray-500">
+                    No users found with the selected filters.
+                  </td>
+                </tr>
+              ) : (
+                getMetricUsers(selectedMetric).map((user, index) => (
+                  <tr 
+                    key={user.id || index} 
+                    onClick={() => handleUserClick(user.id)}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-blue-600 hover:text-blue-800">
+                        {user.name}
+                      </div>
+                    </td>
+                   
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {user.phone}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                        {user.planTitle}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatDate(user.purchasedDate)}
+                    </td>
+                    {selectedMetric === 'paymentPending' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                        ₹{user.amountRemaining}
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer with summary */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-between items-center text-sm text-gray-600">
+            <span>
+              Showing {getMetricUsers(selectedMetric).length} of {
+                (() => {
+                  switch (selectedMetric) {
+                    case 'enrolled':
+                      return analyticsData.metrics.enrolled.users?.length || 0;
+                    case 'todayEnrolled':
+                      return analyticsData.metrics.todayEnrolled.users?.length || 0;
+                    case 'paymentPending':
+                      return analyticsData.metrics.paymentPending.users?.length || 0;
+                    default:
+                      return 0;
+                  }
+                })()
+              } users
+            </span>
+            <span>
+              Sorted by purchase date ({sortOrder === 'desc' ? 'newest first' : 'oldest first'})
+            </span>
+          </div>
+        </div>
       </div>
-    );
-  }
+    </div>
+  )}
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -274,64 +495,179 @@ const AnalyticsDashboard = () => {
         {/* Metric Users Modal */}
         {showMetricUsers && selectedMetric && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[80vh] overflow-hidden">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden">
               <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-xl font-semibold">
-                  {selectedMetric === 'enrolled' && 'All Enrolled Users'}
-                  {selectedMetric === 'todayEnrolled' && "Today's Enrollments"}
-                  {selectedMetric === 'paymentPending' && "Payment Pending Users"}
-                </h3>
+                <div className="flex items-center gap-4">
+                  <h3 className="text-xl font-semibold">
+                    {selectedMetric === 'enrolled' && 'All Enrolled Users'}
+                    {selectedMetric === 'todayEnrolled' && "Today's Enrollments"}
+                    {selectedMetric === 'paymentPending' && "Payment Pending Users"}
+                  </h3>
+                  <span className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+                    {getMetricUsers(selectedMetric).length} users
+                  </span>
+                </div>
                 <button
-                  onClick={() => setShowMetricUsers(false)}
+                  onClick={() => {
+                    setShowMetricUsers(false);
+                    resetFilters();
+                  }}
                   className="text-gray-400 hover:text-gray-500"
                 >
                   <X size={24} />
                 </button>
               </div>
-              <div className="overflow-auto max-h-[calc(80vh-100px)]">
+              
+              {/* Filters and Controls */}
+              <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center gap-4 flex-wrap">
+                  {/* Plan Filter */}
+                  <div className="flex items-center gap-2">
+                    <Filter size={16} className="text-gray-500" />
+                    <label className="text-sm font-medium text-gray-700">Plan:</label>
+                    <select
+                      value={selectedMetricFilter}
+                      onChange={(e) => setSelectedMetricFilter(e.target.value)}
+                      className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Plans</option>
+                      {getUniquePlans(selectedMetric).map(plan => (
+                        <option key={plan} value={plan}>{plan}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Sort Controls */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Sort by Date:</label>
+                    <button
+                      onClick={toggleSortOrder}
+                      className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-100 transition-colors"
+                    >
+                      {sortOrder === 'desc' ? (
+                        <>
+                          <ArrowDown size={14} />
+                          Newest First
+                        </>
+                      ) : (
+                        <>
+                          <ArrowUp size={14} />
+                          Oldest First
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Reset Filters */}
+                  {(selectedMetricFilter !== 'all' || sortOrder !== 'desc') && (
+                    <button
+                      onClick={resetFilters}
+                      className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors"
+                    >
+                      Reset Filters
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-auto max-h-[calc(90vh-200px)]">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 sticky top-0">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                      {selectedMetric === 'enrolled' && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
-                      )}
-                      {selectedMetric === 'enrolled' && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enrolled Date</th>
-                      )}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Phone
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Plan
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="flex items-center gap-1">
+                          Purchase Date
+                          <button onClick={toggleSortOrder} className="text-gray-400 hover:text-gray-600">
+                            <ArrowUpDown size={12} />
+                          </button>
+                        </div>
+                      </th>
                       {selectedMetric === 'paymentPending' && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount Due</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Amount Due
+                        </th>
                       )}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {getMetricUsers(selectedMetric).map(user => (
-                      <tr onClick={()=>{
-                        navigate(`/users/${user.id}`)
-                      }} key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.phone}</td>
-                        {selectedMetric === 'enrolled' && (
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">{user.planTitle}</td>
-                        )}
-                        {selectedMetric === 'enrolled' && (
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {user.purchasedDate ? 
-                              new Date(user.purchasedDate._seconds * 1000).toLocaleDateString() 
-                              : 'N/A'
-                            }
-                          </td>
-                        )}
-                        {selectedMetric === 'paymentPending' && (
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">₹{user.amountRemaining}</td>
-                        )}
+                    {getMetricUsers(selectedMetric).length === 0 ? (
+                      <tr>
+                        <td colSpan={selectedMetric === 'paymentPending' ? 6 : 5} className="px-6 py-8 text-center text-gray-500">
+                          No users found with the selected filters.
+                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      getMetricUsers(selectedMetric).map((user, index) => (
+                        <tr 
+                          key={user.id || index} 
+                          onClick={() => handleUserClick(user.id)}
+                          className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-blue-600 hover:text-blue-800">
+                              {user.name}
+                            </div>
+                            <div className="text-xs font-medium text-gray-600 hover:text-blue-800">
+                              {user.email}
+                            </div>
+                          </td>
+                        
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {user.phone}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                              {user.planTitle}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatDate(user.purchasedDate)}
+                          </td>
+                          {selectedMetric === 'paymentPending' && (
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                              ₹{user.amountRemaining}
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Footer with summary */}
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex justify-between items-center text-sm text-gray-600">
+                  <span>
+                    Showing {getMetricUsers(selectedMetric).length} of {
+                      (() => {
+                        switch (selectedMetric) {
+                          case 'enrolled':
+                            return analyticsData.metrics.enrolled.users?.length || 0;
+                          case 'todayEnrolled':
+                            return analyticsData.metrics.todayEnrolled.users?.length || 0;
+                          case 'paymentPending':
+                            return analyticsData.metrics.paymentPending.users?.length || 0;
+                          default:
+                            return 0;
+                        }
+                      })()
+                    } users
+                  </span>
+                  <span>
+                    Sorted by purchase date ({sortOrder === 'desc' ? 'newest first' : 'oldest first'})
+                  </span>
+                </div>
               </div>
             </div>
           </div>

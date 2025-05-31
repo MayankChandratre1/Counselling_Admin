@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Search, ChevronLeft, ChevronRight, AlertCircle, Check, X, Clock, Copy, CheckCircle, ChevronDown, ChevronUp, Eye, ExternalLink, EyeClosed } from 'lucide-react';
+import { Menu, Search, ChevronLeft, ChevronRight, AlertCircle, Check, X, Clock, Copy, CheckCircle, ChevronDown, ChevronUp, Eye, ExternalLink, EyeClosed, Info } from 'lucide-react';
 import axiosInstance from '../utils/axios';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
@@ -343,6 +343,87 @@ const PaymentLogs = () => {
     }
   };
 
+  const extractPaymentData = (payment) => {
+    const eventType = payment.eventType;
+    
+    // Handle different event structures
+    if (eventType === 'order.paid') {
+      // Check if data has nested payment and order objects
+      if (payment.data.payment && payment.data.order) {
+        // Structure 1: data contains both payment and order objects
+        return {
+          paymentData: payment.data.payment,
+          orderData: payment.data.order,
+          isNestedStructure: true
+        };
+      } else {
+        // Structure 2: data is the order object directly
+        return {
+          paymentData: {},
+          orderData: payment.data,
+          isNestedStructure: false
+        };
+      }
+    } else if (eventType.includes('payment.')) {
+      // Payment events - data is the payment object
+      return {
+        paymentData: payment.data,
+        orderData: {},
+        isNestedStructure: false
+      };
+    } else {
+      // Other order events - data is the order object
+      return {
+        paymentData: {},
+        orderData: payment.data,
+        isNestedStructure: false
+      };
+    }
+  };
+
+  const getContactFromData = (paymentData, orderData, isNestedStructure) => {
+    // For nested structure order.paid events, prioritize payment contact
+    if (isNestedStructure && paymentData.contact) {
+      return paymentData.contact;
+    }
+    if(paymentData.contact) {
+      return paymentData.contact;
+    }
+    console.log("Order Data Contact:", orderData);
+    
+  if (orderData.notes && orderData.notes.userPhone) {
+      return `+91${orderData.notes.userPhone}`; // Assuming notes contains userPhone
+    }
+    return "N/A";
+  };
+
+  const getAmountFromData = (paymentData, orderData, isNestedStructure) => {
+    // For nested structure, prioritize payment amount
+    if (isNestedStructure && paymentData.amount) {
+      return paymentData.amount;
+    }
+    // Otherwise use payment amount or order amount
+    return paymentData.amount || orderData.amount;
+  };
+
+  const getStatusFromData = (paymentData, orderData, eventType) => {
+    // For payment events, use payment status
+    if (eventType.includes('payment.') && paymentData.status) {
+      return paymentData.status;
+    }
+    // For order events, use order status
+    return orderData.status || paymentData.status;
+  };
+
+  const getOrderIdFromData = (paymentData, orderData, isNestedStructure) => {
+    // For nested structure, prioritize order id
+    if (isNestedStructure && orderData.id) {
+      return orderData.id;
+    }
+    // Otherwise use payment order_id or order id
+    return paymentData.order_id || orderData.id;
+  };
+
   const renderDetailRow = (payment) => {
     const formatTimestamp = (timestamp) => {
       if (!timestamp) return 'N/A';
@@ -385,6 +466,8 @@ const PaymentLogs = () => {
       ));
     };
 
+    const { paymentData, orderData, isNestedStructure } = extractPaymentData(payment);
+
     return (
       <tr key={`${payment.id}-details`}>
         <td colSpan="9" className="px-6 py-4 bg-gray-50">
@@ -412,34 +495,72 @@ const PaymentLogs = () => {
                   <div className="font-medium text-sm text-gray-600">Timestamp:</div>
                   <div className="md:col-span-2 text-sm text-gray-700">{formatTimestamp(payment.timestamp)}</div>
                 </div>
+                {isNestedStructure && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-t border-gray-100 pt-2">
+                    <div className="font-medium text-sm text-gray-600">Structure Type:</div>
+                    <div className="md:col-span-2">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                        Nested (Payment + Order)
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Payment/Order Data */}
+            {/* Payment Data (if available) */}
+            {Object.keys(paymentData).length > 0 && (
+              <div>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                  Payment Details
+                </h4>
+                <div className="bg-white rounded-lg p-4 shadow-sm max-h-96 overflow-y-auto">
+                  {renderKeyValuePairs(paymentData, 'payment.')}
+                </div>
+              </div>
+            )}
+
+            {/* Order Data (if available) */}
+            {Object.keys(orderData).length > 0 && (
+              <div>
+                <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+                  Order Details
+                </h4>
+                <div className="bg-white rounded-lg p-4 shadow-sm max-h-96 overflow-y-auto">
+                  {renderKeyValuePairs(orderData, 'order.')}
+                </div>
+              </div>
+            )}
+
+            {/* Raw Data (for debugging) */}
             <div>
               <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                {payment.eventType.includes('payment') ? 'Payment Details' : 'Order Details'}
+                <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                Raw Event Data
               </h4>
               <div className="bg-white rounded-lg p-4 shadow-sm max-h-96 overflow-y-auto">
-                {renderKeyValuePairs(payment.data)}
+                <pre className="text-xs text-gray-600 whitespace-pre-wrap">
+                  {JSON.stringify(payment.data, null, 2)}
+                </pre>
               </div>
             </div>
 
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-2">
-              {payment.data.contact && (
+              {getContactFromData(paymentData, orderData, extractPaymentData(payment).isNestedStructure) && (
                 <button
-                  onClick={() => navigateToUser(payment.data.contact)}
+                  onClick={() => navigateToUser(getContactFromData(paymentData, orderData, extractPaymentData(payment).isNestedStructure))}
                   className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200 transition-colors flex items-center"
                 >
                   <ExternalLink size={14} className="mr-1" />
                   View User
                 </button>
               )}
-              {payment.data.id && (
+              {(paymentData.id || orderData.id) && (
                 <button
-                  onClick={() => copyToClipboard(payment.data.id, `detail-${payment.id}`)}
+                  onClick={() => copyToClipboard(paymentData.id || orderData.id, `detail-${payment.id}`)}
                   className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition-colors flex items-center"
                 >
                   {copiedField === `detail-${payment.id}` ? (
@@ -448,19 +569,6 @@ const PaymentLogs = () => {
                     <Copy size={14} className="mr-1" />
                   )}
                   Copy ID
-                </button>
-              )}
-              {payment.data.order_id && (
-                <button
-                  onClick={() => copyToClipboard(payment.data.order_id, `order-detail-${payment.id}`)}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition-colors flex items-center"
-                >
-                  {copiedField === `order-detail-${payment.id}` ? (
-                    <CheckCircle size={14} className="mr-1 text-green-500" />
-                  ) : (
-                    <Copy size={14} className="mr-1" />
-                  )}
-                  Copy Order ID
                 </button>
               )}
             </div>
@@ -694,10 +802,10 @@ const PaymentLogs = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
+                        <Info size={16} className="inline-block mr-1" />
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date & Time
+                        Timestamp
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         User
@@ -725,36 +833,33 @@ const PaymentLogs = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {payments.map((payment) => {
-                      // Extract payment data based on event type
-                      const isPaymentEvent = payment.eventType === 'payment.captured';
-                      const paymentData = isPaymentEvent ? payment.data : {};
-                      const orderData = !isPaymentEvent ? payment.data : {};
+                      const { paymentData, orderData, isNestedStructure } = extractPaymentData(payment);
                       
-                      // Determine which fields to use based on event type
                       const eventType = payment.eventType;
-                      const amount = paymentData.amount || orderData.amount;
-                      const status = paymentData.status || orderData.status;
-                      const orderId = paymentData.order_id || orderData.id;
+                      const amount = getAmountFromData(paymentData, orderData, isNestedStructure);
+                      const status = getStatusFromData(paymentData, orderData, eventType);
+                      const orderId = getOrderIdFromData(paymentData, orderData, isNestedStructure);
                       const paymentId = paymentData.id || '';
                       const method = paymentData.method || '';
-                      const contact = paymentData.contact || '';
+                      const contact = getContactFromData(paymentData, orderData, isNestedStructure);
+                      
+                      // Get plan title from notes - check both payment and order notes
                       const planTitle = paymentData.notes?.planTitle || orderData.notes?.planTitle || 'N/A';
 
                       const rows = [
                         <tr key={payment.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
                               onClick={() => toggleRowExpansion(payment.id)}
                               className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 transition-colors"
                               title="View details"
                             >
-                              {
-                                expandedRows.has(payment.id) ? (
-                                  <EyeClosed size={14} className="mx-auto" />
-                                ) : (
-                                  <Eye size={14} className="mx-auto" />
-                                )
-                              }
+                              <Eye size={14} className="mr-1" />
+                              {expandedRows.has(payment.id) ? (
+                                <ChevronUp size={14} className="inline-block" />
+                              ) : (
+                                <ChevronDown size={14} className="inline-block" />
+                              )}
                             </button>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -791,7 +896,7 @@ const PaymentLogs = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <div className="flex items-center group">
                               <div className="max-w-[120px] overflow-hidden text-ellipsis mr-2">
-                                {eventType.includes("order") || eventType.includes("captured") && orderId}
+                                {orderId}
                               </div>
                               {orderId && (
                                 <button
@@ -809,9 +914,16 @@ const PaymentLogs = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
-                              {eventType}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full w-fit ${getStatusColor(status)}`}>
+                                {eventType}
+                              </span>
+                              {isNestedStructure && (
+                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 mt-1 w-fit">
+                                  Nested
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {planTitle}
@@ -842,7 +954,7 @@ const PaymentLogs = () => {
                               )}
                             </div>
                           </td>
-                          
+                         
                         </tr>
                       ];
 

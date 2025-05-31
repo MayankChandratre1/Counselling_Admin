@@ -21,23 +21,24 @@ const UsersManagement = () => {
   const {
     users,
     loading,
-    error,
     currentPage,
     pageSize,
     hasMore,
     dataLoaded,
     
     setCurrentPage,
+    goToPage,
     setPageSize,
     fetchUsers,
     searchUsers,
     updateUser,
     deleteUser,
-    setLoading,
-    setError,
     setUsers,
     refreshUsers
   } = useUsers();
+
+  const [loadingLists, setLoadingLists] = useState(false);
+  const [error, setError] = useState(null);
 
   const getAuthAxios = () => {
     const token = localStorage.getItem('adminToken');
@@ -119,7 +120,7 @@ const UsersManagement = () => {
   const resetSearch = () => {
     setSearchParams({ name: '', phone: '' });
     setIsSearchMode(false);
-    setCurrentPage(1);
+    goToPage(1);
     fetchUsers(1);
   };
 
@@ -170,7 +171,7 @@ const UsersManagement = () => {
   // User Lists Management
   const fetchLists = async () => {
     try {
-      setLoading(true);
+      setLoadingLists(true);
       const authAxios = getAuthAxios();
       const response = await authAxios.get('/api/admin/lists');
       setAvailableLists(response.data);
@@ -179,7 +180,7 @@ const UsersManagement = () => {
       console.error('Error fetching lists:', err);
       setError('Failed to fetch lists');
     } finally {
-      setLoading(false);
+      setLoadingLists(false);
     }
   };
 
@@ -192,7 +193,7 @@ const UsersManagement = () => {
 
   const handleViewUserLists = async (userId, userName) => {
     try {
-      setLoading(true);
+      setLoadingLists(true);
       setSelectedUserName(userName);
       setSelectedUserListsId(userId);
       
@@ -206,7 +207,7 @@ const UsersManagement = () => {
       console.error('Error fetching user lists:', err);
       setError('Failed to fetch user lists');
     } finally {
-      setLoading(false);
+      setLoadingLists(false);
     }
   };
 
@@ -222,7 +223,7 @@ const UsersManagement = () => {
         listTitle: selectedList.title,
         onConfirm: async () => {
           try {
-            setLoading(true);
+            setLoadingLists(true);
             const timestamp = new Date().toISOString();
             const listAssignment = {
               id: `${listId}_${selectedUserId}_${timestamp}`,
@@ -256,7 +257,7 @@ const UsersManagement = () => {
             setError('Failed to add list to user');
             console.error('Error adding list to user:', err);
           } finally {
-            setLoading(false);
+            setLoadingLists(false);
           }
         }
       });
@@ -285,7 +286,7 @@ const UsersManagement = () => {
   const handleRemoveUserList = async (list) => {
     if (window.confirm('Are you sure you want to remove this list from the user?')) {
       try {
-        setLoading(true);
+        setLoadingLists(true);
         const authAxios = getAuthAxios();
         await authAxios.delete(`/api/admin/user/${selectedUserListsId}/list/${list.id}`);
         
@@ -305,14 +306,14 @@ const UsersManagement = () => {
         console.error('Error removing list:', err);
         setError('Failed to remove list');
       } finally {
-        setLoading(false);
+        setLoadingLists(false);
       }
     }
   };
 
   const handleSaveUserList = async (listId) => {
     try {
-      setLoading(true);
+      setLoadingLists(true);
       const authAxios = getAuthAxios();
       
       // Use the listId passed from EditListModal component
@@ -360,13 +361,13 @@ const UsersManagement = () => {
       console.error('Error saving user list:', err);
       setError(`Failed to save user list: ${err.message}`);
     } finally {
-      setLoading(false);
+      setLoadingLists(false);
     }
   };
 
   const handleSaveOrder = async (updatedList) => {
     try {
-      setLoading(true);
+      setLoadingLists(true);
       const authAxios = getAuthAxios();
       
       const response = await authAxios.put(
@@ -397,7 +398,7 @@ const UsersManagement = () => {
       console.error('Error saving list order:', err);
       setError('Failed to save list order');
     } finally {
-      setLoading(false);
+      setLoadingLists(false);
     }
   };
 
@@ -511,13 +512,13 @@ const UsersManagement = () => {
 
   // Add explicit handlers for pagination
   const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
-    refreshUsers(newPage); // Fetch data for the new page
+    goToPage(newPage);
+     // Fetch data for the new page
   };
   
   const handlePageSizeChange = (newSize) => {
     setPageSize(newSize);
-    setCurrentPage(1);
+    goToPage(1);
     refreshUsers(1); // Reset to first page with new size
   };
 

@@ -4,187 +4,204 @@ import axiosInstance from '../utils/axios';
 const UsersContext = createContext();
 
 export const UsersProvider = ({ children }) => {
-  const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]); // Store all loaded users
+  const [users, setUsers] = useState([]); // Current page users
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [lastDoc, setLastDoc] = useState(null); // Track the last document for pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [hasMore, setHasMore] = useState(false);
-  const [notes, setNotes] = useState({});  // Add notes state as an object with userId as key
-  const [dataLoaded, setDataLoaded] = useState(false); // Track if data has been loaded
+  const [notes, setNotes] = useState({});
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [toatlUsersNumber, setTotalUsersNumber] = useState(0); // Total number of users fetched
+  
+  // New state for pagination tracking
+  const [pageDocuments, setPageDocuments] = useState({}); // Track lastDoc for each page
+  const [maxLoadedPage, setMaxLoadedPage] = useState(0); // Highest page we've loaded from backend
 
-  // Separate the initial fetch from explicit refresh operations
+  // Get users for current page from allUsers array
+  const getCurrentPageUsers = useCallback((page, size, allUsersArray = allUsers) => {
+    const startIndex = (page - 1) * size;
+    const endIndex = startIndex + size;
+    return allUsersArray.slice(startIndex, endIndex);
+  }, [allUsers]);
+
+  // Update current page users when page or pageSize changes
+  useEffect(() => {
+    if (allUsers.length > 0) {
+      const currentPageUsers = getCurrentPageUsers(currentPage, pageSize);
+      setUsers(currentPageUsers);
+    }
+  }, [currentPage, pageSize, allUsers, getCurrentPageUsers]);
+
   const fetchUsers = useCallback(async (page = currentPage) => {
-    // Only fetch if data hasn't been loaded yet
-    if (!dataLoaded) {
+    // If navigating to a previously loaded page, use existing data
+    if (page <= maxLoadedPage && allUsers.length > 0) {
+      const pageUsers = getCurrentPageUsers(page, pageSize);
+      setUsers(pageUsers);
+      
+      // Update hasMore based on whether we have more users beyond current page
+      const totalLoadedUsers = allUsers.length;
+      const currentPageEndIndex = page * pageSize;
+      setHasMore(totalLoadedUsers > currentPageEndIndex || (page <= maxLoadedPage && hasMore));
+      
+      return;
+    }
+
+    // Only fetch from backend for new pages
+    if (!dataLoaded || page > maxLoadedPage) {
       try {
         setLoading(true);
-        console.log(`Initial fetch - page ${page}, size ${pageSize}, ${currentPage > 1 ? users[0]?.id : undefined} pagination}`);
+        console.log(`Fetching page ${page}, size ${pageSize}`);
+        
+        // Get lastDoc for the previous page
+        const lastDoc = page > 1 ? pageDocuments[page - 1] : null;
+        
         const response = await axiosInstance.get('/api/admin/all-users', {
           params: {
             page,
             limit: pageSize,
-            lastDoc: lastDoc ? lastDoc: undefined // Use last user ID for pagination
+            lastDoc: lastDoc
           }
         });
-        setUsers(response.data.users);
-        setLastDoc(response.data.lastDoc); // Update lastDoc for future pagination
-        setHasMore(response.data.hasMore);
+
+        const newUsers = response.data.users || [];
+        const newLastDoc = response.data.lastDoc;
+        const newHasMore = response.data.hasMore;
+
+        if (page === 1) {
+          // First page - replace all data
+          setAllUsers(newUsers);
+          setUsers(newUsers);
+          setMaxLoadedPage(1);
+          setTotalUsersNumber(response.data.totalUsers || newUsers.length);
+        } else {
+          // Subsequent pages - append to existing data
+          setAllUsers(prev => [...prev, ...newUsers]);
+          setUsers(newUsers);
+          setMaxLoadedPage(page);
+        }
+
+        // Store lastDoc for this page
+        setPageDocuments(prev => ({
+          ...prev,
+          [page]: newLastDoc
+        }));
+
+        setHasMore(newHasMore);
         setError(null);
-        setDataLoaded(true); // Mark that data has been loaded
+        setDataLoaded(true);
       } catch (err) {
-        setError('Failed to fetch users');
         console.error('Error fetching users:', err);
+        setError('Failed to fetch users. Please try again.');
       } finally {
         setLoading(false);
       }
     }
-  }, [currentPage, pageSize, dataLoaded]);
+  }, [currentPage, pageSize, dataLoaded, maxLoadedPage, allUsers, pageDocuments, hasMore, getCurrentPageUsers]);
 
-  // New function for explicit refreshes
-  const refreshUsers = useCallback(async (page = currentPage) => {
-    try {
-      setLoading(true);
-      console.log(`Refreshing users data - page ${page}, size ${pageSize}`);
-      const response = await axiosInstance.get('/api/admin/all-users', {
-        params: {
-          page,
-          limit: pageSize,
-           lastDoc: lastDoc ? lastDoc: undefined // Use last user ID for pagination
-        }
-      });
-      setUsers(response.data.users);
-      setHasMore(response.data.hasMore);
-      setLastDoc(response.data.lastDoc); // Update lastDoc for future pagination
-      setError(null);
-    } catch (err) {
-      setError('Failed to refresh users');
-      console.error('Error refreshing users:', err);
-    } finally {
-      setLoading(false);
+  const goToPage = useCallback((page) => {
+    if (page < 1) return;
+    
+    setCurrentPage(page);
+    
+    // If going to a page we haven't loaded yet, fetch it
+    if (page > maxLoadedPage) {
+      fetchUsers(page);
+    } else {
+      // Use existing data
+      const pageUsers = getCurrentPageUsers(page, pageSize);
+      setUsers(pageUsers);
+      
+      // Calculate hasMore for existing pages
+      const totalLoadedUsers = allUsers.length;
+      const currentPageEndIndex = page * pageSize;
+      setHasMore(totalLoadedUsers > currentPageEndIndex);
     }
-  }, [currentPage, pageSize]);
+  }, [maxLoadedPage, fetchUsers, getCurrentPageUsers, pageSize, allUsers]);
 
-  const searchUsers = async (searchParams) => {
-    try {
-      setLoading(true);
-      const response = await axiosInstance.post('/api/admin/user/search', searchParams);
-      setUsers(response.data);
-      setError(null);
-    } catch (err) {
-      setError('Failed to search users');
-      console.error('Error searching users:', err);
-    } finally {
-      setLoading(false);
+  const goToNextPage = useCallback(() => {
+    if (hasMore || currentPage < maxLoadedPage) {
+      goToPage(currentPage + 1);
     }
-  };
+  }, [hasMore, currentPage, maxLoadedPage, goToPage]);
 
-  const updateUser = async (userId, userData) => {
-    try {
-      setLoading(true);
-      const response = await axiosInstance.put(`/api/admin/update-user/${userId}`, userData);
-      setUsers(users.map(user => user.id === userId ? response.data : user));
-      setError(null);
-      return response.data;
-    } catch (err) {
-      setError('Failed to update user');
-      console.error('Error updating user:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const goToPrevPage = useCallback(() => {
+    if (currentPage > 1) {
+      goToPage(currentPage - 1);
     }
-  };
+  }, [currentPage, goToPage]);
 
-  const deleteUser = async (userId) => {
-    try {
-      setLoading(true);
-      await axiosInstance.delete(`/api/admin/delete-user/${userId}`);
-      setUsers(users.filter(user => user.id !== userId));
-      setError(null);
-    } catch (err) {
-      setError('Failed to delete user');
-      console.error('Error deleting user:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const changePageSize = useCallback((newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    
+    // Recalculate current page users with new page size
+    const pageUsers = getCurrentPageUsers(1, newSize);
+    setUsers(pageUsers);
+    
+    // Reset pagination state since page size changed
+    setMaxLoadedPage(Math.ceil(allUsers.length / newSize));
+    setPageDocuments({});
+    
+    // Recalculate hasMore
+    setHasMore(allUsers.length > newSize);
+  }, [allUsers.length, getCurrentPageUsers]);
 
-  // Add function to fetch notes for a specific user
-  const fetchUserNotes = async (userId) => {
-    try {
-      const response = await axiosInstance.get(`/api/admin/get-notes/${userId}`);
-      return response.data;
-    } catch (err) {
-      console.error(`Error fetching notes for user ${userId}:`, err);
-      return [];
-    }
-  };
+  const refreshUsers = useCallback(async () => {
+    // Reset all pagination state and fetch fresh data
+    setAllUsers([]);
+    setUsers([]);
+    setCurrentPage(1);
+    setMaxLoadedPage(0);
+    setPageDocuments({});
+    setDataLoaded(false);
+    setHasMore(false);
+    
+    await fetchUsers(1);
+  }, [fetchUsers]);
 
-  // Effect to fetch notes when users change
+  // ...existing addNote, updateNote, deleteNote functions...
+
+  // Initial fetch
   useEffect(() => {
-    const fetchAllNotes = async () => {
-      const notesPromises = users.map(user => fetchUserNotes(user.id));
-      try {
-        const allNotes = await Promise.all(notesPromises);
-        const notesMap = users.reduce((acc, user, index) => {
-          acc[user.id] = allNotes[index];
-          return acc;
-        }, {});
-        
-        setNotes(notesMap);
-      } catch (err) {
-        console.error('Error fetching notes:', err);
-      }
-    };
-
-    if (users.length > 0) {
-      // fetchAllNotes();
+    if (!dataLoaded) {
+      fetchUsers(1);
     }
-  }, [users]);
-
-  const updateUserNotes = (userId, adminEmail, note, createdAt) => {
-    setNotes(prevNotes => ({
-      ...prevNotes,
-      [userId]: {
-        id: userId,
-        notes: {
-          ...(prevNotes[userId]?.notes || {}),
-          [`note-${adminEmail}`]: {
-            note,
-            createdAt
-          }
-        }
-      }
-    }));
-  };
+  }, [fetchUsers, dataLoaded]);
 
   const value = {
     users,
+    allUsers, // Expose all users for components that need it
     loading,
     error,
     currentPage,
     pageSize,
     hasMore,
-    dataLoaded,
-    setCurrentPage,
-    setPageSize,
+    maxLoadedPage, // Expose for debugging/info
+    totalLoadedUsers: allUsers.length, // Total users loaded so far
+    totalUsersNumber: toatlUsersNumber, // Total users fetched from backend
+    
+    // Pagination functions
+    goToPage,
+    goToNextPage,
+    goToPrevPage,
+    changePageSize,
     fetchUsers,
-    refreshUsers, // Add the new function to the context
-    searchUsers,
-    updateUser,
-    deleteUser,
-    setLoading,
-    setError,
-    setUsers,
-    notes,
-    setNotes,
-    fetchUserNotes,
-    updateUserNotes,
+    refreshUsers,
+    
+    // Notes functions
+    // notes,
+    // addNote,
+    // updateNote,
+    // deleteNote
   };
 
-  return <UsersContext.Provider value={value}>{children}</UsersContext.Provider>;
+  return (
+    <UsersContext.Provider value={value}>
+      {children}
+    </UsersContext.Provider>
+  );
 };
 
 export const useUsers = () => {
