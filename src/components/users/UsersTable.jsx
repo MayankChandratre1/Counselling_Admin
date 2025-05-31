@@ -15,7 +15,8 @@ import {
   ExternalLink,
   Users,
   SortAsc,
-  SortDesc
+  SortDesc,
+  Filter
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axiosInstance from '../../utils/axios';
@@ -233,8 +234,8 @@ const UsersTable = ({
   onViewDetails
 }) => {
   const navigate = useNavigate();
-  const { notes, updateUserNotes, totalUsersNumber } = useUsers();
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+  const { notes, updateUserNotes, totalUsersNumber, isFilterActive, filters } = useUsers();
+  const [sortOrder, setSortOrder] = useState('desc');
   const [sortedUsers, setSortedUsers] = useState([]);
   
   const [noteModal, setNoteModal] = useState({
@@ -400,10 +401,17 @@ const UsersTable = ({
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-semibold text-gray-900">Users</h2>
             {totalUsersNumber && (
-              <div className="flex items-center gap-2 ">
-                
-                  ( {totalUsersNumber.toLocaleString()} total users )
-                
+              <div className="flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                <Eye size={16} />
+                <span className="text-sm font-medium">
+                  {totalUsersNumber.toLocaleString()} total users
+                </span>
+              </div>
+            )}
+            {isFilterActive && (
+              <div className="flex items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 rounded-full">
+                <Filter size={16} />
+                <span className="text-sm font-medium">Filtered Results</span>
               </div>
             )}
           </div>
@@ -411,6 +419,9 @@ const UsersTable = ({
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">
               Showing {sortedUsers.length} users
+              {isFilterActive && (
+                <span className="text-orange-600 ml-1">(filtered)</span>
+              )}
             </span>
           </div>
         </div>
@@ -582,6 +593,9 @@ const UsersTable = ({
                 </tr>
               ))
             )}
+             {
+              sortedUsers.length != 0 && sortedUsers.length < 5 &&
+             <tr key={"Random"} className="hover:bg-gray-50 transition-colors h-48"></tr>}
           </tbody>
         </table>
       </div>
@@ -613,7 +627,10 @@ const UsersTable = ({
             <div>
               <p className="text-sm text-gray-700">
                 Showing page <span className="font-medium">{currentPage}</span>
-                {totalUsersNumber && (
+                {isFilterActive && (
+                  <span className="text-orange-600 ml-2">(filtered view)</span>
+                )}
+                {totalUsersNumber && !isFilterActive && (
                   <span className="text-gray-500 ml-2">
                     (Total: {totalUsersNumber.toLocaleString()} users)
                   </span>

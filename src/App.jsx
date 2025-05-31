@@ -58,7 +58,10 @@ function App() {
           />
         <Route path="/users" element={
           <ProtectedRoute requiredPermission="users">
+            <PremiumPageProvider>
               <Users />
+            </PremiumPageProvider>
+              
           </ProtectedRoute>
         } />
         <Route path="/users/:id" element={
