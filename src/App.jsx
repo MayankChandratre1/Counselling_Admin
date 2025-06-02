@@ -25,6 +25,7 @@ import "react-toastify/dist/ReactToastify.css";
 import OrdersCheck from "./pages/OrdersCheck";
 import UserDetailsByPhone from "./pages/UsersDetailsPhone";
 import { PremiumPageProvider } from "./contexts/PremiumPageContext";
+import Appointments from "./pages/Appointments";
 
 function App() {
   return (
@@ -129,6 +130,11 @@ function App() {
         <Route path="/check-orders" element={
           <ProtectedRoute requiredPermission="landing-page">
             <OrdersCheck />
+          </ProtectedRoute>
+        } />
+        <Route path="/appointments" element={
+          <ProtectedRoute requiredPermission="landing-page">
+            <Appointments />
           </ProtectedRoute>
         } />
     
