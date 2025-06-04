@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home, FormInputIcon, FileLineChart,CheckCheck, Settings2, Tent, Globe2, Crown, Banknote, Clock10 } from 'lucide-react';
+import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home, FormInputIcon, FileLineChart,CheckCheck, Settings2, Tent, Globe2, Crown, Banknote, Clock10, RefreshCcwDot } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const VerticalNavbar = ({ onClose }) => {
@@ -64,6 +64,7 @@ const VerticalNavbar = ({ onClose }) => {
       { name: 'Premium Plans & Screens', icon: <Crown className="mr-3 text-green-400" />, path: '/premium-plans', permission: 'premium-plans' },
       { name: 'Appointments', icon: <Clock10 className="mr-3 text-yellow-400" />, path: '/appointments', permission: 'appointments' },
       { name: 'Payments', icon: <Banknote className="mr-3 text-yellow-400" />, path: '/payment-logs', permission: 'payment-logs' },
+      { name: 'Refresh Orders', icon: <RefreshCcwDot className="mr-3 text-yellow-400" />, path: '/check-orders', permission: 'admin-settings' },
       { name: 'Change Password', icon: <Lock className="mr-3 text-yellow-400" />, path: '/change-password', permission: 'change-password' },
       { name: 'Admin Settings', icon: <Settings2 className="mr-3 text-yellow-400" />, path: '/admin-settings', permission: 'admin-settings' },
     ];

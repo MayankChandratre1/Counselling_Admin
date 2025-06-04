@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit, Eye, X, Filter, ArrowDown, ArrowUp, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
 import { useUsers } from '../../contexts/UsersContext';
 import { useLists } from '../../contexts/ListsContext';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
-import { ChevronDown, ChevronUp, X, ArrowUpDown, ArrowUp, ArrowDown, Filter } from 'lucide-react';
 import FormProgressTracker from './FormProgressTracker';
 import ListTracking from './ListTracking';
 import CapProgressTracker from './CapProgressTracker';
@@ -265,7 +265,88 @@ const AnalyticsDashboard = () => {
     setSortOrder('desc');
   };
 
-  // ...existing code until Metric Users Modal...
+  const exportToExcel = (metricType) => {
+    const usersToExport = getMetricUsers(metricType);
+    
+    if (usersToExport.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    // Define headers based on metric type
+    const getHeaders = () => {
+      const baseHeaders = ['Name', 'Phone', 'Plan', 'Purchase Date'];
+      
+      if (metricType === 'paymentPending') {
+        return [...baseHeaders, 'Amount Due'];
+      }
+      
+      return baseHeaders;
+    };
+
+    const headers = getHeaders();
+    
+    // Convert users data to CSV format
+    const csvData = usersToExport.map(user => {
+      const baseRow = [
+        user.name || '',
+        user.phone || '',
+        user.planTitle || '',
+        formatDate(user.purchasedDate)
+      ];
+      
+      if (metricType === 'paymentPending') {
+        return [...baseRow, `₹${user.amountRemaining || 0}`];
+      }
+      
+      return baseRow;
+    });
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => 
+        row.map(cell => {
+          // Escape cells that contain commas, quotes, or newlines
+          if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))) {
+            return `"${cell.replace(/"/g, '""')}"`;
+          }
+          return cell;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Create and download the file
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      
+      // Generate filename based on metric type
+      const getFileName = () => {
+        const timestamp = new Date().toISOString().split('T')[0];
+        
+        switch (metricType) {
+          case 'enrolled':
+            return `enrolled_users_${timestamp}_${selectedMetricFilter}.csv`;
+          case 'todayEnrolled':
+            return `today_enrollments_${timestamp}_${selectedMetricFilter}.csv`;
+          case 'paymentPending':
+            return `payment_pending_users_${timestamp}_${selectedMetricFilter}.csv`;
+          default:
+            return `users_export_${timestamp}_${selectedMetricFilter}.csv`;
+        }
+      };
+      
+      link.setAttribute('download', getFileName());
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
 
   {/* Metric Users Modal */}
   {showMetricUsers && selectedMetric && (
@@ -282,15 +363,27 @@ const AnalyticsDashboard = () => {
               {getMetricUsers(selectedMetric).length} users
             </span>
           </div>
-          <button
-            onClick={() => {
-              setShowMetricUsers(false);
-              resetFilters();
-            }}
-            className="text-gray-400 hover:text-gray-500"
-          >
-            <X size={24} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => exportToExcel(selectedMetric)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              title="Export to Excel"
+            >
+              <FileSpreadsheet size={16} />
+              Export to Excel
+            </button>
+            <button
+              onClick={() => {
+                setShowMetricUsers(false);
+                setSelectedMetric(null);
+                setSelectedMetricFilter('all');
+                setSortOrder('desc');
+              }}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <X size={24} />
+            </button>
+          </div>
         </div>
         
         {/* Filters and Controls */}
@@ -507,15 +600,27 @@ const AnalyticsDashboard = () => {
                     {getMetricUsers(selectedMetric).length} users
                   </span>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowMetricUsers(false);
-                    resetFilters();
-                  }}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <X size={24} />
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => exportToExcel(selectedMetric)}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    title="Export to Excel"
+                  >
+                    <FileSpreadsheet size={16} />
+                    Export to Excel
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMetricUsers(false);
+                      setSelectedMetric(null);
+                      setSelectedMetricFilter('all');
+                      setSortOrder('desc');
+                    }}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
               </div>
               
               {/* Filters and Controls */}

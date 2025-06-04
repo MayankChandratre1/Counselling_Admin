@@ -128,7 +128,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/check-orders" element={
-          <ProtectedRoute requiredPermission="landing-page">
+          <ProtectedRoute requiredPermission="admin-settings">
             <OrdersCheck />
           </ProtectedRoute>
         } />
