@@ -195,13 +195,7 @@ const ActionsDropdown = ({ user, onAddToList, onViewLists, onEdit, onDelete, onV
                 View Lists
               </button>
               <div className="border-t border-gray-100 my-1" />
-              <button
-                onClick={() => handleAction('edit')}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-              >
-                <Edit size={14} className="mr-2" />
-                Edit User
-              </button>
+              
               <button
                 onClick={() => handleAction('delete')}
                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"

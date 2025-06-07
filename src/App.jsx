@@ -121,7 +121,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/payment-logs" element={
-          <ProtectedRoute requiredPermission="landing-page">
+          <ProtectedRoute requiredPermission="payment-logs">
             <PremiumPageProvider>
             <PaymentLogs />
             </PremiumPageProvider>
@@ -133,7 +133,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/appointments" element={
-          <ProtectedRoute requiredPermission="landing-page">
+          <ProtectedRoute requiredPermission="appointments">
             <Appointments />
           </ProtectedRoute>
         } />

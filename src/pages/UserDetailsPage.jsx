@@ -8,6 +8,7 @@ import VerdictModal from '../components/users/VerdictModal';
 import UserEditModal from '../components/users/UserEditModal';
 import ProgressTracker from '../components/users/ProgressTracker';
 import axiosInstance from '../utils/axios';
+import { checkPermission } from '../utils/checkPermission';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -403,13 +404,17 @@ const UserDetailsPage = () => {
               Back to Users
             </button>
             <h1 className="text-3xl font-bold text-gray-900">{user.name}'s Profile</h1>
-            <button
+            {
+              checkPermission('edit-users') && (
+                <button
               onClick={() => setIsEditModalOpen(true)}
               className="ml-auto flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
             >
               <Edit size={18} />
               Edit User
             </button>
+              )
+            }
           </div>
 
           {/* Basic Info Card */}
@@ -724,15 +729,7 @@ const UserDetailsPage = () => {
             </div>
           )}
 
-          {/* Edit User Modal */}
-          {isEditModalOpen && (
-            <UserEditModal
-              isOpen={isEditModalOpen}
-              onClose={() => setIsEditModalOpen(false)}
-              user={user}
-              onSave={handleUpdateUser}
-            />
-          )}
+        
 
           {/* Verdict Modal */}
           <VerdictModal
