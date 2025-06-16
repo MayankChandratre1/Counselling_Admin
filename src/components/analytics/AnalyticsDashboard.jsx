@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit, Eye, X, Filter, ArrowDown, ArrowUp, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
+import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit, Eye, X, Filter, ArrowDown, ArrowUp, ArrowUpDown, FileSpreadsheet, Calendar } from 'lucide-react';
 import { useUsers } from '../../contexts/UsersContext';
 import { useLists } from '../../contexts/ListsContext';
+import { useAnalytics } from '../../contexts/analyticsContext';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
 import FormProgressTracker from './FormProgressTracker';
 import ListTracking from './ListTracking';
 import CapProgressTracker from './CapProgressTracker';
-import axios from 'axios';
-import axiosInstance from '../../utils/axios';
 import { useNavigate } from 'react-router-dom';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
@@ -16,27 +15,18 @@ ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Le
 const AnalyticsDashboard = () => {
   const { users, loading: usersLoading, fetchUsers } = useUsers();
   const { lists, loading: listsLoading, fetchLists } = useLists();
-  const [metrics, setMetrics] = useState({
-    totalUsers: 0,
-    premiumUsers: 0,
-    standardUsers: 0,
-    planWiseUsers: {},
-    usersWithLists: 0,
-    averageListsPerUser: 0,
-    batchWiseUsers: {},
-  });
-  const [analyticsData, setAnalyticsData] = useState({
-    totalUsers: 0,
-    metrics: {
-      installs: 0,
-      enrolled: { total: 0, users: [] },
-      todayEnrolled: { total: 0, users: [] },
-      paymentPending: { total: 0, users: [] }
-    },
-    premiumPlanDistribution: {},
-    usersWithLists: 0,
-    usersWithoutLists: 0
-  });
+  const { 
+    analyticsData, 
+    loading, 
+    error, 
+    fetchAnalyticsData, 
+    refreshAnalytics,
+    getMetricUsers,
+    getUniquePlans,
+    getDerivedMetrics,
+    isDataStale
+  } = useAnalytics();
+
   const [filterPlan, setFilterPlan] = useState('all');
   const [filterList, setFilterList] = useState('all');
   const [filterBatch, setFilterBatch] = useState('all');
@@ -44,21 +34,27 @@ const AnalyticsDashboard = () => {
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(true);
   const [selectedMetric, setSelectedMetric] = useState(null);
   const [showMetricUsers, setShowMetricUsers] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [selectedMetricFilter, setSelectedMetricFilter] = useState('all');
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
-  const navigate = useNavigate();
+  const [sortOrder, setSortOrder] = useState('desc');
+  
+  // Add date filter states
+  const [dateFilters, setDateFilters] = useState({
+    fromDate: '',
+    toDate: ''
+  });
 
-  const fetchAnalyticsData = async () => {
-    try {
-      const response = await axiosInstance('/api/admin/get-analytics');
-      setAnalyticsData(response.data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching analytics data:', error);
-      setLoading(false);
-    }
-  };
+  // Calculate local metrics for user list
+  const [metrics, setMetrics] = useState({
+    totalUsers: 0,
+    premiumUsers: 0,
+    standardUsers: 0,
+    planWiseUsers: {},
+    usersWithLists: 0,
+    averageListsPerUser: 0,
+    batchWiseUsers: {}
+  });
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadData = async () => {
@@ -69,7 +65,7 @@ const AnalyticsDashboard = () => {
       ]);
     };
     loadData();
-  }, [fetchUsers, fetchLists]);
+  }, [fetchUsers, fetchLists, fetchAnalyticsData]);
 
   useEffect(() => {
     if (users.length > 0) {
@@ -159,74 +155,19 @@ const AnalyticsDashboard = () => {
       planWiseUsers,
       usersWithLists,
       averageListsPerUser: totalLists / totalUsers || 0,
-      batchWiseUsers,
+      batchWiseUsers
     });
   };
 
-  const getMetricUsers = (metricType) => {
-    let users = [];
+  const getFilteredMetricUsers = (metricType) => {
+    const filters = {
+      planFilter: selectedMetricFilter,
+      fromDate: dateFilters.fromDate,
+      toDate: dateFilters.toDate,
+      sortOrder: sortOrder
+    };
     
-    switch (metricType) {
-      case 'enrolled':
-        users = analyticsData.metrics.enrolled.users || [];
-        break;
-      case 'todayEnrolled':
-        users = analyticsData.metrics.todayEnrolled.users || [];
-        break;
-      case 'paymentPending':
-        users = analyticsData.metrics.paymentPending.users || [];
-        break;
-      default:
-        users = [];
-    }
-
-    // Filter by plan if a specific plan is selected
-    if (selectedMetricFilter !== 'all') {
-      users = users.filter(user => user.planTitle === selectedMetricFilter);
-    }
-
-    // Sort by purchasedDate
-    users = users.sort((a, b) => {
-      if(!a.purchasedDate._seconds && !b.purchasedDate?._seconds) {
-        const dataA = new Date(a.purchasedDate);
-        const dataB = new Date(b.purchasedDate);
-        if(isNaN(dataA.getTime()) || isNaN(dataB.getTime())) {
-          return 0; // If both dates are invalid, consider them equal
-        }
-        if (sortOrder === 'asc') {
-          return dataA.getTime() - dataB.getTime(); // Oldest first
-        }
-        return dataB.getTime() - dataA.getTime(); // Newest first
-      }
-      const dateA = a.purchasedDate?._seconds || 0;
-      const dateB = b.purchasedDate?._seconds || 0;
-      
-      if (sortOrder === 'desc') {
-        return dateB - dateA; // Newest first
-      } else {
-        return dateA - dateB; // Oldest first
-      }
-    });
-
-    return users;
-  };
-
-  const getUniquePlans = (metricType) => {
-    const users = (() => {
-      switch (metricType) {
-        case 'enrolled':
-          return analyticsData.metrics.enrolled.users || [];
-        case 'todayEnrolled':
-          return analyticsData.metrics.todayEnrolled.users || [];
-        case 'paymentPending':
-          return analyticsData.metrics.paymentPending.users || [];
-        default:
-          return [];
-      }
-    })();
-
-    const plans = [...new Set(users.map(user => user.planTitle).filter(Boolean))];
-    return plans.sort();
+    return getMetricUsers(metricType, filters);
   };
 
   const formatDate = (timestamp) => {
@@ -263,10 +204,21 @@ const AnalyticsDashboard = () => {
   const resetFilters = () => {
     setSelectedMetricFilter('all');
     setSortOrder('desc');
+    setDateFilters({
+      fromDate: '',
+      toDate: ''
+    });
+  };
+
+  const hasActiveFilters = () => {
+    return selectedMetricFilter !== 'all' || 
+           sortOrder !== 'desc' || 
+           dateFilters.fromDate || 
+           dateFilters.toDate;
   };
 
   const exportToExcel = (metricType) => {
-    const usersToExport = getMetricUsers(metricType);
+    const usersToExport = getFilteredMetricUsers(metricType);
     
     if (usersToExport.length === 0) {
       alert('No data to export');
@@ -324,20 +276,31 @@ const AnalyticsDashboard = () => {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
       
-      // Generate filename based on metric type
+      // Generate filename based on metric type and applied filters
       const getFileName = () => {
         const timestamp = new Date().toISOString().split('T')[0];
+        let filename = '';
         
         switch (metricType) {
           case 'enrolled':
-            return `enrolled_users_${timestamp}_${selectedMetricFilter}.csv`;
+            filename = `enrolled_users_${timestamp}`;
+            break;
           case 'todayEnrolled':
-            return `today_enrollments_${timestamp}_${selectedMetricFilter}.csv`;
+            filename = `today_enrollments_${timestamp}`;
+            break;
           case 'paymentPending':
-            return `payment_pending_users_${timestamp}_${selectedMetricFilter}.csv`;
+            filename = `payment_pending_users_${timestamp}`;
+            break;
           default:
-            return `users_export_${timestamp}_${selectedMetricFilter}.csv`;
+            filename = `users_export_${timestamp}`;
         }
+        
+        // Add filter info to filename
+        if (hasActiveFilters()) {
+          filename += '_filtered';
+        }
+        
+        return `${filename}.csv`;
       };
       
       link.setAttribute('download', getFileName());
@@ -348,202 +311,71 @@ const AnalyticsDashboard = () => {
     }
   };
 
-  {/* Metric Users Modal */}
-  {showMetricUsers && selectedMetric && (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden">
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <h3 className="text-xl font-semibold">
-              {selectedMetric === 'enrolled' && 'All Enrolled Users'}
-              {selectedMetric === 'todayEnrolled' && "Today's Enrollments"}
-              {selectedMetric === 'paymentPending' && "Payment Pending Users"}
-            </h3>
-            <span className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
-              {getMetricUsers(selectedMetric).length} users
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => exportToExcel(selectedMetric)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              title="Export to Excel"
-            >
-              <FileSpreadsheet size={16} />
-              Export to Excel
-            </button>
-            <button
-              onClick={() => {
-                setShowMetricUsers(false);
-                setSelectedMetric(null);
-                setSelectedMetricFilter('all');
-                setSortOrder('desc');
-              }}
-              className="text-gray-400 hover:text-gray-500"
-            >
-              <X size={24} />
-            </button>
-          </div>
-        </div>
-        
-        {/* Filters and Controls */}
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-4 flex-wrap">
-            {/* Plan Filter */}
-            <div className="flex items-center gap-2">
-              <Filter size={16} className="text-gray-500" />
-              <label className="text-sm font-medium text-gray-700">Plan:</label>
-              <select
-                value={selectedMetricFilter}
-                onChange={(e) => setSelectedMetricFilter(e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Plans</option>
-                {getUniquePlans(selectedMetric).map(plan => (
-                  <option key={plan} value={plan}>{plan}</option>
-                ))}
-              </select>
-            </div>
+  const derivedMetrics = getDerivedMetrics();
 
-            {/* Sort Controls */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Sort by Date:</label>
-              <button
-                onClick={toggleSortOrder}
-                className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-100 transition-colors"
-              >
-                {sortOrder === 'desc' ? (
-                  <>
-                    <ArrowDown size={14} />
-                    Newest First
-                  </>
-                ) : (
-                  <>
-                    <ArrowUp size={14} />
-                    Oldest First
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Reset Filters */}
-            {(selectedMetricFilter !== 'all' || sortOrder !== 'desc') && (
-              <button
-                onClick={resetFilters}
-                className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors"
-              >
-                Reset Filters
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="overflow-auto max-h-[calc(90vh-200px)]">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th> */}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Plan
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center gap-1">
-                    Purchase Date
-                    <button onClick={toggleSortOrder} className="text-gray-400 hover:text-gray-600">
-                      <ArrowUpDown size={12} />
-                    </button>
-                  </div>
-                </th>
-                {selectedMetric === 'paymentPending' && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount Due
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {getMetricUsers(selectedMetric).length === 0 ? (
-                <tr>
-                  <td colSpan={selectedMetric === 'paymentPending' ? 6 : 5} className="px-6 py-8 text-center text-gray-500">
-                    No users found with the selected filters.
-                  </td>
-                </tr>
-              ) : (
-                getMetricUsers(selectedMetric).map((user, index) => (
-                  <tr 
-                    key={user.id || index} 
-                    onClick={() => handleUserClick(user.id)}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                        {user.name}
-                      </div>
-                    </td>
-                   
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {user.phone}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                        {user.planTitle}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(user.purchasedDate)}
-                    </td>
-                    {selectedMetric === 'paymentPending' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                        ₹{user.amountRemaining}
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Footer with summary */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex justify-between items-center text-sm text-gray-600">
-            <span>
-              Showing {getMetricUsers(selectedMetric).length} of {
-                (() => {
-                  switch (selectedMetric) {
-                    case 'enrolled':
-                      return analyticsData.metrics.enrolled.users?.length || 0;
-                    case 'todayEnrolled':
-                      return analyticsData.metrics.todayEnrolled.users?.length || 0;
-                    case 'paymentPending':
-                      return analyticsData.metrics.paymentPending.users?.length || 0;
-                    default:
-                      return 0;
-                  }
-                })()
-              } users
-            </span>
-            <span>
-              Sorted by purchase date ({sortOrder === 'desc' ? 'newest first' : 'oldest first'})
-            </span>
+  if (loading && !analyticsData.totalUsers) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <span className="ml-3 text-lg text-gray-600">Loading analytics...</span>
           </div>
         </div>
       </div>
-    </div>
-  )}
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-red-800 mb-2">Error Loading Analytics</h2>
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={refreshAnalytics}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Analytics Dashboard</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+          <div className="flex items-center gap-4">
+            {isDataStale && (
+              <span className="text-amber-600 text-sm bg-amber-50 px-3 py-1 rounded-full">
+                Data may be outdated
+              </span>
+            )}
+            <button
+              onClick={refreshAnalytics}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+              ) : (
+                '🔄'
+              )}
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {derivedMetrics.lastUpdated && (
+          <p className="text-sm text-gray-500 mb-6">
+            Last updated: {derivedMetrics.lastUpdated}
+          </p>
+        )}
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -585,6 +417,8 @@ const AnalyticsDashboard = () => {
           />
         </div>
 
+        
+
         {/* Metric Users Modal */}
         {showMetricUsers && selectedMetric && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -597,7 +431,7 @@ const AnalyticsDashboard = () => {
                     {selectedMetric === 'paymentPending' && "Payment Pending Users"}
                   </h3>
                   <span className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
-                    {getMetricUsers(selectedMetric).length} users
+                    {getFilteredMetricUsers(selectedMetric).length} users
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -615,6 +449,7 @@ const AnalyticsDashboard = () => {
                       setSelectedMetric(null);
                       setSelectedMetricFilter('all');
                       setSortOrder('desc');
+                      setDateFilters({ fromDate: '', toDate: '' });
                     }}
                     className="text-gray-400 hover:text-gray-500"
                   >
@@ -623,9 +458,31 @@ const AnalyticsDashboard = () => {
                 </div>
               </div>
               
-              {/* Filters and Controls */}
+              {/* Filters Section */}
               <div className="p-4 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center gap-4 flex-wrap">
+                  {/* Date Range Filters */}
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} className="text-gray-500" />
+                    <label className="text-sm font-medium text-gray-700">From:</label>
+                    <input
+                      type="date"
+                      value={dateFilters.fromDate}
+                      onChange={(e) => setDateFilters(prev => ({ ...prev, fromDate: e.target.value }))}
+                      className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">To:</label>
+                    <input
+                      type="date"
+                      value={dateFilters.toDate}
+                      onChange={(e) => setDateFilters(prev => ({ ...prev, toDate: e.target.value }))}
+                      className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
                   {/* Plan Filter */}
                   <div className="flex items-center gap-2">
                     <Filter size={16} className="text-gray-500" />
@@ -642,7 +499,7 @@ const AnalyticsDashboard = () => {
                     </select>
                   </div>
 
-                  {/* Sort Controls */}
+                  {/* Sort Order */}
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-medium text-gray-700">Sort by Date:</label>
                     <button
@@ -664,7 +521,7 @@ const AnalyticsDashboard = () => {
                   </div>
 
                   {/* Reset Filters */}
-                  {(selectedMetricFilter !== 'all' || sortOrder !== 'desc') && (
+                  {hasActiveFilters() && (
                     <button
                       onClick={resetFilters}
                       className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors"
@@ -675,6 +532,7 @@ const AnalyticsDashboard = () => {
                 </div>
               </div>
 
+              {/* Users Table */}
               <div className="overflow-auto max-h-[calc(90vh-200px)]">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 sticky top-0">
@@ -682,7 +540,6 @@ const AnalyticsDashboard = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Name
                       </th>
-                      
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Phone
                       </th>
@@ -705,14 +562,14 @@ const AnalyticsDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {getMetricUsers(selectedMetric).length === 0 ? (
+                    {getFilteredMetricUsers(selectedMetric).length === 0 ? (
                       <tr>
-                        <td colSpan={selectedMetric === 'paymentPending' ? 6 : 5} className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan={selectedMetric === 'paymentPending' ? 5 : 4} className="px-6 py-8 text-center text-gray-500">
                           No users found with the selected filters.
                         </td>
                       </tr>
                     ) : (
-                      getMetricUsers(selectedMetric).map((user, index) => (
+                      getFilteredMetricUsers(selectedMetric).map((user, index) => (
                         <tr 
                           key={user.id || index} 
                           onClick={() => handleUserClick(user.id)}
@@ -726,7 +583,6 @@ const AnalyticsDashboard = () => {
                               {user.email}
                             </div>
                           </td>
-                        
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {user.phone}
                           </td>
@@ -750,11 +606,11 @@ const AnalyticsDashboard = () => {
                 </table>
               </div>
 
-              {/* Footer with summary */}
+              {/* Footer with count and applied filters info */}
               <div className="p-4 border-t border-gray-200 bg-gray-50">
                 <div className="flex justify-between items-center text-sm text-gray-600">
                   <span>
-                    Showing {getMetricUsers(selectedMetric).length} of {
+                    Showing {getFilteredMetricUsers(selectedMetric).length} of {
                       (() => {
                         switch (selectedMetric) {
                           case 'enrolled':
@@ -768,10 +624,23 @@ const AnalyticsDashboard = () => {
                         }
                       })()
                     } users
+                    {hasActiveFilters() && <span className="text-blue-600 ml-1">(filtered)</span>}
                   </span>
-                  <span>
-                    Sorted by purchase date ({sortOrder === 'desc' ? 'newest first' : 'oldest first'})
-                  </span>
+                  <div className="flex items-center gap-4">
+                    {dateFilters.fromDate && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        From: {new Date(dateFilters.fromDate).toLocaleDateString()}
+                      </span>
+                    )}
+                    {dateFilters.toDate && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          To: {new Date(dateFilters.toDate).toLocaleDateString()}
+                      </span>
+                    )}
+                    <span>
+                      Sorted by purchase date ({sortOrder === 'desc' ? 'newest first' : 'oldest first'})
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -841,11 +710,10 @@ const AnalyticsDashboard = () => {
           <FormProgressTracker />
         </div>
 
-
         {/* User List Section */}
         <div className="bg-white p-6 rounded-lg shadow mt-8">
           <h2 className="text-xl font-semibold mb-6">Lists Tracking</h2>
-          <ListTracking />
+          <ListTracking listData={analyticsData} />
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow mt-8">

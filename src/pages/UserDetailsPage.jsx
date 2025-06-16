@@ -729,6 +729,15 @@ const UserDetailsPage = () => {
             </div>
           )}
 
+          {isEditModalOpen && (
+            <UserEditModal
+              isOpen={isEditModalOpen}
+              onClose={() => setIsEditModalOpen(false)}
+              user={user}
+              onSave={handleUpdateUser}
+            />
+          )}
+
         
 
           {/* Verdict Modal */}
