@@ -301,6 +301,10 @@ const PremiumUsersManagement = () => {
 
   const handleListSelection = async (listId) => {
     try {
+        if(!selectedUserId.isPremium){
+        setError('User is not a premium user. Please upgrade to assign lists.');
+        return;
+      }
       const authAxios = getAuthAxios();
       const listResponse = await authAxios.get(`/api/admin/list/${listId}`);
       const selectedList = listResponse.data;
@@ -311,10 +315,12 @@ const PremiumUsersManagement = () => {
         listTitle: selectedList.title,
         onConfirm: async () => {
           try {
+            
+            
             setLoadingLists(true);
             const timestamp = new Date().toISOString();
             const listAssignment = {
-              id: `${listId}_${selectedUserId}_${timestamp}`,
+              id: `${listId}_${selectedUserId.id}_${timestamp}`,
               originalListId: listId,
               title: selectedList.title,
               colleges: selectedList.colleges || [],
@@ -323,11 +329,11 @@ const PremiumUsersManagement = () => {
               customized: false,
               isCustomized: false
             };
-
-            await authAxios.post(`/api/admin/user/${selectedUserId}/assign-list`, listAssignment);
+            
+            await authAxios.post(`/api/admin/user/${selectedUserId.id}/assign-list`, listAssignment);
             
             setUsers(users.map(user => {
-              if (user.id === selectedUserId) {
+              if (user.id === selectedUserId.id) {
                 return {
                   ...user,
                   lists: [...(user.lists || []), listAssignment]
@@ -805,8 +811,7 @@ const PremiumUsersManagement = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Plans</option>
-                    <option value="premium">Premium Users</option>
-                    <option value="standard">Standard Users</option>
+                    
                     <optgroup label="Specific Plans">
                       {getAvailablePlans().map(plan => (
                         <option key={plan} value={plan}>

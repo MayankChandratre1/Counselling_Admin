@@ -300,6 +300,8 @@ const ListsManagement = () => {
   const [filteredBranches, setFilteredBranches] = useState([]);
   const searchTimeoutRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState(PREDEFINED_CATEGORIES[0]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [showTemplateSelection, setShowTemplateSelection] = useState(false);
 
   useEffect(() => {
     fetchLists();
@@ -539,6 +541,37 @@ const ListsManagement = () => {
     }
   };
 
+  const handleAppendColleges = async (exportedColleges = []) => {
+    e.preventDefault();
+    try {
+      const submitData = {
+        title: formData.title,
+        colleges: exportedColleges.map(college => {
+        }),
+        userIds: formData.userIds || [],
+        category: selectedCategory
+      };
+
+      if (editingList?.id) {
+        await axiosInstance.post(`/api/admin/edit-list/${editingList.id}`, submitData);
+        setLists(lists.map(list => 
+          list.id === editingList.id ? { ...list, ...submitData } : list
+        ));
+      } else {
+        const response = await axiosInstance.post('/api/admin/add-list', submitData);
+        setLists([...lists, response.data]);
+      }
+      setShowModal(false);
+      setEditingList(null);
+      setFormData({ title: '' });
+      setSelectedColleges([]);
+    } catch (err) {
+      console.log(err);
+      
+      setError('Failed to save list');
+    }
+  };
+
   const openModal = (list = null) => {
     if (list) {
       setFormData({
@@ -546,12 +579,43 @@ const ListsManagement = () => {
       });
       setSelectedColleges(list.colleges || []);
       setEditingList(list);
+      setShowTemplateSelection(false);
+      setSelectedTemplate('');
     } else {
       setFormData({ title: '' });
       setSelectedColleges([]);
       setEditingList(null);
+      setSelectedTemplate('');
+      setShowTemplateSelection(true); // Show template selection for new lists
     }
     setShowModal(true);
+  };
+
+  const handleTemplateSelect = (templateId) => {
+    if (templateId === '') {
+      // No template selected
+      setSelectedColleges([]);
+      setSelectedTemplate('');
+      setShowTemplateSelection(false);
+      return;
+    }
+
+    const templateList = lists.find(list => list.id === templateId);
+    if (templateList && templateList.colleges) {
+      setSelectedColleges([...templateList.colleges]); // Copy colleges from template
+      setSelectedTemplate(templateId);
+      setShowTemplateSelection(false);
+      // Set the category from template as well
+      if (templateList.category) {
+        setSelectedCategory(templateList.category);
+      }
+    }
+  };
+
+  const resetToTemplate = () => {
+    setShowTemplateSelection(true);
+    setSelectedTemplate('');
+    setSelectedColleges([]);
   };
 
   const moveItem = (dragIndex, hoverIndex) => {
@@ -649,7 +713,11 @@ const ListsManagement = () => {
               formData={formData}
               setFormData={setFormData}
               handleSubmit={handleSubmit}
-              closeModal={() => setShowModal(false)}
+              closeModal={() => {
+                setShowModal(false);
+                setSelectedTemplate('');
+                setShowTemplateSelection(false);
+              }}
               selectedColleges={selectedColleges}
               setSelectedColleges={setSelectedColleges}
               searchQuery={searchQuery}
@@ -677,6 +745,12 @@ const ListsManagement = () => {
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
               categories={PREDEFINED_CATEGORIES}
+              // Template selection props
+              showTemplateSelection={showTemplateSelection}
+              selectedTemplate={selectedTemplate}
+              availableTemplates={lists}
+              onTemplateSelect={handleTemplateSelect}
+              onResetToTemplate={resetToTemplate}
             />
           )}
 

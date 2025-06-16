@@ -291,6 +291,10 @@ const UsersManagement = () => {
 
   const handleListSelection = async (listId) => {
     try {
+      if(!selectedUserId.isPremium){
+        setError('User is not a premium user. Please upgrade to assign lists.');
+        return;
+      }
       const authAxios = getAuthAxios();
       const listResponse = await authAxios.get(`/api/admin/list/${listId}`);
       const selectedList = listResponse.data;
@@ -304,7 +308,7 @@ const UsersManagement = () => {
             setLoadingLists(true);
             const timestamp = new Date().toISOString();
             const listAssignment = {
-              id: `${listId}_${selectedUserId}_${timestamp}`,
+              id: `${listId}_${selectedUserId.id}_${timestamp}`,
               originalListId: listId,
               title: selectedList.title,
               colleges: selectedList.colleges || [],
@@ -314,10 +318,10 @@ const UsersManagement = () => {
               isCustomized: false
             };
 
-            await authAxios.post(`/api/admin/user/${selectedUserId}/assign-list`, listAssignment);
+            await authAxios.post(`/api/admin/user/${selectedUserId.id}/assign-list`, listAssignment);
             
             setUsers(users.map(user => {
-              if (user.id === selectedUserId) {
+              if (user.id === selectedUserId.id) {
                 return {
                   ...user,
                   lists: [...(user.lists || []), listAssignment]

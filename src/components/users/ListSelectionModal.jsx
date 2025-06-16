@@ -32,9 +32,10 @@ const ListSelectionModal = ({
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {availableLists.map(list => {
               const isSelected2 = list.userIds && list.userIds.includes(selectedUserId);
-              const selectedUser = users.find(user => user.id === selectedUserId);
-              const isSelected = selectedUser?.lists?.map(l => l.listId).includes(list.id);
-              ;
+              const selectedUser = users.find(user => user.id === selectedUserId.id);
+              const isSelected = selectedUser?.lists?.map(l => l.listId).includes(list.id) || isSelected2;
+              console.log(selectedUser);
+              
               return (
                 <div 
                   key={list.id}

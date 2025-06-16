@@ -5,7 +5,20 @@ import NavigationSearch from './NavigationSearch';
 import { set } from 'lodash';
 import axiosInstance from '../../utils/axios';
 
-const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList, isSearchPanelCollapsed, selectedUserMarks, selectedUserCategory, fetchCutoffs, selectedCategory }) => {
+const SelectedColleges = ({ 
+  selectedColleges, 
+  moveCollege, 
+  removeCollegeFromList, 
+  isSearchPanelCollapsed, 
+  selectedUserMarks, 
+  selectedUserCategory, 
+  fetchCutoffs, 
+  selectedCategory,
+  // Export selection props
+  editingList,
+  selectedForExport,
+  onSelectForExport
+}) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
   const [showMoveBox, setShowMoveBox] = useState(false);
@@ -457,6 +470,15 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
     setLastSelectedIndex(null);
   };
 
+  if (selectedColleges.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+        <p>No colleges selected yet</p>
+        <p className="text-sm mt-1">Search and add colleges using the form above</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col relative h-full">
       {/* Move Items Box */}
@@ -616,6 +638,10 @@ const SelectedColleges = ({ selectedColleges, moveCollege, removeCollegeFromList
                         )}
                         recentlyMoved={recentlyMoved.has(index)}
                         onMove={handleMove}
+                        // Pass export props
+                        editingList={editingList}
+                        selectedForExport={selectedForExport}
+                        onSelectForExport={onSelectForExport}
                       />
                     );
                   })}
