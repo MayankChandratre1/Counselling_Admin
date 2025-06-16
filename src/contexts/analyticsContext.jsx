@@ -84,7 +84,7 @@ export const AnalyticsProvider = ({ children }) => {
     if (filters.planFilter && filters.planFilter !== 'all') {
       filteredUsers = filteredUsers.filter(user => {
         const userPlan = user.planTitle || '';
-        return userPlan.toLowerCase().includes(filters.planFilter.toLowerCase());
+        return userPlan.toLowerCase() == filters.planFilter.toLowerCase();
       });
     }
 

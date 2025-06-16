@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
+import { usePremiumPage } from '../../contexts/PremiumPageContext';
 
 const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
+  const { premiumPlans, plansLoading } = usePremiumPage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPremiumFields, setShowPremiumFields] = useState(false);
   const [isPaymentPending, setIsPaymentPending] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('');
   const [formData, setFormData] = useState({
     // Basic Information
     name: '',
@@ -16,8 +19,10 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
     // Premium Plan Details
     premiumPlan: {
       planTitle: '',
-      purchasedDate: '',
-      expiryDate: '',
+      purchasedDate: new Date().toISOString().split('T')[0], // Default to today
+      //expires after 6 months
+      expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().split('T')[0] 
+      , // Default to 6 months from today
       form: '',
       isPaymentPending: false,
       amountPaid: 0,
@@ -48,6 +53,42 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
     }
   });
 
+  // Handle plan selection and auto-populate fields
+  const handlePlanSelection = (planTitle) => {
+    setSelectedPlan(planTitle);
+    
+    if (planTitle) {
+      const selectedPlanData = premiumPlans.find(plan => plan.title === planTitle);
+      if (selectedPlanData) {
+        setFormData(prev => ({
+          ...prev,
+          premiumPlan: {
+            ...prev.premiumPlan,
+            planTitle: selectedPlanData.title,
+            form: selectedPlanData.form || '',
+            purchasedDate: new Date().toISOString().split('T')[0], // Default to today
+      //expires after 6 months
+      expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().split('T')[0] 
+          }
+        }));
+      }
+    } else {
+      // Clear premium plan data if no plan selected
+      setFormData(prev => ({
+        ...prev,
+        premiumPlan: {
+          planTitle: '',
+          purchasedDate: '',
+          expiryDate: '',
+          form: '',
+          isPaymentPending: false,
+          amountPaid: 0,
+          amountRemaining: 0
+        }
+      }));
+    }
+  };
+
   // Initialize form data with user data
   useEffect(() => {
     if (user) {
@@ -70,6 +111,7 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
       // Handle premium plan data
       if (user.premiumPlan) {
         setShowPremiumFields(true);
+        setSelectedPlan(user.premiumPlan.planTitle || '');
         
         const premiumPlan = { ...user.premiumPlan };
         
@@ -113,6 +155,10 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
       // Handle top-level fields
       if (name === 'isPremium') {
         setShowPremiumFields(checked);
+        if (!checked) {
+          setSelectedPlan('');
+          handlePlanSelection('');
+        }
       }
       
       setFormData(prev => ({
@@ -283,32 +329,61 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
               </div>
             </div>
             
-            {/* Premium Plan Info - Conditional */}
+            {/* Premium Plan Info - Updated */}
             {showPremiumFields && (
               <div className="space-y-6">
                 <h3 className="text-xl font-semibold text-gray-800 border-b pb-2">Premium Plan Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Plan Title *</label>
-                    <input
-                      type="text"
-                      name="premiumPlan.planTitle"
-                      required={formData.isPremium}
-                      value={formData.premiumPlan?.planTitle || ''}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Plan *</label>
+                    {plansLoading ? (
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                        <span className="text-gray-500">Loading plans...</span>
+                      </div>
+                    ) : (
+                      <select
+                        value={selectedPlan}
+                        onChange={(e) => handlePlanSelection(e.target.value)}
+                        required={formData.isPremium}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select a plan...</option>
+                        {premiumPlans?.map(plan => (
+                          <option key={plan.title} value={plan.title}>
+                            {plan.title} - ₹{plan.price}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Form ID</label>
-                    <input
-                      type="text"
-                      name="premiumPlan.form"
-                      value={formData.premiumPlan?.form || ''}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+                  
+                  {selectedPlan && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Plan Title</label>
+                        <input
+                          type="text"
+                          value={formData.premiumPlan?.planTitle || ''}
+                          readOnly
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Form ID</label>
+                        <input
+                          type="text"
+                          name="premiumPlan.form"
+                          value={formData.premiumPlan?.form || ''}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      
+                      
+                      
+                    </>
+                  )}
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
                     <input

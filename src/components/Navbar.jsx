@@ -56,6 +56,7 @@ const VerticalNavbar = ({ onClose }) => {
     const allMenuItems = [
       { name: 'Home', icon: <Home className="mr-3 text-white" />, path: '/home', permission: 'home' },
       { name: 'Users', icon: <User className="mr-3 text-blue-400" />, path: '/users', permission: 'users' },
+      { name: 'Premium Users', icon: <User className="mr-3 text-blue-400" />, path: '/premium-users', permission: 'users' },
       { name: 'Colleges', icon: <Building className="mr-3 text-green-400" />, path: '/colleges', permission: 'colleges' },
       { name: 'Forms', icon: <FormInput className="mr-3 text-green-400" />, path: '/forms', permission: 'forms' },
       { name: 'Data Collection Form', icon: <FileLineChart className="mr-3 text-green-400" />, path: '/registrationform', permission: 'registrationform' },

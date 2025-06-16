@@ -7,48 +7,55 @@ import axiosInstance from '../../utils/axios';
 const ListTracking = ({listData}) => {
   const [showModal, setShowModal] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState(null);
-  const [activeTab, setActiveTab] = useState('complete');
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const navigate = useNavigate();
 
-  // Calculate metrics using new listData structure
+  // Calculate metrics using new plan-based distribution structure
   const metrics = useMemo(() => {
-    if (!listData?.listData) {
+    if (!listData?.listData?.userListDistributionWithLists) {
       return {
-        online: {
-          withLists: 0,
-          withoutLists: 0,
-        },
-        offline: {
-          withLists: 0,
-          withoutLists: 0,
-        }
+        totalWithLists: 0,
+        totalWithoutLists: 0,
+        planDistribution: {}
       };
     }
 
-    const data = listData.listData;
+    const withListsData = listData.listData.userListDistributionWithLists || {};
+    const withoutListsData = listData.listData.userListDistributionWithoutLists || {};
+
+    // Calculate totals
+    const totalWithLists = Object.values(withListsData).reduce((sum, users) => sum + users.length, 0);
+    const totalWithoutLists = Object.values(withoutListsData).reduce((sum, users) => sum + users.length, 0);
+
+    // Calculate plan-wise distribution
+    const planDistribution = {};
+    const allPlans = new Set([...Object.keys(withListsData), ...Object.keys(withoutListsData)]);
+    
+    allPlans.forEach(plan => {
+      planDistribution[plan] = {
+        withLists: withListsData[plan]?.length || 0,
+        withoutLists: withoutListsData[plan]?.length || 0,
+        total: (withListsData[plan]?.length || 0) + (withoutListsData[plan]?.length || 0)
+      };
+    });
+
     return {
-      online: {
-        withLists: data.usersWithListsOnline?.total || 0,
-        withoutLists: data.usersWithoutListsOnline?.total || 0,
-      },
-      offline: {
-        withLists: data.usersWithListsOffline?.total || 0,
-        withoutLists: data.usersWithoutListsOffline?.total || 0,
-      }
+      totalWithLists,
+      totalWithoutLists,
+      planDistribution
     };
   }, [listData]);
 
   // Get all available list names for filter
   const availableListNames = useMemo(() => {
-    if (!listData?.listData) return [];
+    if (!listData?.listData?.userListDistributionWithLists) return [];
     
     const lists = new Set();
-    const data = listData.listData;
-    
-    [...(data.usersWithListsOnline?.users || []), ...(data.usersWithListsOffline?.users || [])]
-      .forEach(user => {
+    Object.values(listData.listData.userListDistributionWithLists).forEach(users => {
+      users.forEach(user => {
         user.lists?.forEach(listName => lists.add(listName));
       });
+    });
     
     return Array.from(lists);
   }, [listData]);
@@ -59,35 +66,51 @@ const ListTracking = ({listData}) => {
     return Object.keys(listData.premiumPlanDistribution);
   }, [listData]);
 
-  const getMetricUsers = async (metricType) => {
+  const getMetricUsers = async (metricType, planName) => {
     if (!listData?.listData) return [];
 
-    const data = listData.listData;
+    const withListsData = listData.listData.userListDistributionWithLists || {};
+    const withoutListsData = listData.listData.userListDistributionWithoutLists || {};
+    
     let userData = [];
     
-    switch (metricType) {
-      case 'online-with':
-        userData = data.usersWithListsOnline?.users || [];
-        break;
-      case 'online-without':
-        userData = data.usersWithoutListsOnline?.users || [];
-        break;
-      case 'offline-with':
-        userData = data.usersWithListsOffline?.users || [];
-        break;
-      case 'offline-without':
-        userData = data.usersWithoutListsOffline?.users || [];
-        break;
-      default:
-        return [];
+    if (metricType === 'with-lists') {
+      if (planName === 'all') {
+        // Get all users with lists across all plans
+        userData = Object.values(withListsData).flat();
+      } else {
+        // Get users with lists for specific plan
+        userData = withListsData[planName] || [];
+      }
+    } else if (metricType === 'without-lists') {
+      if (planName === 'all') {
+        // Get all users without lists across all plans
+        userData = Object.values(withoutListsData).flat();
+      } else {
+        // Get users without lists for specific plan
+        userData = withoutListsData[planName] || [];
+      }
     }
 
-    // Get user IDs
+    // If we have user IDs, try to fetch detailed user data from backend
     const userIds = userData.map(user => user.id);
 
     if (userIds.length > 0) {
       try {
-        throw new Error('Simulated error for testing fallback logic');
+        const response = await axiosInstance.post('/api/admin/users/batch-details', {
+          userIds: userIds
+        });
+        
+        // Merge with list data
+        const detailedUsers = response.data.users?.map(user => {
+          const listUser = userData.find(u => u.id === user.id);
+          return {
+            ...user,
+            lists: listUser?.lists || []
+          };
+        }) || [];
+        
+        return detailedUsers;
       } catch (error) {
         console.error('Error fetching user details:', error);
         // Fallback: try to use enrolled users data
@@ -148,14 +171,15 @@ const ListTracking = ({listData}) => {
     XLSX.writeFile(wb, `list_tracking_${selectedMetric}_export.xlsx`);
   };
 
-  const MetricCard = ({ title, withLists, withoutLists, type }) => (
+  const OverviewCard = ({ title, withLists, withoutLists }) => (
     <div className="bg-white p-6 rounded-lg border border-dashed border-black">
       <h3 className="text-lg font-semibold mb-4">{title}</h3>
       <div className="grid grid-cols-2 gap-4">
         <div 
           className="bg-green-50 p-4 rounded-lg cursor-pointer hover:bg-green-100 transition-colors"
           onClick={() => {
-            setSelectedMetric(`${type}-with`);
+            setSelectedMetric('with-lists');
+            setSelectedPlan('all');
             setShowModal(true);
           }}
         >
@@ -165,12 +189,51 @@ const ListTracking = ({listData}) => {
         <div 
           className="bg-red-50 p-4 rounded-lg cursor-pointer hover:bg-red-100 transition-colors"
           onClick={() => {
-            setSelectedMetric(`${type}-without`);
+            setSelectedMetric('without-lists');
+            setSelectedPlan('all');
             setShowModal(true);
           }}
         >
           <div className="text-2xl font-bold text-red-700">{withoutLists}</div>
           <div className="text-sm text-red-600">Without Lists</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const PlanCard = ({ planName, withLists, withoutLists, total }) => (
+    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+      <h4 className="font-medium text-gray-900 mb-3 truncate" title={planName}>
+        {planName}
+      </h4>
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Total:</span>
+          <span className="font-medium">{total}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div 
+            className="bg-green-50 p-2 rounded cursor-pointer hover:bg-green-100 transition-colors"
+            onClick={() => {
+              setSelectedMetric('with-lists');
+              setSelectedPlan(planName);
+              setShowModal(true);
+            }}
+          >
+            <div className="text-lg font-bold text-green-700">{withLists}</div>
+            <div className="text-xs text-green-600">With Lists</div>
+          </div>
+          <div 
+            className="bg-red-50 p-2 rounded cursor-pointer hover:bg-red-100 transition-colors"
+            onClick={() => {
+              setSelectedMetric('without-lists');
+              setSelectedPlan(planName);
+              setShowModal(true);
+            }}
+          >
+            <div className="text-lg font-bold text-red-700">{withoutLists}</div>
+            <div className="text-xs text-red-600">Without Lists</div>
+          </div>
         </div>
       </div>
     </div>
@@ -193,7 +256,7 @@ const ListTracking = ({listData}) => {
       const fetchUsers = async () => {
         setLoadingUsers(true);
         try {
-          const users = await getMetricUsers(selectedMetric);
+          const users = await getMetricUsers(selectedMetric, selectedPlan);
           setModalUsers(users);
         } catch (error) {
           console.error('Error fetching users:', error);
@@ -204,7 +267,7 @@ const ListTracking = ({listData}) => {
       };
 
       fetchUsers();
-    }, [selectedMetric]);
+    }, [selectedMetric, selectedPlan]);
 
     const filteredUsers = useMemo(() => {
         return modalUsers.filter(user => {
@@ -267,7 +330,13 @@ const ListTracking = ({listData}) => {
     };
 
     const handleUserClick = (userId) => {
-        navigate(`/users/${userId}`);
+      navigate(`/users/${userId}`);
+    };
+
+    const getModalTitle = () => {
+      const listType = selectedMetric === 'with-lists' ? 'With Lists' : 'Without Lists';
+      const planText = selectedPlan === 'all' ? 'All Plans' : selectedPlan;
+      return `${planText} - ${listType}`;
     };
 
     return (
@@ -276,8 +345,7 @@ const ListTracking = ({listData}) => {
                 <div className="p-6 border-b border-gray-200">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-xl font-semibold">
-                            {selectedMetric.includes('online') ? 'Online' : 'Offline'} Users - 
-                            {selectedMetric.includes('with') ? ' With Lists' : ' Without Lists'}
+                            {getModalTitle()}
                         </h3>
                         <div className="flex gap-2">
                             <button
@@ -319,20 +387,22 @@ const ListTracking = ({listData}) => {
                                         disabled={loadingUsers}
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Filter by List</label>
-                                    <select
-                                        value={selectedListFilter}
-                                        onChange={(e) => setSelectedListFilter(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-lg"
-                                        disabled={loadingUsers}
-                                    >
-                                        <option value="">All Lists</option>
-                                        {availableListNames.map(listName => (
-                                            <option key={listName} value={listName}>{listName}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                {selectedMetric === 'with-lists' && (
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Filter by List</label>
+                                        <select
+                                            value={selectedListFilter}
+                                            onChange={(e) => setSelectedListFilter(e.target.value)}
+                                            className="w-full px-3 py-2 border rounded-lg"
+                                            disabled={loadingUsers}
+                                        >
+                                            <option value="">All Lists</option>
+                                            {availableListNames.map(listName => (
+                                                <option key={listName} value={listName}>{listName}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Filter by Premium Plan</label>
                                     <select
@@ -490,24 +560,65 @@ const ListTracking = ({listData}) => {
 
   return (
     <div className="space-y-6">
+      {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <MetricCard 
-          title="Online Users" 
-          withLists={metrics.online.withLists}
-          withoutLists={metrics.online.withoutLists}
-          type="online"
+        <OverviewCard 
+          title="Overall Distribution" 
+          withLists={metrics.totalWithLists}
+          withoutLists={metrics.totalWithoutLists}
         />
-        <MetricCard 
-          title="Offline Users"
-          withLists={metrics.offline.withLists}
-          withoutLists={metrics.offline.withoutLists}
-          type="offline"
-        />
+        <div className="bg-white p-6 rounded-lg border border-dashed border-black">
+          <h3 className="text-lg font-semibold mb-4">Summary</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Total Users:</span>
+              <span className="font-medium">{metrics.totalWithLists + metrics.totalWithoutLists}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Assignment Rate:</span>
+              <span className="font-medium">
+                {metrics.totalWithLists + metrics.totalWithoutLists > 0 
+                  ? Math.round((metrics.totalWithLists / (metrics.totalWithLists + metrics.totalWithoutLists)) * 100)
+                  : 0}%
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Total Plans:</span>
+              <span className="font-medium">{Object.keys(metrics.planDistribution).length}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Plan-wise Distribution */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-xl font-semibold mb-6">Plan-wise List Distribution</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Object.entries(metrics.planDistribution)
+            .sort(([,a], [,b]) => b.total - a.total) // Sort by total users descending
+            .map(([planName, data]) => (
+              <PlanCard
+                key={planName}
+                planName={planName}
+                withLists={data.withLists}
+                withoutLists={data.withoutLists}
+                total={data.total}
+              />
+            ))}
+        </div>
+        
+        {Object.keys(metrics.planDistribution).length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            No plan distribution data available
+          </div>
+        )}
       </div>
 
       {showModal && <UsersModal />}
     </div>
   );
 };
+
+
 
 export default ListTracking;

@@ -34,7 +34,6 @@ const ListSelectionModal = ({
               const isSelected2 = list.userIds && list.userIds.includes(selectedUserId);
               const selectedUser = users.find(user => user.id === selectedUserId);
               const isSelected = selectedUser?.lists?.map(l => l.listId).includes(list.id);
-              console.log(isSelected);
               ;
               return (
                 <div 

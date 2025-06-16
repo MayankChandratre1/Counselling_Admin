@@ -195,6 +195,7 @@ const UsersManagement = () => {
       const listResponse = await authAxios.get(`/api/admin/list/${listId}`);
       const selectedList = listResponse.data;
       const timestamp = new Date().toISOString();
+      console.log(`Assigning list ${listId} to user ${selectedUserId}`);
       
       const listAssignment = {
         id: `${listId}_${selectedUserId}_${timestamp}`,
@@ -206,7 +207,7 @@ const UsersManagement = () => {
         customized: false,
         isCustomized: false
       };
-
+      
       await authAxios.post(`/api/admin/user/${selectedUserId}/assign-list`, listAssignment);
       
       setUsers(users.map(user => {
@@ -273,6 +274,8 @@ const UsersManagement = () => {
   const handleSaveUserList = async (listId) => {
     try {
       setLoading(true);
+      console.log(`Saving list with ID: for user ${selectedUserListsId}`);
+
       const authAxios = getAuthAxios();
       
       // Use the listId passed from EditListModal component
@@ -288,7 +291,6 @@ const UsersManagement = () => {
         isCustomized: true
       };
       
-      console.log(`Saving list with ID: ${targetListId} for user ${selectedUserListsId}`);
       
       const response = await authAxios.put(
         `/api/admin/user/${selectedUserListsId}/list/${targetListId}`,

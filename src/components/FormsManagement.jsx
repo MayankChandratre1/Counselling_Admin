@@ -269,6 +269,30 @@ const FormStepsManagement = () => {
     // Close modal if open
     setShowInsertModal(false);
   };
+
+  const deleteStep = (formIndex, stepIndex) => {
+    const updatedForms = [...forms];
+    const steps = updatedForms[formIndex].steps;
+
+    // Remove the step from the array
+    steps.splice(stepIndex, 1);
+
+    // Update step numbers
+    steps.forEach((step, idx) => {
+      step.number = idx + 1;
+    });
+
+    updatedForms[formIndex].steps = steps;
+    setForms(updatedForms);
+
+    // Reset edit index if it was the deleted step
+    if (editIndex === stepIndex && activeFormIndex === formIndex) {
+      setEditIndex(null);
+      setActiveFormIndex(null);
+    }
+
+    handleSave(formIndex);
+  }
   
   // Function to prepare for inserting a step
   const prepareInsertStep = (formIndex, stepIndex, type) => {

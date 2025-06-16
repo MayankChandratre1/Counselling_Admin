@@ -25,6 +25,7 @@ export const UsersProvider = ({ children }) => {
     listAssigned: 'all' // 'all', 'true', 'false'
   });
   const [isFilterActive, setIsFilterActive] = useState(false);
+  const [premiumUsersOnly, setPremiumUsersOnly] = useState(false);
 
   // Helper function to create cache key
   const getCacheKey = (page, filters, pageSize) => {
@@ -32,7 +33,7 @@ export const UsersProvider = ({ children }) => {
   };
 
   // Separate the initial fetch from explicit refresh operations
-  const fetchUsers = useCallback(async (page = currentPage, resetPagination = false) => {
+  const fetchUsers = useCallback(async (page = currentPage, resetPagination = false, premiumOnly = false) => {
     // Check if filters are active
     const activeFilters = Object.values(filters).some(filter => filter !== 'all');
     setIsFilterActive(activeFilters);
@@ -56,7 +57,7 @@ export const UsersProvider = ({ children }) => {
 
     try {
       setLoading(true);
-      console.log(`Fetching users - page ${page}, size ${pageSize}, filters:`, filters);
+      console.log(`Fetching users - page ${page}, size ${pageSize}, filters:`, filters, `premiumOnly: ${premiumOnly}`);
       
       // Prepare filter parameters
       const filterParams = {};
@@ -73,6 +74,11 @@ export const UsersProvider = ({ children }) => {
         limit: pageSize,
         ...filterParams
       };
+
+      // Add premiumOnly parameter if true
+      if (premiumOnly) {
+        requestParams.isPremium = true;
+      }
 
       // For pagination beyond page 1, include lastDoc from previous page
       if (page > 1 && !resetPagination) {
@@ -122,7 +128,7 @@ export const UsersProvider = ({ children }) => {
   }, [currentPage, pageSize, filters, dataLoaded, paginationCache, lastDocCache]);
 
   // New function to handle filter changes
-  const updateFilters = useCallback((newFilters) => {
+  const updateFilters = useCallback((newFilters, premiumOnly = false) => {
     setFilters(newFilters);
     
     // Clear cache when filters change
@@ -135,19 +141,30 @@ export const UsersProvider = ({ children }) => {
     setDataLoaded(false);
     
     // Fetch with new filters from page 1
-    fetchUsers(1, true);
+    fetchUsers(1, true, premiumOnly);
   }, [fetchUsers]);
 
-  const clearFilters = useCallback(() => {
+  const clearFilters = useCallback((premiumOnly = false) => {
     const clearedFilters = {
       plan: 'all',
       listAssigned: 'all'
     };
-    updateFilters(clearedFilters);
-  }, [updateFilters]);
+    setFilters(clearedFilters);
+    
+    // Clear cache when filters change
+    setPaginationCache(new Map());
+    setLastDocCache(new Map());
+    
+    // Reset pagination when filters change
+    setCurrentPage(1);
+    setLastDoc(null);
+    setDataLoaded(false);
+    
+    fetchUsers(1, true, premiumOnly);
+  }, [fetchUsers]);
 
   // Modified goToPage to work with caching
-  const goToPage = useCallback((page) => {
+  const goToPage = useCallback((page, premiumOnly = false) => {
     if (page < 1) return;
     
     // Don't fetch if we're already on the target page
@@ -157,26 +174,26 @@ export const UsersProvider = ({ children }) => {
     }
     
     console.log(`Going to page ${page}, current: ${currentPage}`);
-    fetchUsers(page, false);
+    fetchUsers(page, false, premiumOnly);
   }, [fetchUsers, currentPage, dataLoaded]);
 
-  const goToNextPage = useCallback(() => {
+  const goToNextPage = useCallback((premiumOnly = false) => {
     if (hasMore && currentPage >= 1) {
       const nextPage = currentPage + 1;
       console.log(`Going to next page: ${nextPage}`);
-      goToPage(nextPage);
+      goToPage(nextPage, premiumOnly);
     }
   }, [hasMore, currentPage, goToPage]);
 
-  const goToPrevPage = useCallback(() => {
+  const goToPrevPage = useCallback((premiumOnly = false) => {
     if (currentPage > 1) {
       const prevPage = currentPage - 1;
       console.log(`Going to previous page: ${prevPage}`);
-      goToPage(prevPage);
+      goToPage(prevPage, premiumOnly);
     }
   }, [currentPage, goToPage]);
 
-  const changePageSize = useCallback((newSize) => {
+  const changePageSize = useCallback((newSize, premiumOnly = false) => {
     setPageSize(newSize);
     setCurrentPage(1);
     setLastDoc(null);
@@ -186,17 +203,17 @@ export const UsersProvider = ({ children }) => {
     setPaginationCache(new Map());
     setLastDocCache(new Map());
     
-    fetchUsers(1, true);
+    fetchUsers(1, true, premiumOnly);
   }, [fetchUsers]);
 
   // New function for explicit refreshes
-  const refreshUsers = useCallback(async (page = currentPage) => {
+  const refreshUsers = useCallback(async (page = currentPage, premiumOnly = false) => {
     // Clear cache on refresh
     setPaginationCache(new Map());
     setLastDocCache(new Map());
     setDataLoaded(false);
     setLastDoc(null);
-    await fetchUsers(page, true);
+    await fetchUsers(page, true, premiumOnly);
   }, [fetchUsers, currentPage]);
 
   const searchUsers = async (searchParams) => {
@@ -297,9 +314,9 @@ export const UsersProvider = ({ children }) => {
   // Initial fetch only when component mounts
   useEffect(() => {
     if (!dataLoaded) {
-      fetchUsers(1, true);
+      fetchUsers(1, true, premiumUsersOnly); // Default to non-premium users
     }
-  }, []); // Empty dependency array - only run on mount
+  }, [premiumUsersOnly]); // Empty dependency array - only run on mount
 
   // Handle page size changes
   useEffect(() => {
@@ -313,9 +330,9 @@ export const UsersProvider = ({ children }) => {
       setPaginationCache(new Map());
       setLastDocCache(new Map());
       
-      fetchUsers(1, true);
+      fetchUsers(1, true, premiumUsersOnly); // Default to non-premium users
     }
-  }, [pageSize]); // Only trigger when pageSize changes
+  }, [pageSize, premiumUsersOnly]); // Only trigger when pageSize changes
 
   const value = {
     users,
@@ -354,6 +371,7 @@ export const UsersProvider = ({ children }) => {
     setNotes,
     fetchUserNotes,
     updateUserNotes,
+    setPremiumUsersOnly
   };
 
   return <UsersContext.Provider value={value}>{children}</UsersContext.Provider>;
@@ -366,3 +384,4 @@ export const useUsers = () => {
   }
   return context;
 };
+

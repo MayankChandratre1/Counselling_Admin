@@ -27,6 +27,7 @@ import UserDetailsByPhone from "./pages/UsersDetailsPhone";
 import { PremiumPageProvider } from "./contexts/PremiumPageContext";
 import Appointments from "./pages/Appointments";
 import { AnalyticsProvider } from "./contexts/analyticsContext";
+import PremiumUsers from "./pages/PremiumUsers";
 
 function App() {
   return (
@@ -67,9 +68,19 @@ function App() {
               
           </ProtectedRoute>
         } />
+        <Route path="/premium-users" element={
+          <ProtectedRoute requiredPermission="users">
+            <PremiumPageProvider>
+              <PremiumUsers />
+            </PremiumPageProvider>
+              
+          </ProtectedRoute>
+        } />
         <Route path="/users/:id" element={
           <ProtectedRoute requiredPermission="users">
+            <PremiumPageProvider>
               <UserDetailsPage />
+            </PremiumPageProvider>
           </ProtectedRoute>
         } />
         <Route path="/users/phone/:id" element={
