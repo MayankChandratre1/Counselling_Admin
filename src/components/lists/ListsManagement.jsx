@@ -541,26 +541,42 @@ const ListsManagement = () => {
     }
   };
 
-  const handleAppendColleges = async (exportedColleges = []) => {
-    e.preventDefault();
+  const  handleAppendColleges = async (listId, exportedColleges = []) => {
+   
     try {
       const submitData = {
-        title: formData.title,
-        colleges: exportedColleges.map(college => {
-        }),
-        userIds: formData.userIds || [],
-        category: selectedCategory
+        colleges: exportedColleges,
+
       };
 
-      if (editingList?.id) {
-        await axiosInstance.post(`/api/admin/edit-list/${editingList.id}`, submitData);
+      if (listId) {
+        // First, fetch the current list to get its existing colleges
+  // Assuming 'lists' state variable is up-to-date or you can fetch the specific list by listId
+  const currentList = lists.find(list => list.id === listId);
+
+  let updatedColleges = [];
+
+  if (currentList && currentList.colleges) {
+    // Create a Set of existing uniqueIds for efficient lookup
+    const existingCollegeUniqueIds = new Set(currentList.colleges.map(college => college.uniqueId));
+
+    // Filter out duplicates from exportedColleges
+    const newUniqueColleges = exportedColleges.filter(college => !existingCollegeUniqueIds.has(college.uniqueId));
+
+    // Combine existing colleges with the new unique colleges
+    updatedColleges = [...currentList.colleges, ...newUniqueColleges];
+  } else {
+    // If there are no existing colleges, simply use exportedColleges
+    // Also, ensure no duplicates within exportedColleges itself if that's a possibility
+    const uniqueExportedColleges = Array.from(new Map(exportedColleges.map(college => [college.uniqueId, college])).values());
+    updatedColleges = uniqueExportedColleges;
+  }
+        submitData.colleges = updatedColleges;
+        await axiosInstance.post(`/api/admin/append-list/${listId}`, submitData);
         setLists(lists.map(list => 
-          list.id === editingList.id ? { ...list, ...submitData } : list
+          list.id === listId ? { ...list, colleges: submitData.colleges } : list
         ));
-      } else {
-        const response = await axiosInstance.post('/api/admin/add-list', submitData);
-        setLists([...lists, response.data]);
-      }
+      } 
       setShowModal(false);
       setEditingList(null);
       setFormData({ title: '' });
@@ -713,6 +729,7 @@ const ListsManagement = () => {
               formData={formData}
               setFormData={setFormData}
               handleSubmit={handleSubmit}
+              handleAppendColleges={handleAppendColleges}
               closeModal={() => {
                 setShowModal(false);
                 setSelectedTemplate('');

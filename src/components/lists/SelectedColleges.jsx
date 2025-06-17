@@ -129,8 +129,10 @@ const SelectedColleges = ({
               newSelection.add(i);
             }
           });
+          
           return Array.from(newSelection).sort((a, b) => a - b);
         });
+        
       } else {
         // Simple shift-click replaces the selection
         setSelectedItems(checked ? range : []);
@@ -144,6 +146,7 @@ const SelectedColleges = ({
         } else {
           newSelection.delete(index);
         }
+        // Convert to array and sort        
         return Array.from(newSelection).sort((a, b) => a - b);
       });
       setLastSelectedIndex(index);
@@ -612,7 +615,6 @@ const SelectedColleges = ({
 
                     const selectedCategoryCuttoff = selectedCollegesCutoffs?.find(clg => clg.id === college.id)?.branches?.find(
                       branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.year == 2024 && cutoff.category === selectedCategory);
-                    console.log(selectedCategoryCuttoff, 'selectedCategoryCuttoff');
                     
                     
                     

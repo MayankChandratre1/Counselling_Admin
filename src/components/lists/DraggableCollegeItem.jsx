@@ -19,7 +19,8 @@ const DraggableCollegeItem = ({
   eligibleData,
   selectedCategoryCuttoff,
   recentlyMoved,
-  onMove
+  onMove,
+  onSelectForExport
 }) => {
   const branchNameFormatter = (branchName) => {
     const commonWords = ['and', 'of', 'the', 'in', 'for', 'with', 'on', 'at', 'by', 'from'];
@@ -73,7 +74,10 @@ const DraggableCollegeItem = ({
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={(event) => onSelect(index, event.target.checked, event)}
+            onChange={(event) => {
+              onSelect(index, event.target.checked, event)
+              onSelectForExport(college.uniqueId)
+            }}
             onKeyDown={(e) => {
               // Prevent spacebar from triggering drag
               if (e.key === ' ') {

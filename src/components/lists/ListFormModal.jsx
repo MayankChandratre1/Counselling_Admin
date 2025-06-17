@@ -44,7 +44,9 @@ const ListFormModal = ({
   selectedTemplate,
   availableTemplates,
   onTemplateSelect,
-  onResetToTemplate
+  onResetToTemplate,
+  //export
+  handleAppendColleges
 }) => {
   const [activeTab, setActiveTab] = useState('search');
   const [selectedForDrag, setSelectedForDrag] = useState([]);
@@ -100,11 +102,21 @@ const ListFormModal = ({
   };
 
   const handleSelectForDrag = (collegeId) => {
-    setSelectedForDrag(prev => 
+    
+   try{
+     setSelectedForDrag(prev => 
       prev.includes(collegeId) 
         ? prev.filter(id => id !== collegeId)
         : [...prev, collegeId]
     );
+    setSelectedForExport(prev => 
+      prev.includes(collegeId) 
+        ? prev.filter(id => id !== collegeId)
+        : [...prev, collegeId]
+    );
+   }catch(err){
+    console.log('Error selecting college for drag:', err);
+   }
   };
 
   const moveCollege = (dragIndex, hoverIndex, newOrder = null) => {
@@ -151,6 +163,8 @@ const ListFormModal = ({
   };
 
   const handleSelectForExport = (collegeId) => {
+    console.log(collegeId, selectedForExport);
+    
     setSelectedForExport(prev => 
       prev.includes(collegeId) 
         ? prev.filter(id => id !== collegeId)
@@ -191,20 +205,19 @@ const ListFormModal = ({
         );
       }
 
+      console.log('Colleges to export:', selectedColleges);
+      
+
       if (collegesToExport.length === 0) {
         alert('No colleges to export');
         return;
       }
 
-      // use handleSubmit to append colleges to the target list
-      // This is where you would implement the logic to append colleges to the target list
-      await handleSubmit({
-        preventDefault: () => {},
-      }, collegesToExport)
-
       // Here you would make an API call to append colleges to the target list
       // For now, we'll simulate this with a timeout
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+
+      await handleAppendColleges(selectedTargetList, collegesToExport);
 
       // In a real implementation, you would call an API like:
       // await axiosInstance.post(`/api/admin/lists/${selectedTargetList}/append-colleges`, {
