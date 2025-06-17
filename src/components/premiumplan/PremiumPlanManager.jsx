@@ -163,8 +163,13 @@ const PremiumPlanManager = () => {
                       Opens at: {formatDate(plan.opensAt)}
                     </div>
                     {plan.form && (
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 mb-2">
                         Form ID: <span className="font-mono">{plan.form}</span>
+                      </div>
+                    )}
+                    {plan.isLocked && plan.lockedText && (
+                      <div className="text-sm text-amber-700 bg-amber-50 p-2 rounded-md border border-amber-200 mb-2">
+                        <strong>Locked Message:</strong> {plan.lockedText}
                       </div>
                     )}
                   </div>

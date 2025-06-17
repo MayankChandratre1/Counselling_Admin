@@ -4,82 +4,116 @@ import { X, Plus, Trash2 } from 'lucide-react';
 const PlanFormModal = ({ plan, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     title: '',
-    price: 0,
-    opensAt: '',
-    benefits: [''],
+    price: '',
+    opensAt: {
+      _seconds: Math.floor(new Date().getTime() / 1000),
+      _nanoseconds: 0
+    },
+    form: '',
     isLocked: false,
-    form: ''
+    lockedText: '',
+    benefits: []
   });
-  
+
+  const [newBenefit, setNewBenefit] = useState('');
+
   useEffect(() => {
     if (plan) {
-      const opensAtDate = plan.opensAt && plan.opensAt._seconds 
-        ? new Date(plan.opensAt._seconds * 1000).toISOString().split('T')[0] 
-        : '';
-      
       setFormData({
         title: plan.title || '',
-        price: plan.price || 0,
-        opensAt: opensAtDate,
-        benefits: plan.benefits && plan.benefits.length > 0 ? plan.benefits : [''],
+        price: plan.price || '',
+        opensAt: plan.opensAt || {
+          _seconds: Math.floor(new Date().getTime() / 1000),
+          _nanoseconds: 0
+        },
+        form: plan.form || '',
         isLocked: plan.isLocked || false,
-        form: plan.form || ''
+        lockedText: plan.lockedText || '',
+        benefits: plan.benefits || []
       });
     }
   }, [plan]);
 
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: type === 'checkbox' ? checked : value
-    });
+    }));
   };
 
-  const handleBenefitChange = (index, value) => {
-    const updatedBenefits = [...formData.benefits];
-    updatedBenefits[index] = value;
-    setFormData({ ...formData, benefits: updatedBenefits });
+  const handleDateTimeChange = (e) => {
+    const dateTime = new Date(e.target.value);
+    setFormData(prev => ({
+      ...prev,
+      opensAt: {
+        _seconds: Math.floor(dateTime.getTime() / 1000),
+        _nanoseconds: 0
+      }
+    }));
   };
 
   const addBenefit = () => {
-    setFormData({ ...formData, benefits: [...formData.benefits, ''] });
+    if (newBenefit.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        benefits: [...prev.benefits, newBenefit.trim()]
+      }));
+      setNewBenefit('');
+    }
   };
 
   const removeBenefit = (index) => {
-    const updatedBenefits = [...formData.benefits];
-    updatedBenefits.splice(index, 1);
-    setFormData({ ...formData, benefits: updatedBenefits });
+    setFormData(prev => ({
+      ...prev,
+      benefits: prev.benefits.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Filter out empty benefits
-    const filteredBenefits = formData.benefits.filter(benefit => benefit.trim() !== '');
+    // Validation
+    if (!formData.title.trim()) {
+      alert('Plan title is required');
+      return;
+    }
     
-    // Convert date string to timestamp object
-    const opensAtDate = new Date(formData.opensAt);
-    const opensAt = {
-      _seconds: Math.floor(opensAtDate.getTime() / 1000),
-      _nanoseconds: 0
-    };
-    
-    onSave({
+    if (!formData.price || isNaN(formData.price) || parseFloat(formData.price) <= 0) {
+      alert('Valid price is required');
+      return;
+    }
+
+    if (formData.isLocked && !formData.lockedText.trim()) {
+      alert('Locked text is required when plan is locked');
+      return;
+    }
+
+    // Convert price to number
+    const planData = {
       ...formData,
-      price: parseInt(formData.price, 10),
-      opensAt,
-      benefits: filteredBenefits
-    });
+      price: parseFloat(formData.price)
+    };
+
+    onSave(planData);
+  };
+
+  // Convert timestamp to datetime-local format
+  const getDateTimeValue = () => {
+    if (formData.opensAt && formData.opensAt._seconds) {
+      const date = new Date(formData.opensAt._seconds * 1000);
+      return date.toISOString().slice(0, 16);
+    }
+    return new Date().toISOString().slice(0, 16);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full mx-4 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-xl font-semibold text-gray-800">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800">
             {plan ? 'Edit Premium Plan' : 'Add New Premium Plan'}
-          </h3>
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -88,142 +122,172 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Basic Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                Plan Title*
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Plan Title *
               </label>
               <input
                 type="text"
-                id="title"
                 name="title"
                 value={formData.title}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={handleInputChange}
                 required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter plan title"
               />
             </div>
 
             <div>
-              <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                Price (in INR)*
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Price (₹) *
               </label>
               <input
                 type="number"
-                id="price"
                 name="price"
                 value={formData.price}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={handleInputChange}
+                required
                 min="0"
-                required
+                step="0.01"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter price"
               />
             </div>
+          </div>
 
+          {/* Form ID and Opens At */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="opensAt" className="block text-sm font-medium text-gray-700 mb-1">
-                Opens At*
-              </label>
-              <input
-                type="date"
-                id="opensAt"
-                name="opensAt"
-                value={formData.opensAt}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="form" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Form ID
               </label>
               <input
                 type="text"
-                id="form"
                 name="form"
                 value={formData.form}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g. elite-1234567"
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter form ID (optional)"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                ID of the form to be associated with this plan (optional)
-              </p>
             </div>
 
             <div>
-              <div className="flex items-center mb-2">
-                <input
-                  type="checkbox"
-                  id="isLocked"
-                  name="isLocked"
-                  checked={formData.isLocked}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="isLocked" className="ml-2 block text-sm text-gray-700">
-                  Lock this plan
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Opens At *
+              </label>
+              <input
+                type="datetime-local"
+                value={getDateTimeValue()}
+                onChange={handleDateTimeChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Lock Status and Locked Text */}
+          <div className="space-y-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="isLocked"
+                checked={formData.isLocked}
+                onChange={handleInputChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label className="ml-2 text-sm font-medium text-gray-700">
+                Lock this plan
+              </label>
+            </div>
+
+            {formData.isLocked && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Locked Message *
                 </label>
+                <textarea
+                  name="lockedText"
+                  value={formData.lockedText}
+                  onChange={handleInputChange}
+                  required={formData.isLocked}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter message to display when plan is locked"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This message will be shown to users when the plan is locked
+                </p>
               </div>
-              <p className="text-xs text-gray-500">
-                Locked plans can't be purchased until they are unlocked by an admin
-              </p>
+            )}
+          </div>
+
+          {/* Benefits Section */}
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700">
+              Plan Benefits
+            </label>
+            
+            {/* Add new benefit */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newBenefit}
+                onChange={(e) => setNewBenefit(e.target.value)}
+                placeholder="Add a benefit"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addBenefit();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={addBenefit}
+                className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+              >
+                <Plus size={16} />
+              </button>
             </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-700">Benefits</label>
-                <button
-                  type="button"
-                  onClick={addBenefit}
-                  className="px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100 flex items-center text-sm"
-                >
-                  <Plus size={14} className="mr-1" />
-                  Add Benefit
-                </button>
-              </div>
-              <div className="space-y-2">
+            {/* Benefits list */}
+            {formData.benefits.length > 0 && (
+              <div className="space-y-2 max-h-40 overflow-y-auto">
                 {formData.benefits.map((benefit, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={benefit}
-                      onChange={(e) => handleBenefitChange(index, e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter benefit"
-                    />
-                    {formData.benefits.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeBenefit(index)}
-                        className="p-2 text-red-500 hover:text-red-700 rounded-full hover:bg-red-50"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+                  <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                    <span className="flex-1 text-sm">{benefit}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeBenefit(index)}
+                      className="text-red-600 hover:text-red-800 p-1"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
               </div>
-            </div>
+            )}
+          </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-6">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                {plan ? 'Update Plan' : 'Add Plan'}
-              </button>
-            </div>
+          {/* Form Actions */}
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              {plan ? 'Update Plan' : 'Create Plan'}
+            </button>
           </div>
         </form>
       </div>
