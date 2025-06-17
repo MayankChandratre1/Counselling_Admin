@@ -12,6 +12,7 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
     form: '',
     isLocked: false,
     lockedText: '',
+    buttonText: '',
     benefits: []
   });
 
@@ -29,6 +30,7 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
         form: plan.form || '',
         isLocked: plan.isLocked || false,
         lockedText: plan.lockedText || '',
+        buttonText: plan.buttonText || '',
         benefits: plan.benefits || []
       });
     }
@@ -158,8 +160,8 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
             </div>
           </div>
 
-          {/* Form ID and Opens At */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Form ID, Opens At, and Button Text */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Form ID
@@ -184,6 +186,20 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
                 onChange={handleDateTimeChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Button Text
+              </label>
+              <input
+                type="text"
+                name="buttonText"
+                value={formData.buttonText}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., Buy Now, Subscribe"
               />
             </div>
           </div>

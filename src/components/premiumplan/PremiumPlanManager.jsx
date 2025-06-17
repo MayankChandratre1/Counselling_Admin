@@ -167,6 +167,11 @@ const PremiumPlanManager = () => {
                         Form ID: <span className="font-mono">{plan.form}</span>
                       </div>
                     )}
+                    {plan.buttonText && (
+                      <div className="text-sm text-gray-600 mb-2">
+                        Button Text: <span className="font-medium bg-blue-50 px-2 py-1 rounded text-blue-700">{plan.buttonText}</span>
+                      </div>
+                    )}
                     {plan.isLocked && plan.lockedText && (
                       <div className="text-sm text-amber-700 bg-amber-50 p-2 rounded-md border border-amber-200 mb-2">
                         <strong>Locked Message:</strong> {plan.lockedText}
