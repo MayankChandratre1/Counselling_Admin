@@ -16,6 +16,7 @@ import ListSelectionModal from './ListSelectionModal';
 import EditListModal from '../lists/EditListModal';
 import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
+import ListReleaseModal from './ListReleaseModal';
 import { set } from 'lodash';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
@@ -104,6 +105,8 @@ const PremiumUsersManagement = () => {
   });
   const [selectedPlan, setSelectedPlan] = useState('all');
     const [uniquePlans, setUniquePlans] = useState([]);
+  const [showListReleaseModal, setShowListReleaseModal] = useState(false);
+  const [selectedUserForRelease, setSelectedUserForRelease] = useState(null);
 
   const getAuthAxios = () => {
     const token = localStorage.getItem('adminToken');
@@ -612,6 +615,26 @@ const PremiumUsersManagement = () => {
     changePageSize(newSize);
   };
 
+  const handleOpenListReleaseModal = (user) => {
+    setSelectedUserForRelease(user);
+    setShowListReleaseModal(true);
+  };
+
+  const handleListReleased = (listId) => {
+    // Update the users state by removing the released list from the user's createdList
+    setUsers(prevUsers => 
+      prevUsers.map(user => {
+        if (user.id === selectedUserForRelease.id) {
+          return {
+            ...user,
+            createdList: user.createdList?.filter(list => list.id !== listId) || []
+          };
+        }
+        return user;
+      })
+    );
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Mobile menu button */}
@@ -949,6 +972,7 @@ const PremiumUsersManagement = () => {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onViewDetails={handleViewDetails}
+              onOpenListReleaseModal={handleOpenListReleaseModal}
             />
           </div>
 
@@ -1035,6 +1059,17 @@ const PremiumUsersManagement = () => {
               </div>
             </div>
           )}
+
+          {/* List Release Modal */}
+          <ListReleaseModal 
+            showModal={showListReleaseModal}
+            onClose={() => {
+              setShowListReleaseModal(false);
+              setSelectedUserForRelease(null);
+            }}
+            selectedUser={selectedUserForRelease}
+            onListReleased={handleListReleased}
+          />
         </div>
       </div>
     </div>

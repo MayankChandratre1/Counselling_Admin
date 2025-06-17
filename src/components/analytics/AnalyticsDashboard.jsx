@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit, Eye, X, Filter, ArrowDown, ArrowUp, ArrowUpDown, FileSpreadsheet, Calendar } from 'lucide-react';
+import  { useEffect, useState } from 'react';
+import {  ChevronDown, ChevronUp, X, Filter, ArrowDown, ArrowUp, ArrowUpDown, FileSpreadsheet, Calendar } from 'lucide-react';
 import { useUsers } from '../../contexts/UsersContext';
 import { useLists } from '../../contexts/ListsContext';
 import { useAnalytics } from '../../contexts/analyticsContext';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
-import { Pie, Bar } from 'react-chartjs-2';
 import FormProgressTracker from './FormProgressTracker';
 import ListTracking from './ListTracking';
 import CapProgressTracker from './CapProgressTracker';

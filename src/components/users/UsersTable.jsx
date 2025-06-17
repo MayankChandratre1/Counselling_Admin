@@ -21,6 +21,7 @@ import {
 import * as XLSX from 'xlsx';
 import axiosInstance from '../../utils/axios';
 import { useUsers } from '../../contexts/UsersContext';
+import ListReleaseModal from './ListReleaseModal';
 
 const NotesModal = ({ isOpen, onClose, userNotes, userName }) => {
   if (!isOpen) return null;
@@ -243,6 +244,8 @@ const UsersTable = ({
     userId: null,
     userName: ''
   });
+  const [showListReleaseModal, setShowListReleaseModal] = useState(false);
+  const [selectedUserForRelease, setSelectedUserForRelease] = useState(null);
 
   // Sort users by createdAt
   useEffect(() => {
@@ -365,6 +368,29 @@ const UsersTable = ({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Users");
     XLSX.writeFile(wb, `users_with_notes_export.xlsx`);
+  };
+
+  const handleOpenListReleaseModal = (user) => {
+    setSelectedUserForRelease(user);
+    setShowListReleaseModal(true);
+  };
+
+  const handleListReleased = (listId) => {
+    // Update the user's createdList array by removing the released list
+    setSortedUsers(prevUsers => 
+      prevUsers.map(user => {
+        if (user.id === selectedUserForRelease.id) {
+          return {
+            ...user,
+            createdList: user.createdList?.filter(list => list.id !== listId) || []
+          };
+        }
+        return user;
+      })
+    );
+
+    // If you have a parent state update function, call it here
+    // This would depend on your state management structure
   };
 
   if (loading) {
@@ -536,23 +562,44 @@ const UsersTable = ({
                     >
                       <Plus size={12} />
                     </button>}
-                      
+                        
                       {/* Lists Display */}
                       <div className="flex flex-wrap gap-1">
                         {user.lists && user.lists.length > 0 ? (
                           <>
-                            {user.lists.slice(0, 2).map((list, idx) => (
-                              <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            {user.lists.map((list, idx) => (
+                              <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 {list.title}
                               </span>
                             ))}
-                            {user.lists.length > 2 && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                +{user.lists.length - 2}
-                              </span>
+                          </>
+                        ) : null}
+                        
+                        {user.createdList && user.createdList.length > 0 ? (
+                          <>
+                            {user.createdList.map((list, idx) => (
+                              <button 
+                                key={idx} 
+                                onClick={() => handleOpenListReleaseModal(user)}
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors"
+                                title="Click to manage created lists"
+                              >
+                                {list.title}
+                              </button>
+                            ))}
+                            {user.createdList.length > 2 && (
+                              <button
+                                onClick={() => handleOpenListReleaseModal(user)}
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                                title="Click to see all created lists"
+                              >
+                                +{user.createdList.length - 2} more
+                              </button>
                             )}
                           </>
-                        ) : (
+                        ) : null}
+                        
+                        {(!user.lists || user.lists.length === 0) && (!user.createdList || user.createdList.length === 0) && (
                           <span className="text-xs text-gray-500">No lists</span>
                         )}
                       </div>
@@ -753,6 +800,17 @@ const UsersTable = ({
         onClose={() => setViewNotesModal(prev => ({ ...prev, isOpen: false }))}
         userNotes={notes && notes[viewNotesModal.userId] || { notes: {} }}
         userName={viewNotesModal.userName}
+      />
+
+      {/* Add ListReleaseModal */}
+      <ListReleaseModal 
+        showModal={showListReleaseModal}
+        onClose={() => {
+          setShowListReleaseModal(false);
+          setSelectedUserForRelease(null);
+        }}
+        selectedUser={selectedUserForRelease}
+        onListReleased={handleListReleased}
       />
 
       {/* Pagination */}

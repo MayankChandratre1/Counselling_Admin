@@ -635,7 +635,7 @@ const UsersManagement = () => {
               
               {/* Add Refresh Button */}
               <button
-                onClick={refreshUsers}
+                onClick={handleRefresh}
                 disabled={loading}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors"
               >
