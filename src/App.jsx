@@ -28,6 +28,7 @@ import { PremiumPageProvider } from "./contexts/PremiumPageContext";
 import Appointments from "./pages/Appointments";
 import { AnalyticsProvider } from "./contexts/analyticsContext";
 import PremiumUsers from "./pages/PremiumUsers";
+import SendPushNotification from "./pages/SendPushNotification";
 
 function App() {
   return (
@@ -148,6 +149,11 @@ function App() {
         <Route path="/appointments" element={
           <ProtectedRoute requiredPermission="appointments">
             <Appointments />
+          </ProtectedRoute>
+        } />
+        <Route path="/send-notifications" element={
+          <ProtectedRoute requiredPermission="appointments">
+            <SendPushNotification />
           </ProtectedRoute>
         } />
     
