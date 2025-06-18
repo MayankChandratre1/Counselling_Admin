@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Menu, Send, Bell, AlertCircle, CheckCircle, Users, MessageSquare } from 'lucide-react';
+import { Menu, Send, Bell, AlertCircle, CheckCircle, Users, MessageSquare, Filter, X } from 'lucide-react';
 import axiosInstance from '../utils/axios';
 import Navbar from '../components/Navbar';
+import { usePremiumPage } from '../contexts/PremiumPageContext';
 
 const SendPushNotification = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -13,6 +14,19 @@ const SendPushNotification = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  
+  // Add filter states
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    isPremium: false,
+    isFree: false,
+    plan: '',
+    listAssigned: false,
+    listsNotAssigned: false
+  });
+
+  // Get premium plans from context
+  const { premiumPlans, plansLoading } = usePremiumPage();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -24,6 +38,60 @@ const SendPushNotification = () => {
     // Clear error when user starts typing
     if (error) setError(null);
     if (success) setSuccess(null);
+  };
+
+  const handleFilterChange = (filterName, value) => {
+    setFilters(prev => {
+      const newFilters = { ...prev, [filterName]: value };
+      
+      // Handle mutual exclusivity for premium/free
+      if (filterName === 'isPremium' && value) {
+        newFilters.isFree = false;
+      } else if (filterName === 'isFree' && value) {
+        newFilters.isPremium = false;
+      }
+      
+      // Handle mutual exclusivity for lists assigned/not assigned
+      if (filterName === 'listAssigned' && value) {
+        newFilters.listsNotAssigned = false;
+      } else if (filterName === 'listsNotAssigned' && value) {
+        newFilters.listAssigned = false;
+      }
+      
+      return newFilters;
+    });
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      isPremium: false,
+      isFree: false,
+      plan: '',
+      listAssigned: false,
+      listsNotAssigned: false
+    });
+  };
+
+  const hasActiveFilters = () => {
+    return Object.values(filters).some(value => 
+      typeof value === 'boolean' ? value : value !== ''
+    );
+  };
+
+  const getFilterDescription = () => {
+    const activeFilters = [];
+    
+    if (filters.isPremium) activeFilters.push('Premium users');
+    if (filters.isFree) activeFilters.push('Free users');
+    if (filters.plan) activeFilters.push(`${filters.plan} plan users`);
+    if (filters.listAssigned) activeFilters.push('Users with assigned lists');
+    if (filters.listsNotAssigned) activeFilters.push('Users without assigned lists');
+    
+    if (activeFilters.length === 0) {
+      return 'All registered users';
+    }
+    
+    return activeFilters.join(', ');
   };
 
   const validateForm = () => {
@@ -67,15 +135,27 @@ const SendPushNotification = () => {
       setSuccess(null);
       setShowConfirmation(false);
       
-      const response = await axiosInstance.post('/api/admin/send-notification', {
-        toAll: true,
+      // Prepare request data
+      const requestData = {
         title: formData.title.trim(),
         message: formData.message.trim()
-      });
+      };
+
+      // Add filters if any are active
+      if (hasActiveFilters()) {
+        requestData.toAll = false;
+        requestData.filters = filters;
+      } else {
+        requestData.toAll = true;
+      }
+      
+      const response = await axiosInstance.post('/api/admin/send-notification', requestData);
       
       if (response.data.success) {
-        setSuccess('Push notification sent successfully to all users!');
+        const targetText = hasActiveFilters() ? getFilterDescription() : 'all users';
+        setSuccess(`Push notification sent successfully to ${targetText}!`);
         setFormData({ title: '', message: '' }); // Reset form
+        clearFilters(); // Reset filters
       } else {
         setError(response.data.message || 'Failed to send notification');
       }
@@ -172,10 +252,128 @@ const SendPushNotification = () => {
 
           {/* Notification Form */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center mb-6">
-              <MessageSquare className="text-gray-600 mr-3" size={24} />
-              <h2 className="text-xl font-semibold text-gray-800">Notification Details</h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <MessageSquare className="text-gray-600 mr-3" size={24} />
+                <h2 className="text-xl font-semibold text-gray-800">Notification Details</h2>
+              </div>
+              
+              {/* Filter Toggle Button */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                  hasActiveFilters() 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Filter size={16} />
+                Target Audience
+                {hasActiveFilters() && (
+                  <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                    {Object.values(filters).filter(v => typeof v === 'boolean' ? v : v !== '').length}
+                  </span>
+                )}
+              </button>
             </div>
+
+            {/* Filters Section */}
+            {showFilters && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-800">Target Audience Filters</h3>
+                  {hasActiveFilters() && (
+                    <button
+                      onClick={clearFilters}
+                      className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                    >
+                      <X size={14} />
+                      Clear all filters
+                    </button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Premium/Free Filters */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">User Type</h4>
+                    <div className="space-y-2">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={filters.isPremium}
+                          onChange={(e) => handleFilterChange('isPremium', e.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Premium users only</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={filters.isFree}
+                          onChange={(e) => handleFilterChange('isFree', e.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Free users only</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Plan Filter */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">Specific Plan</h4>
+                    <select
+                      value={filters.plan}
+                      onChange={(e) => handleFilterChange('plan', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={plansLoading}
+                    >
+                      <option value="">All plans</option>
+                      {premiumPlans?.map(plan => (
+                        <option key={plan.title} value={plan.title}>
+                          {plan.title}
+                        </option>
+                      ))}
+                    </select>
+                    {plansLoading && (
+                      <p className="text-xs text-gray-500">Loading plans...</p>
+                    )}
+                  </div>
+
+                  {/* List Assignment Filters */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">List Assignment</h4>
+                    <div className="space-y-2">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={filters.listAssigned}
+                          onChange={(e) => handleFilterChange('listAssigned', e.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Users with assigned lists</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={filters.listsNotAssigned}
+                          onChange={(e) => handleFilterChange('listsNotAssigned', e.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Users without assigned lists</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter Summary */}
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Target audience:</span> {getFilterDescription()}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Title Field */}
@@ -226,14 +424,14 @@ const SendPushNotification = () => {
                 </div>
               </div>
 
-              {/* Recipients Info */}
+              {/* Recipients Info - Updated */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center">
                   <Users className="text-blue-600 mr-3" size={20} />
                   <div>
                     <h3 className="text-sm font-medium text-blue-800">Recipients</h3>
                     <p className="text-sm text-blue-700 mt-1">
-                      This notification will be sent to all registered users in the system
+                      This notification will be sent to: {getFilterDescription()}
                     </p>
                   </div>
                 </div>
@@ -285,7 +483,7 @@ const SendPushNotification = () => {
             </form>
           </div>
 
-          {/* Confirmation Modal */}
+          {/* Confirmation Modal - Updated */}
           {showConfirmation && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
@@ -301,27 +499,30 @@ const SendPushNotification = () => {
                   
                   <div className="mb-6">
                     <p className="text-gray-600 mb-4">
-                      Are you sure you want to send this notification to all users?
+                      Are you sure you want to send this notification?
                     </p>
                     
                     {/* Preview in confirmation */}
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
                       <p className="text-sm font-medium text-gray-800 mb-1">
                         Title: "{formData.title.trim()}"
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 mb-2">
                         Message: "{formData.message.trim()}"
+                      </p>
+                      <p className="text-sm text-blue-600 font-medium">
+                        Target: {getFilterDescription()}
                       </p>
                     </div>
                     
-                    <p className="text-sm text-orange-600 mt-3 font-medium">
+                    <p className="text-sm text-orange-600 font-medium">
                       This action cannot be undone.
                     </p>
                   </div>
                   
                   <div className="flex justify-end gap-3">
                     <button
-                      onClick={handleCancelConfirmation}
+                      onClick={() => setShowConfirmation(false)}
                       disabled={loading}
                       className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
                     >

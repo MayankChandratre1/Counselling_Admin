@@ -153,7 +153,9 @@ function App() {
         } />
         <Route path="/send-notifications" element={
           <ProtectedRoute requiredPermission="appointments">
+            <PremiumPageProvider>
             <SendPushNotification />
+            </PremiumPageProvider>
           </ProtectedRoute>
         } />
     
