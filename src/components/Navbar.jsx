@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home, FormInputIcon, FileLineChart,CheckCheck, Settings2, Tent, Globe2, Crown, Banknote, Clock10, RefreshCcwDot, Bell } from 'lucide-react';
+import { User, Building, GraduationCap, X, LogOut, Lock, FormInput, List, Home, FormInputIcon, FileLineChart,CheckCheck, Settings2, Tent, Globe2, Crown, Banknote, Clock10, RefreshCcwDot, Bell, PieChart } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const VerticalNavbar = ({ onClose }) => {
@@ -55,6 +55,8 @@ const VerticalNavbar = ({ onClose }) => {
     const allowedPages = permissions.pages;
     const allMenuItems = [
       { name: 'Home', icon: <Home className="mr-3 text-white" />, path: '/home', permission: 'home' },
+      { name: 'Form Progress', icon: <PieChart className="mr-3 text-white" />, path: '/form-progress', permission: 'home' },
+      { name: 'Appointments', icon: <Clock10 className="mr-3 text-white" />, path: '/appointments', permission: 'appointments' },
       { name: 'Users', icon: <User className="mr-3 text-blue-400" />, path: '/users', permission: 'users' },
       { name: 'Premium Users', icon: <User className="mr-3 text-blue-400" />, path: '/premium-users', permission: 'users' },
       { name: 'Colleges', icon: <Building className="mr-3 text-green-400" />, path: '/colleges', permission: 'colleges' },
@@ -63,7 +65,7 @@ const VerticalNavbar = ({ onClose }) => {
       { name: 'Lists', icon: <List className="mr-3 text-green-400" />, path: '/lists', permission: 'lists' },
       { name: 'Static Details', icon: <Globe2 className="mr-3 text-green-400" />, path: '/landing-page', permission: 'landing-page' },
       { name: 'Premium Plans & Screens', icon: <Crown className="mr-3 text-green-400" />, path: '/premium-plans', permission: 'premium-plans' },
-      { name: 'Appointments', icon: <Clock10 className="mr-3 text-yellow-400" />, path: '/appointments', permission: 'appointments' },
+      
       { name: 'Push Notifications', icon: <Bell className="mr-3 text-yellow-400" />, path: '/send-notifications', permission: 'appointments' },
       { name: 'Payments', icon: <Banknote className="mr-3 text-yellow-400" />, path: '/payment-logs', permission: 'payment-logs' },
       { name: 'Refresh Orders', icon: <RefreshCcwDot className="mr-3 text-yellow-400" />, path: '/check-orders', permission: 'admin-settings' },

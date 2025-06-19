@@ -5,6 +5,7 @@ import { useLists } from '../../contexts/ListsContext';
 import { useAnalytics } from '../../contexts/analyticsContext';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import FormProgressTracker from './FormProgressTracker';
+import { FormProgressProvider } from '../../contexts/FormProgressContext';
 import ListTracking from './ListTracking';
 import CapProgressTracker from './CapProgressTracker';
 import { useNavigate } from 'react-router-dom';
@@ -706,7 +707,9 @@ const AnalyticsDashboard = () => {
         {/* Form Progress Tracking Section */}
         <div className="bg-white p-6 rounded-lg shadow mt-8">
           <h2 className="text-xl font-semibold mb-6">Track Progress</h2>
-          <FormProgressTracker />
+          <FormProgressProvider>
+            <FormProgressTracker />
+          </FormProgressProvider>
         </div>
 
         {/* User List Section */}
@@ -717,7 +720,9 @@ const AnalyticsDashboard = () => {
 
         <div className="bg-white p-6 rounded-lg shadow mt-8">
           <h2 className="text-xl font-semibold mb-6">CAP Progress</h2>
-          <CapProgressTracker />
+          <FormProgressProvider>
+            <CapProgressTracker />
+          </FormProgressProvider>
         </div>
 
         {/* Collapsible User List Section */}

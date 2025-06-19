@@ -29,6 +29,7 @@ import Appointments from "./pages/Appointments";
 import { AnalyticsProvider } from "./contexts/analyticsContext";
 import PremiumUsers from "./pages/PremiumUsers";
 import SendPushNotification from "./pages/SendPushNotification";
+import FormProgressTracking from "./pages/FormProgressTracking";
 
 function App() {
   return (
@@ -48,10 +49,14 @@ function App() {
     <BrowserRouter>
          <UsersProvider>
           <AnalyticsProvider>
+            <PremiumPageProvider>
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/home" element={
             <Analytics />
+        } />
+        <Route path="/form-progress" element={
+            <FormProgressTracking />
         } />
          <Route 
             path='/colleges' 
@@ -63,25 +68,20 @@ function App() {
           />
         <Route path="/users" element={
           <ProtectedRoute requiredPermission="users">
-            <PremiumPageProvider>
+            
               <Users />
-            </PremiumPageProvider>
               
           </ProtectedRoute>
         } />
         <Route path="/premium-users" element={
           <ProtectedRoute requiredPermission="users">
-            <PremiumPageProvider>
               <PremiumUsers />
-            </PremiumPageProvider>
               
           </ProtectedRoute>
         } />
         <Route path="/users/:id" element={
           <ProtectedRoute requiredPermission="users">
-            <PremiumPageProvider>
               <UserDetailsPage />
-            </PremiumPageProvider>
           </ProtectedRoute>
         } />
         <Route path="/users/phone/:id" element={
@@ -136,9 +136,7 @@ function App() {
         } />
         <Route path="/payment-logs" element={
           <ProtectedRoute requiredPermission="payment-logs">
-            <PremiumPageProvider>
             <PaymentLogs />
-            </PremiumPageProvider>
           </ProtectedRoute>
         } />
         <Route path="/check-orders" element={
@@ -153,9 +151,7 @@ function App() {
         } />
         <Route path="/send-notifications" element={
           <ProtectedRoute requiredPermission="appointments">
-            <PremiumPageProvider>
             <SendPushNotification />
-            </PremiumPageProvider>
           </ProtectedRoute>
         } />
     
@@ -167,6 +163,7 @@ function App() {
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </PremiumPageProvider>
       </AnalyticsProvider>
       </UsersProvider>
     </BrowserRouter>
