@@ -459,7 +459,7 @@ const UserDetailsPage = () => {
               </div>
              <div>
                   <p className="text-sm text-gray-600">Purchased Date</p>
-                  <p className="font-medium">{formatDate(user.premiumPlan.purchaseDate)}</p>
+                  <p className="font-medium">{formatDate(user.premiumPlan.purchasedDate)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Expiry Date</p>
@@ -708,26 +708,7 @@ const UserDetailsPage = () => {
             </div>
           )}
 
-          {/* Premium Plan Details */}
-          {user.premiumPlan && (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">Premium Plan Details</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Plan Title</p>
-                  <p className="font-medium">{user.premiumPlan.planTitle}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Purchased Date</p>
-                  <p className="font-medium">{formatDate(user.premiumPlan.purchaseDate)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Expiry Date</p>
-                  <p className="font-medium">{formatDate(user.premiumPlan.expiryDate)}</p>
-                </div>
-              </div>
-            </div>
-          )}
+         
 
           {isEditModalOpen && (
             <UserEditModal

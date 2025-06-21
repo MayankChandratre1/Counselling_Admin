@@ -93,7 +93,7 @@ export const AnalyticsProvider = ({ children }) => {
       filteredUsers = filteredUsers.filter(user => {
         if (!user.purchasedDate) return false;
         
-        const purchaseDate = new Date(user.purchasedDate._seconds * 1000);
+        const purchaseDate = new Date(user.purchasedDate);
         const fromDate = filters.fromDate ? new Date(filters.fromDate) : null;
         const toDate = filters.toDate ? new Date(filters.toDate) : null;
         
@@ -113,9 +113,10 @@ export const AnalyticsProvider = ({ children }) => {
 
     // Apply sorting
     if (filters.sortOrder) {
+      
       filteredUsers.sort((a, b) => {
-        const dateA = a.purchasedDate?._seconds || 0;
-        const dateB = b.purchasedDate?._seconds || 0;
+        const dateA = a.purchasedDate?._seconds || new Date(a.purchasedDate).getTime() || 0;
+        const dateB = b.purchasedDate?._seconds || new Date(b.purchasedDate).getTime() || 0;
         
         if (filters.sortOrder === 'desc') {
           return dateB - dateA;
