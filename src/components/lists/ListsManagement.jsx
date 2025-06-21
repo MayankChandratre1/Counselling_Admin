@@ -423,11 +423,14 @@ const ListsManagement = () => {
       // Add city as an optional filter
       if (cityFilter) {
         params.city = cityFilter;
+        params.cities = [cityFilter]; // Include 'latur' as a default city
       }
       
       // Always make the API call regardless of whether we have parameters
       // This allows searching all colleges when no filters are applied
       const response = await axiosInstance.get('/api/colleges/search', { params });
+      
+
       let results = response.data.colleges;
       
       // If branch filter is applied, filter colleges with matching branches on client side

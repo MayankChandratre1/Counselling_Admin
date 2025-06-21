@@ -52,7 +52,6 @@ export const FormProgressProvider = ({ children }) => {
   }, []);
 
   const selectForm = useCallback((formId) => {
-    
     setSelectedForm(formId);
     const selectedFormData = forms.find(form => form.id === formId);
     if (selectedFormData) {
@@ -75,11 +74,9 @@ export const FormProgressProvider = ({ children }) => {
     let filteredUsers = enrolledUsers;
     
     if (selectedForm && premiumPlans && premiumPlans.length > 0) {
-      // Find which plan has the selected form
       const planWithForm = premiumPlans.find(plan => plan.form === selectedForm);
       
       if (planWithForm) {
-        // Filter users who have the matching plan title
         filteredUsers = enrolledUsers.filter(user => 
           user.planTitle === planWithForm.title
         );
@@ -101,7 +98,7 @@ export const FormProgressProvider = ({ children }) => {
     setTotalUsers(userIds.length);
     setTotalPages(Math.ceil(userIds.length / itemsPerPage));
     
-    // Reset pagination
+    // Reset pagination and clear cache when form changes
     setCurrentPage(1);
     setPageCache(new Map());
     setPaginatedUserProgress([]);
@@ -234,13 +231,46 @@ export const FormProgressProvider = ({ children }) => {
   const goToPage = useCallback(async (page, analyticsData) => {
     if (page < 1 || page > totalPages || !selectedForm) return;
     
-    setCurrentPage(page);
     const userData = await fetchStepDataForPage(page, enrolledUserIds, selectedForm);
     
     if (userData && analyticsData) {
       processStepData(userData, analyticsData);
+      // Only set current page after successful fetch
+      setCurrentPage(page);
     }
-  }, [totalPages, selectedForm, enrolledUserIds, fetchStepDataForPage, processStepData]);
+  }, [totalPages, selectedForm, enrolledUserIds, itemsPerPage]); // Remove processStepData and fetchStepDataForPage from dependencies
+
+  // Add a new function specifically for form initialization
+  const initializeFormData = useCallback(async (analyticsData) => {
+    if (!selectedForm || !analyticsData) return;
+    
+    // Fetch page 1 data after form initialization
+    const userData = await fetchStepDataForPage(1, enrolledUserIds, selectedForm);
+    
+    if (userData) {
+      processStepData(userData, analyticsData);
+    }
+  }, [selectedForm, enrolledUserIds, itemsPerPage]); // Stable dependencies
+
+  // Add the missing refreshCurrentPage function
+  const refreshCurrentPage = useCallback(async (analyticsData) => {
+    if (!selectedForm || !analyticsData) return;
+    
+    // Clear the current page cache and refetch
+    const cacheKey = `${selectedForm}-${currentPage}`;
+    setPageCache(prev => {
+      const newCache = new Map(prev);
+      newCache.delete(cacheKey);
+      return newCache;
+    });
+    
+    // Refetch the current page without changing currentPage
+    const userData = await fetchStepDataForPage(currentPage, enrolledUserIds, selectedForm);
+    
+    if (userData && analyticsData) {
+      processStepData(userData, analyticsData);
+    }
+  }, [selectedForm, currentPage, enrolledUserIds, fetchStepDataForPage, processStepData]);
 
   const getStepUsers = useCallback((stepNumber, batch, analyticsData) => {
     const complete = [];
@@ -349,9 +379,10 @@ export const FormProgressProvider = ({ children }) => {
     fetchForms,
     selectForm,
     initializeFormProgress,
+    initializeFormData, // Add new function
     goToPage,
     getStepUsers,
-    // refreshCurrentPage,
+    refreshCurrentPage,
     
     // Cache info
     getCachedPagesCount: () => pageCache.size,
