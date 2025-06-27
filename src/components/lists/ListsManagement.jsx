@@ -775,22 +775,44 @@ const ListsManagement = () => {
           )}
 
           {/* Lists Grid */}
-          <div className="grid lg:grid-cols-3 gap-6">
-            {lists.length > 0 ? (
-              lists.map((list) => (
-                <ListCard 
-                  key={list.id}
-                  list={list}
-                  expandedListId={expandedListId}
-                  handleListClick={handleListClick}
-                  handleEdit={handleEdit}
-                  handleDelete={handleDelete}
-                />
-              ))
-            ) : (
-              <NoListsPlaceholder openModal={openModal} />
-            )}
-          </div>
+          {expandedListId ? (
+            // Single expanded list - full width
+            <div className="w-full">
+              {lists
+                .filter(list => list.id === expandedListId)
+                .map((list) => (
+                  <ListCard 
+                    key={list.id}
+                    list={list}
+                    expandedListId={expandedListId}
+                    handleListClick={handleListClick}
+                    handleEdit={handleEdit}
+                    handleDelete={handleDelete}
+                  />
+                ))
+              }
+            </div>
+          ) : (
+            // Grid view for all lists
+            <div className="grid xl:grid-cols-2 gap-6"> {/* Changed to 2 columns on xl screens */}
+              {lists.length > 0 ? (
+                lists.map((list) => (
+                  <ListCard 
+                    key={list.id}
+                    list={list}
+                    expandedListId={expandedListId}
+                    handleListClick={handleListClick}
+                    handleEdit={handleEdit}
+                    handleDelete={handleDelete}
+                  />
+                ))
+              ) : (
+                <div className="xl:col-span-2"> {/* Full width for placeholder */}
+                  <NoListsPlaceholder openModal={openModal} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </DndProvider>

@@ -11,7 +11,9 @@ const StepUsersModal = ({
   getStepUsersData, 
   analyticsData, 
   activeBatch, 
-  formSteps 
+  formSteps,
+  paginationComponent: PaginationControls,
+  formProgressContext
 }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('complete');
@@ -185,6 +187,8 @@ const StepUsersModal = ({
               <X size={24} />
             </button>
           </div>
+
+        
           
           {/* Tabs */}
           <div className="flex flex-wrap gap-2 mt-6">
@@ -246,8 +250,16 @@ const StepUsersModal = ({
           </div>
         </div>
 
+          {PaginationControls && formProgressContext && (
+            <div className="flex-1">
+              <PaginationControls />
+            </div>
+          )}
         <div className="px-6 py-2 flex justify-between items-center border-b border-gray-200">
-          <div className="text-sm text-gray-600">
+          {/* Add Form Progress Pagination Controls */}
+
+          
+          <div className="text-sm  text-gray-600">
             Step Details: {getStepTypeInfo(stepDetails)}
           </div>
           <button

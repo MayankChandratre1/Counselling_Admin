@@ -30,6 +30,8 @@ import { AnalyticsProvider } from "./contexts/analyticsContext";
 import PremiumUsers from "./pages/PremiumUsers";
 import SendPushNotification from "./pages/SendPushNotification";
 import FormProgressTracking from "./pages/FormProgressTracking";
+import UserLists from "./pages/UserLists";
+import UserListsPage from "./pages/UserListsPage";
 
 function App() {
   return (
@@ -82,6 +84,17 @@ function App() {
         <Route path="/users/:id" element={
           <ProtectedRoute requiredPermission="users">
               <UserDetailsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/user-lists" element={
+          <ProtectedRoute requiredPermission="users">
+            <UserLists />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/user-lists/:userId" element={
+          <ProtectedRoute requiredPermission="users">
+            <UserListsPage />
           </ProtectedRoute>
         } />
         <Route path="/users/phone/:id" element={

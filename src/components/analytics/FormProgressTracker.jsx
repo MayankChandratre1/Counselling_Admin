@@ -155,12 +155,66 @@ const FormProgressTracker = () => {
       user.planTitle === currentPlan.title
     );
 
+    console.log('Filtered Users for Plan:', currentPlan.title, filteredUsers.length);
+    
+
     return {
       online: filteredUsers.filter(u => u.batch === 'online').length,
       offline: filteredUsers.filter(u => u.batch === 'offline').length,
       total: filteredUsers.length
     };
   }, [analyticsData, selectedForm, getCurrentFormPlan]);
+
+
+  const PaginationControls = () => {
+    return (
+      <>
+        {selectedForm && totalPages > 1 && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center space-x-4">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <Users className="h-5 w-5 text-gray-600" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Data Range</div>
+                  <div className="font-medium">
+                    Users {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalUsers)} of {totalUsers}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1 || loading}
+                  className="flex items-center px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft size={16} className="mr-1" />
+                  Previous
+                </button>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+                  <span className="text-sm font-medium text-blue-800">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages || loading}
+                  className="flex items-center px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                  <ChevronRight size={16} className="ml-1" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -342,15 +396,17 @@ const FormProgressTracker = () => {
                 <div className="space-y-4">
                   {formSteps.map((step) => {
                     const filteredCounts = getFilteredUserCounts();
-                    const completionRate = filteredCounts.total > 0 
-                      ? Math.round(((stepData[step.number]?.completedCount || 0) / filteredCounts.total) * 100)
-                      : 0;
+                    
 
                     // Calculate status breakdown from cached data
                     const stepUsers = getStepUsers(step.number, null, analyticsData);
-                    const completedCount = stepUsers.complete?.length || 0;
-                    const rejectedCount = stepUsers.rejected?.length || 0;
-                    const unattendedCount = stepUsers.unattended?.length || 0;
+                    const completedCount = analyticsData.formStepsAnalysis[selectedForm]?.steps[step.number]?.completedCount || stepUsers.complete?.length || 0; 
+                    const rejectedCount = analyticsData.formStepsAnalysis[selectedForm]?.steps[step.number]?.rejectedCount || stepUsers.rejected?.length || 0;
+                    const unattendedCount = ( filteredCounts.total - completedCount - rejectedCount) || stepUsers.unattended?.length || 0;
+
+                    const completionRate = filteredCounts.total > 0 
+                      ? Math.round(((completedCount || 0) / filteredCounts.total) * 100)
+                      : 0;
                     
                     return (
                       <div 
@@ -432,6 +488,15 @@ const FormProgressTracker = () => {
         analyticsData={analyticsData}
         activeBatch={activeBatch}
         formSteps={formSteps}
+        paginationComponent={PaginationControls}
+        formProgressContext={{
+          currentPage,
+          totalPages,
+          totalUsers,
+          itemsPerPage,
+          loading,
+          handlePageChange
+        }}
       />
     </div>
   );

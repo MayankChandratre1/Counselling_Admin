@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Menu, Calendar, Phone, User, Clock, CheckCircle, AlertCircle, XCircle, Edit2, RotateCcw, Search, Filter, X } from 'lucide-react';
+import { Menu, Calendar, Phone, User, Clock, CheckCircle, AlertCircle, XCircle, Edit2, RotateCcw, Search, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import axiosInstance from '../utils/axios';
 import Navbar from '../components/Navbar';
 
@@ -28,6 +28,9 @@ const Appointments = () => {
   // Phone search state
   const [phoneSearch, setPhoneSearch] = useState('');
   const [isPhoneSearchActive, setIsPhoneSearchActive] = useState(false);
+
+  // Add state for expanded reasons
+  const [expandedReasons, setExpandedReasons] = useState(new Set());
 
   useEffect(() => {
     fetchAppointments();
@@ -230,6 +233,23 @@ const Appointments = () => {
     if (e.key === 'Enter') {
       handlePhoneSearch();
     }
+  };
+
+  const toggleReasonExpansion = (appointmentId) => {
+    setExpandedReasons(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(appointmentId)) {
+        newSet.delete(appointmentId);
+      } else {
+        newSet.add(appointmentId);
+      }
+      return newSet;
+    });
+  };
+
+  const truncateText = (text, maxLength = 50) => {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
   };
 
   const hasActiveFilters = () => {
@@ -621,8 +641,37 @@ const Appointments = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900 max-w-xs truncate" title={appointment.reason}>
-                              {appointment.reason}
+                            <div className="max-w-xs">
+                              {appointment.reason && appointment.reason.length > 50 ? (
+                                <div>
+                                  <div className="text-sm text-gray-900">
+                                    {expandedReasons.has(appointment.id) 
+                                      ? appointment.reason 
+                                      : truncateText(appointment.reason, 50)
+                                    }
+                                  </div>
+                                  <button
+                                    onClick={() => toggleReasonExpansion(appointment.id)}
+                                    className="mt-1 inline-flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                  >
+                                    {expandedReasons.has(appointment.id) ? (
+                                      <>
+                                        <ChevronUp size={14} className="mr-1" />
+                                        Show less
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ChevronDown size={14} className="mr-1" />
+                                        Show more
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="text-sm text-gray-900">
+                                  {appointment.reason}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
