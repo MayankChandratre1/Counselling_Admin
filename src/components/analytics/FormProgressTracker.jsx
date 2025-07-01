@@ -152,13 +152,18 @@ const FormProgressTracker = () => {
   // Helper function to get filtered user counts for display
   const getFilteredUserCounts = useCallback(() => {
     if (!enrolledUsers || enrolledUsers.length === 0 || !selectedForm) {
-      console.log("No enrolled users or no form selected");
+      console.log("No enrolled users or no form selected", {
+        enrolledUsersExists: !!enrolledUsers,
+        enrolledUsersLength: enrolledUsers?.length,
+        selectedForm
+      });
       
       return { online: 0, offline: 0, total: 0 };
     }
 
     const currentPlan = getCurrentFormPlan();
     if (!currentPlan) {
+      console.log("No current plan found");
       return { online: 0, offline: 0, total: 0 };
     }
 
@@ -167,6 +172,8 @@ const FormProgressTracker = () => {
     );
 
     console.log('Filtered Users for Plan:', currentPlan.title, filteredUsers.length);
+    console.log('Enrolled Users Total:', enrolledUsers.length);
+    console.log('Sample enrolled user planTitle:', enrolledUsers[0]?.planTitle);
     
 
     return {
@@ -174,7 +181,7 @@ const FormProgressTracker = () => {
       offline: filteredUsers.filter(u => u.batch === 'offline').length,
       total: filteredUsers.length
     };
-  }, [analyticsData, selectedForm, getCurrentFormPlan, enrolledUsers]);
+  }, [enrolledUsers, selectedForm, getCurrentFormPlan]);
 
 
   const PaginationControls = () => {
