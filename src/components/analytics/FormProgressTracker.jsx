@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Check, ChevronDown, ChevronUp, List, HelpCircle, X, Download, ChevronLeft, ChevronRight, Eye, Target, TrendingUp, Users } from 'lucide-react';
 import { useFormProgress } from '../../contexts/FormProgressContext';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +36,7 @@ const FormProgressTracker = () => {
   const [selectedStep, setSelectedStep] = useState(null);
   const [showStepUsers, setShowStepUsers] = useState(false);
   const [activeBatch, setActiveBatch] = useState(null);
+  const [enrolledUsers, setEnrolledUsers] = useState([])
   const navigate = useNavigate();
 
   // Initialize form progress when analytics data is loaded
@@ -43,8 +44,16 @@ const FormProgressTracker = () => {
     if (analyticsData?.metrics?.enrolled?.users && analyticsData.metrics.enrolled.users.length > 0) {
       console.log('Initializing form progress with enrolled users:', analyticsData.metrics.enrolled.users);
       initializeFormProgress(analyticsData);
+      setEnrolledUsers(analyticsData.metrics.enrolled.users);
     }
   }, [analyticsData, initializeFormProgress]);
+
+  useEffect(()=>{
+      if (analyticsData?.metrics?.enrolled?.users && analyticsData.metrics.enrolled.users.length > 0) {
+      console.log('Initializing EnrilledUsers progress with enrolled users:', analyticsData.metrics.enrolled.users);
+      setEnrolledUsers(analyticsData.metrics.enrolled.users);
+    }
+  },[analyticsData])
 
   // Load forms on component mount
   useEffect(() => {
@@ -142,7 +151,9 @@ const FormProgressTracker = () => {
 
   // Helper function to get filtered user counts for display
   const getFilteredUserCounts = useCallback(() => {
-    if (!analyticsData?.metrics?.enrolled?.users || !selectedForm) {
+    if (!enrolledUsers || enrolledUsers.length === 0 || !selectedForm) {
+      console.log("No enrolled users or no form selected");
+      
       return { online: 0, offline: 0, total: 0 };
     }
 
@@ -151,7 +162,7 @@ const FormProgressTracker = () => {
       return { online: 0, offline: 0, total: 0 };
     }
 
-    const filteredUsers = analyticsData.metrics.enrolled.users.filter(user => 
+    const filteredUsers = enrolledUsers.filter(user => 
       user.planTitle === currentPlan.title
     );
 
@@ -163,7 +174,7 @@ const FormProgressTracker = () => {
       offline: filteredUsers.filter(u => u.batch === 'offline').length,
       total: filteredUsers.length
     };
-  }, [analyticsData, selectedForm, getCurrentFormPlan]);
+  }, [analyticsData, selectedForm, getCurrentFormPlan, enrolledUsers]);
 
 
   const PaginationControls = () => {
