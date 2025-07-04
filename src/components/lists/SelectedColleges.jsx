@@ -1,9 +1,10 @@
-import React, { use, useEffect, useState } from 'react';
+import React, { use, useEffect, useState, useRef, useCallback } from 'react';
 import { Plus, Trash2, MoveVertical } from 'lucide-react';
 import DraggableCollegeItem from './DraggableCollegeItem';
 import NavigationSearch from './NavigationSearch';
-import { set } from 'lodash';
+import { set, throttle } from 'lodash';
 import axiosInstance from '../../utils/axios';
+import ScrollZone from 'react-dnd-scrollzone';
 
 const SelectedColleges = ({ 
   selectedColleges, 
@@ -29,6 +30,9 @@ const SelectedColleges = ({
   const [eligibleBranches, setEligibleBranches] = useState([]);
   const [selectedCollegesCutoffs, setSelectedCollegesCutoffs] = useState([]);
   const [recentlyMoved, setRecentlyMoved] = useState(new Set());
+  const [isDragging, setIsDragging] = useState(false);
+  const scrollContainerRef = useRef(null);
+  const originalScrollBehaviorRef = useRef('smooth');
 
   const fetchCutoffs2 = async (callback) => {
     try {
@@ -43,6 +47,8 @@ const SelectedColleges = ({
       console.error('Error fetching city list:', err);
     }
   };
+
+
 
   useEffect(() => {
     fetchCutoffs2 && fetchCutoffs2(setSelectedCollegesCutoffs);
@@ -173,58 +179,100 @@ const SelectedColleges = ({
     return newIndices;
   };
 
-  const moveSelectedColleges = (dragIndex, hoverIndex) => {
+  // Handle drag start/end to control scroll speed
+  const handleDragStart = () => {
+    setIsDragging(true);
+    if (scrollContainerRef.current) {
+      // Store original scroll behavior
+      originalScrollBehaviorRef.current = scrollContainerRef.current.style.scrollBehavior || 'smooth';
+      
+      // Reduce scroll speed during drag
+      scrollContainerRef.current.style.scrollBehavior = 'auto';
+      scrollContainerRef.current.style.overflowY = 'auto';
+      
+      // Add custom CSS for slower scrolling
+      scrollContainerRef.current.classList.add('drag-scroll-slow');
+    }
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    if (scrollContainerRef.current) {
+      // Restore original scroll behavior
+      scrollContainerRef.current.style.scrollBehavior = originalScrollBehaviorRef.current;
+      
+      // Remove slow scroll class
+      scrollContainerRef.current.classList.remove('drag-scroll-slow');
+    }
+  };
+
+   const throttledMoveCollege = useRef(
+    throttle((dragIndex, hoverIndex, newOrder) => {
+      moveCollege(dragIndex, hoverIndex, newOrder);
+    }, 100) // Throttle to max 10 moves per second
+  );
+
+  // Enhanced move function with drag state management
+  const moveSelectedColleges = useCallback((dragIndex, hoverIndex) => {
+    // Prevent unnecessary operations
+    if (dragIndex === hoverIndex) return;
+    
     const newColleges = [...selectedColleges];
     
     if (selectedItems.includes(dragIndex)) {
-      // Get selected items in order
+      // Multi-item move with optimized algorithm
       const itemsToMove = selectedItems
         .sort((a, b) => a - b)
         .map(index => newColleges[index]);
       
-      // Remove items from highest index to lowest
-      [...selectedItems].sort((a, b) => b - a)
-        .forEach(index => newColleges.splice(index, 1));
+      // Batch remove operation
+      const indicesToRemove = [...selectedItems].sort((a, b) => b - a);
+      indicesToRemove.forEach(index => newColleges.splice(index, 1));
       
-      // Calculate insert position
-      const targetIndex = hoverIndex < dragIndex ? hoverIndex : hoverIndex - itemsToMove.length + 1;
+      // Calculate optimal insert position
+      const effectiveHoverIndex = selectedItems.filter(idx => idx < hoverIndex).length;
+      const targetIndex = Math.max(0, hoverIndex - effectiveHoverIndex);
       
-      // Insert items at new position
+      // Batch insert operation
       newColleges.splice(targetIndex, 0, ...itemsToMove);
       
-      // Update selection to new positions
-      const newSelectedIndices = [];
-      for (let i = 0; i < itemsToMove.length; i++) {
-        newSelectedIndices.push(targetIndex + i);
-      }
+      // Update selection indices
+      const newSelectedIndices = itemsToMove.map((_, i) => targetIndex + i);
       setSelectedItems(newSelectedIndices);
       
-      // Update parent with new order
-      moveCollege(null, null, newColleges);
-
-      // Update highlighted indices for multi-item drag
-      const newHighlightedIndices = updateHighlightedIndices(highlightedIndices, newColleges);
-      setHighlightedIndices(newHighlightedIndices);
+      // Use throttled move
+      throttledMoveCollege.current(null, null, newColleges);
+      
+      // Smooth scroll to moved items
+      requestAnimationFrame(() => {
+        const element = document.getElementById(`college-row-${targetIndex}`);
+        if (element) {
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest'
+          });
+        }
+      });
     } else {
       // Single item move
       const [draggedItem] = newColleges.splice(dragIndex, 1);
       newColleges.splice(hoverIndex, 0, draggedItem);
-      moveCollege(dragIndex, hoverIndex);
       
-      // Update selection if item was selected
+      // Use throttled move
+      throttledMoveCollege.current(dragIndex, hoverIndex);
+      
+      // Update selection if needed
       if (selectedItems.includes(dragIndex)) {
         setSelectedItems([hoverIndex]);
       }
-
-      // Update highlighted indices for single item
-      if (highlightedIndices.has(dragIndex)) {
-        const newHighlightedIndices = new Set(highlightedIndices);
-        newHighlightedIndices.delete(dragIndex);
-        newHighlightedIndices.add(hoverIndex);
-        setHighlightedIndices(newHighlightedIndices);
-      }
     }
-  };
+    
+    // Add visual feedback
+    setRecentlyMoved(new Set([hoverIndex]));
+    setTimeout(() => setRecentlyMoved(new Set()), 1500);
+    
+  }, [selectedColleges, selectedItems, moveCollege]);
 
   const handleMove = (dragIndex, hoverIndex) => {
     // Save current state and perform move
@@ -473,6 +521,30 @@ const SelectedColleges = ({
     setLastSelectedIndex(null);
   };
 
+  useEffect(() => {
+  const el = scrollContainerRef.current;
+  if (!el) return;
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    const rect = el.getBoundingClientRect();
+    const offset = 40;
+    const speed = 20;
+
+    if (e.clientY < rect.top + offset) {
+      el.scrollTop -= speed;
+    } else if (e.clientY > rect.bottom - offset) {
+      el.scrollTop += speed;
+    }
+  };
+
+  el.addEventListener('dragover', handleDragOver);
+  return () => el.removeEventListener('dragover', handleDragOver);
+}, []);
+
+
+ 
+
   if (selectedColleges.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -484,6 +556,100 @@ const SelectedColleges = ({
 
   return (
     <div className="flex flex-col relative h-full">
+      {/* Add drag scroll CSS */}
+      <style jsx>{`
+        .drag-container {
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .drag-container.dragging {
+          cursor: grabbing;
+        }
+        
+        .drag-container .scroll-area {
+          height: 100%;
+          overflow-y: auto;
+          scroll-behavior: smooth;
+          transition: scroll-behavior 0.2s ease;
+        }
+        
+        .drag-container.dragging .scroll-area {
+          scroll-behavior: auto;
+        }
+        
+        /* Smooth scrollbar styling */
+        .scroll-area::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        .scroll-area::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 4px;
+        }
+        
+        .scroll-area::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+          transition: background 0.2s ease;
+        }
+        
+        .scroll-area::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+        
+        .drag-container.dragging .scroll-area::-webkit-scrollbar-thumb {
+          background: #64748b;
+        }
+        
+        /* Visual feedback for drag zones */
+        .drag-container.dragging::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 80px;
+          background: linear-gradient(to bottom, rgba(59, 130, 246, 0.1), transparent);
+          pointer-events: none;
+          z-index: 10;
+        }
+        
+        .drag-container.dragging::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 80px;
+          background: linear-gradient(to top, rgba(59, 130, 246, 0.1), transparent);
+          pointer-events: none;
+          z-index: 10;
+        }
+        
+        /* Table optimizations */
+        .drag-table {
+          border-collapse: separate;
+          border-spacing: 0;
+        }
+        
+        .drag-table tbody tr {
+          transition: background-color 0.15s ease;
+        }
+        
+        .drag-table tbody tr.dragging {
+          background-color: rgba(59, 130, 246, 0.1);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          transform: scale(1.02);
+          z-index: 1000;
+        }
+        
+        .drag-table tbody tr.drag-over {
+          background-color: rgba(59, 130, 246, 0.05);
+          border-top: 2px solid #3b82f6;
+        }
+      `}</style>
+
       {/* Move Items Box */}
       {selectedItems.length > 0 && (
         <div className="sticky top-0 right-0 z-20 bg-white p-4 rounded-lg shadow-lg border border-gray-200 flex items-center gap-3">
@@ -577,12 +743,19 @@ const SelectedColleges = ({
         </div>
       )}
 
-      <div className="flex-1 border border-gray-200 rounded-md bg-gray-50 overflow-hidden shadow-sm">
-        <div className="h-full overflow-y-auto p-2">
+      <div className={`flex-1 border border-gray-200 rounded-md bg-gray-50 overflow-hidden shadow-sm ${isDragging ? 'dragging' : ''}`}>
+   
+      
+        <div 
+          ref={scrollContainerRef}
+       
+          className="scroll-area h-full p-2"
+          
+        >
           {selectedColleges.length > 0 ? (
             <div className="overflow-x-auto border rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Institute Name
@@ -644,6 +817,9 @@ const SelectedColleges = ({
                         editingList={editingList}
                         selectedForExport={selectedForExport}
                         onSelectForExport={onSelectForExport}
+                        // Pass drag state handlers
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
                       />
                     );
                   })}
