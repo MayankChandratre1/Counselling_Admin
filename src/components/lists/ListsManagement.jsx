@@ -477,9 +477,20 @@ const ListsManagement = () => {
 
   // Modify the add college to list functionality
   
-  const addCollegeToList = (college, branch = null, batchColleges = null) => {
+  const addCollegeToList = (college, branch = null, batchColleges = null, index = null) => {
     if (batchColleges) {
       // Handle batch addition
+      if (!Array.isArray(batchColleges)) {
+        console.error('batchColleges should be an array');
+        return;
+      }
+      if(index !== null && index >= 0 && index < selectedColleges.length) {
+        // If index is provided, insert at that index
+        const updatedColleges = [...selectedColleges];
+        updatedColleges.splice(index, 0, ...batchColleges);
+        setSelectedColleges(updatedColleges);
+        return;
+      }
       setSelectedColleges(prev => [...prev, ...batchColleges]);
       return;
     }
@@ -496,6 +507,14 @@ const ListsManagement = () => {
         selectedBranch: branch ? branch.branchName : null,
         selectedBranchCode: branch ? branch.branchCode : null
       };
+
+      if(index !== null && index >= 0 && index < selectedColleges.length) {
+        // If index is provided, insert at that index
+        const updatedColleges = [...selectedColleges];
+        updatedColleges.splice(index, 0, collegeToAdd);
+        setSelectedColleges(updatedColleges);
+        return;
+      }
       setSelectedColleges([...selectedColleges, collegeToAdd]);
     }
   };

@@ -24,7 +24,14 @@ const DraggableCollegeItem = ({
 }) => {
   const branchNameFormatter = (branchName) => {
     const commonWords = ['and', 'of', 'the', 'in', 'for', 'with', 'on', 'at', 'by', 'from'];
+
+    // if branchname has a opening parenthesis, but not closing parenthesis, add a closing parenthesis
+    if (branchName && branchName.includes('(') && !branchName.includes(')')) 
+      branchName += ')';
+
     return branchName ? branchName
+      .replace("(", ' ( ') // Remove non-alphabetic characters
+      .replace(")", ' ) ') // Remove non-alphabetic characters
       .split(' ')
       .filter(word => !commonWords.includes(word.toLowerCase()))
       .map(word => word.charAt(0).toUpperCase())

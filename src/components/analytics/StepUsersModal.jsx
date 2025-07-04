@@ -102,10 +102,11 @@ const StepUsersModal = ({
     XLSX.writeFile(wb, `${activeTab}_users_step_${selectedStep}_export.xlsx`);
   };
 
-  const getStepStatusColor = (status) => {
+  const getStepStatusColor = (status, isLocked) => {
+    if(!!isLocked) return 'bg-gray-300 text-gray-100';
     if (status === 'Yes') return 'bg-green-500';
     if (status === 'No') return 'bg-red-500';
-    return 'bg-gray-300';
+    return 'bg-gray-400';
   };
 
   const getStatusLabel = (tab) => {
@@ -155,7 +156,7 @@ const StepUsersModal = ({
             <div key={step.number} className="relative group">
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium text-white cursor-help ${
-                  !hasStepData ? 'bg-gray-300' : getStepStatusColor(userStepData?.status)
+                  !hasStepData ? 'bg-gray-300' : getStepStatusColor(userStepData?.status, userStepData?.isLocked)
                 }`}
               >
                 {step.number}
