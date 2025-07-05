@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Link, Lock, Globe } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 import PageFormModal from './PageFormModal';
+import { usePremiumPage } from '../../contexts/PremiumPageContext';
 
 const DynamicPageManager = () => {
   const [pages, setPages] = useState([]);
@@ -9,6 +10,7 @@ const DynamicPageManager = () => {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(null);
+  const {premiumPlans} = usePremiumPage()
 
   useEffect(() => {
     fetchPages();
@@ -134,7 +136,10 @@ const DynamicPageManager = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-xl font-semibold text-gray-800 mb-2 flex items-center">
-                      {page.title}
+                      {page.title} 
+                      <span className="text-sm text-gray-500 ml-2">
+                        for ({page.plan ? page.plan : 'All Plans'})
+                      </span>
                       {page.isPremiumOnly && (
                         <Lock size={16} className="ml-2 text-amber-500" title="Premium Only" />
                       )}
@@ -192,6 +197,7 @@ const DynamicPageManager = () => {
             setCurrentPage(null);
           }}
           onSave={handleSavePage}
+          plans={premiumPlans} // Pass premium plans to the modal
         />
       )}
     </div>

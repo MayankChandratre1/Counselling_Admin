@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
-const PageFormModal = ({ page, onClose, onSave }) => {
+const PageFormModal = ({ page, onClose, onSave , plans}) => {
   const [formData, setFormData] = useState({
     title: '',
     url: '',
     html: '',
-    isPremiumOnly: false
+    isPremiumOnly: false,
+    plan: ''
   });
+
+  
   
   useEffect(() => {
     if (page) {
@@ -15,7 +18,8 @@ const PageFormModal = ({ page, onClose, onSave }) => {
         title: page.title || '',
         url: page.url || '',
         html: page.html || '',
-        isPremiumOnly: page.isPremiumOnly || false
+        isPremiumOnly: page.isPremiumOnly || false,
+        plan: page.plan || ''
       });
     }
   }, [page]);
@@ -128,8 +132,32 @@ const PageFormModal = ({ page, onClose, onSave }) => {
               </div>
               <p className="text-xs text-gray-500">
                 If checked, only premium users will be able to access this page
-              </p>
+              </p> 
             </div>
+            {formData.isPremiumOnly && ( <div>
+              <div className="flex items-center mb-2">
+                <select
+                  id="plan"
+                  name="plan"
+                  value={formData.plan}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Premium Plan</option>
+                  {/* Assuming you have a list of premium plans available */}
+                  {plans.map((plan) => (
+                    <option key={plan.title} value={plan.title}>
+                      {plan.title} - Rs {plan.price}
+                    </option>
+                  ))}
+
+                </select>                  
+              </div>
+              <p className="text-xs text-gray-500">
+                If checked, only premium users will be able to access this page
+              </p>
+            </div>)}
+           
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-6">
               <button
