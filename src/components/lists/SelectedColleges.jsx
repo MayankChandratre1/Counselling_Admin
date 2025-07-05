@@ -561,6 +561,7 @@ const SelectedColleges = ({
         .drag-container {
           position: relative;
           overflow: hidden;
+          height: 100%;
         }
         
         .drag-container.dragging {
@@ -743,88 +744,83 @@ const SelectedColleges = ({
         </div>
       )}
 
-      <div className={`flex-1 border border-gray-200 rounded-md bg-gray-50 overflow-hidden shadow-sm ${isDragging ? 'dragging' : ''}`}>
-   
-      
+      <div className={`flex-1 drag-container ${isDragging ? 'dragging' : ''}`}>
         <div 
           ref={scrollContainerRef}
-       
-          className="scroll-area h-full p-2"
-          
+          className="scroll-area"
         >
           {selectedColleges.length > 0 ? (
-            <div className="overflow-x-auto border rounded-lg">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Institute Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Branch Code
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Branch
-                    </th>
-                    
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Cutoff
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      City
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {selectedColleges.map((college, index) => {
-                    // Check if this college and branch combination is eligible
-                    const eligibleCollege = eligibleBranches.find(ec => ec.collegeId === college.id);
-                    const isEligible = eligibleCollege?.eligibleBranches.some(
-                      branch => branch.branchCode === college.selectedBranchCode
-                    );
+            <div className="p-2">
+              <div className="overflow-x-auto border rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200 drag-table">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Institute Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Branch Code
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Branch
+                      </th>
+                      
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Cutoff
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        City
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {selectedColleges.map((college, index) => {
+                      // Check if this college and branch combination is eligible
+                      const eligibleCollege = eligibleBranches.find(ec => ec.collegeId === college.id);
+                      const isEligible = eligibleCollege?.eligibleBranches.some(
+                        branch => branch.branchCode === college.selectedBranchCode
+                      );
 
-                    const selectedCategoryCuttoff = selectedCollegesCutoffs?.find(clg => clg.id === college.id)?.branches?.find(
-                      branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.year == 2024 && cutoff.category === selectedCategory);
-                    
-                    
-                    
-
-                    return (
-                      <DraggableCollegeItem
-                        key={college.uniqueId || `${college.id}_${index}`}
-                        college={college}
-                        index={index}
-                        moveCollege={moveSelectedColleges}
-                        handleRemoveCollege={removeCollegeFromList}
-                        isSelected={selectedItems.includes(index)}
-                        onSelect={handleSelectCollege}
-                        selectedCount={selectedItems.length}
-                        isSearchPanelCollapsed={isSearchPanelCollapsed}
-                        highlightedIndices={highlightedIndices}
-                        selectedUserMarks={selectedUserMarks}
-                        selectedUserCategory={selectedUserCategory}
-                        selectedCategoryCuttoff={selectedCategoryCuttoff}
-                        isEligible={isEligible}
-                        eligibleData={eligibleCollege?.eligibleBranches.find(
-                          branch => branch.branchCode === college.selectedBranchCode
-                        )}
-                        recentlyMoved={recentlyMoved.has(index)}
-                        onMove={handleMove}
-                        // Pass export props
-                        editingList={editingList}
-                        selectedForExport={selectedForExport}
-                        onSelectForExport={onSelectForExport}
-                        // Pass drag state handlers
-                        onDragStart={handleDragStart}
-                        onDragEnd={handleDragEnd}
-                      />
-                    );
-                  })}
-                </tbody>
-              </table>
+                      const selectedCategoryCuttoff = selectedCollegesCutoffs?.find(clg => clg.id === college.id)?.branches?.find(
+                        branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.year == 2024 && cutoff.category === selectedCategory);
+                      
+                      return (
+                        <DraggableCollegeItem
+                          key={college.uniqueId || `${college.id}_${index}`}
+                          college={college}
+                          index={index}
+                          moveCollege={moveSelectedColleges}
+                          handleRemoveCollege={removeCollegeFromList}
+                          isSelected={selectedItems.includes(index)}
+                          onSelect={handleSelectCollege}
+                          selectedCount={selectedItems.length}
+                          isSearchPanelCollapsed={isSearchPanelCollapsed}
+                          highlightedIndices={highlightedIndices}
+                          selectedUserMarks={selectedUserMarks}
+                          selectedUserCategory={selectedUserCategory}
+                          selectedCategoryCuttoff={selectedCategoryCuttoff}
+                          isEligible={isEligible}
+                          eligibleData={eligibleCollege?.eligibleBranches.find(
+                            branch => branch.branchCode === college.selectedBranchCode
+                          )}
+                          recentlyMoved={recentlyMoved.has(index)}
+                          onMove={handleMove}
+                          // Pass export props
+                          editingList={editingList}
+                          selectedForExport={selectedForExport}
+                          onSelectForExport={onSelectForExport}
+                          // Pass drag state handlers
+                          onDragStart={handleDragStart}
+                          onDragEnd={handleDragEnd}
+                        />
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-6">
@@ -842,3 +838,4 @@ const SelectedColleges = ({
 };
 
 export default SelectedColleges;
+
