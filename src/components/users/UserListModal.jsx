@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Edit, Trash2, GraduationCap, Search, Save } from 'lucide-react';
+import { X, Edit, Trash2, GraduationCap, Search, Save, ChevronDown, ChevronUp, Calendar, User, Copy, Tag } from 'lucide-react';
 import CollegesListModal from './CollegesListModal';
 import axiosInstance from '../../utils/axios';
+import ListDetails from '../lists/ListDetails';
 
 const UserListModal = ({ 
   showModal, 
@@ -11,6 +12,7 @@ const UserListModal = ({
   userName, 
   onEditList, 
   onRemoveList, 
+  createdLists,
   onSetEditingOrderList 
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,6 +23,8 @@ const UserListModal = ({
     list: null,
     title: ''
   });
+  const [expandedListId, setExpandedListId] = useState(null);
+  const [copiedCodes, setCopiedCodes] = useState({});
 
   if (!showModal) return null;
 
@@ -28,6 +32,15 @@ const UserListModal = ({
   const filteredLists = userLists.filter(list => 
     !searchQuery || list.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Filter created lists with the same search criteria
+  const filteredCreatedLists = createdLists ? createdLists.filter(list => 
+    !searchQuery || list.title.toLowerCase().includes(searchQuery.toLowerCase())
+  ) : [];
+
+  const handleListClick = (listId) => {
+    setExpandedListId(expandedListId === listId ? null : listId);
+  };
 
   const handleListTitleClick = (list) => {
     // Create a copy of the list with indexed colleges
@@ -71,6 +84,33 @@ const UserListModal = ({
       console.error('Error saving template:', err);
       alert('Failed to save template');
     }
+  };
+
+  
+
+  // Function to handle copying of branch code
+  const handleCopyBranchCode = (college) => {
+    const code = college.selectedBranchCode;
+    if (!code) return;
+    
+    navigator.clipboard.writeText(code)
+      .then(() => {
+        setCopiedCodes(prev => ({
+          ...prev,
+          [college.uniqueId || college.id]: true
+        }));
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+  };
+  
+  const isCodeCopied = (collegeId) => {
+    return copiedCodes[collegeId] || false;
+  };
+  
+  const resetCopiedStatus = () => {
+    setCopiedCodes({});
   };
 
   return (
@@ -118,61 +158,93 @@ const UserListModal = ({
             </div>
           </div>
 
-          {/* Lists Grid */}
+          {/* Assigned Lists Header */}
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <Tag size={20} className="mr-2 text-blue-500" />
+            Assigned Lists
+          </h3>
+
+          {/* Assigned Lists Grid */}
           {loading ? (
             <div className="flex justify-center items-center h-32">
               <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
             </div>
           ) : filteredLists.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 mb-8">
               {filteredLists.map(list => (
                 <div 
                   key={list.id} 
-                  className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all"
+                  className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all ${
+                    list.colorLabel ? `border-l-4 border-l-${list.colorLabel}-300` : ''
+                  }`}
                 >
-                  <div className="p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                      <div className="flex-1">
-                        <button
-                          onClick={() => handleListTitleClick(list)}
-                          className="text-xl font-semibold text-gray-800 hover:text-blue-600 text-left flex items-center group mb-2"
-                        >
-                          {list.title}
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-blue-600 text-sm">
-                            (View Colleges)
-                          </span>
-                          
-                        </button>
-                        <div className="flex items-center gap-2">
-                          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                            {list.colleges?.length || 0} colleges
-                          </span>
-                          {list.customized && (
-                            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                              Customized
-                            </span>
+                  {/* Card Header */}
+                  <div className={`relative transition-colors duration-200 ${
+                    expandedListId === list.id 
+                      ? 'bg-blue-50 border-b border-gray-200' 
+                      : ''
+                  }`}>
+                    {/* Main clickable area */}
+                    <div 
+                      className="flex items-center cursor-pointer p-3 pr-24 sm:pr-32" 
+                      onClick={() => handleListClick(list.id)}
+                    >
+                      {/* Expand/Collapse icon */}
+                      <div className="mr-3">
+                        {expandedListId === list.id ? (
+                          <ChevronUp size={18} className="text-blue-600" />
+                        ) : (
+                          <ChevronDown size={18} className="text-gray-400" />
+                        )}
+                      </div>
+                      
+                      {/* List title and metadata */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center">
+                          <h3 className="font-semibold truncate text-gray-800">
+                            {list.title}
+                          </h3>
+                          {/* Color label indicator */}
+                          {list.colorLabel && (
+                            <span className={`ml-2 w-3 h-3 rounded-full bg-${list.colorLabel}-500`}></span>
                           )}
                         </div>
-                          {list.lastUpdatedBy && (
-                            <span className="text-sm text-gray-500">
-                              Last updated by: {list.lastUpdatedBy}
+                        
+                        {/* List stats */}
+                        <div className="flex items-center space-x-4 mt-1 text-sm">
+                          <div className="flex items-center text-gray-600">
+                            <GraduationCap size={14} className="mr-1" />
+                            <span>
+                              <span className="font-semibold">{list.colleges?.length || 0}</span> 
+                              {(list.colleges?.length || 0) === 1 ? ' college' : ' colleges'}
                             </span>
+                          </div>
+                          
+                          {list.createdAt && (
+                            <div className="hidden sm:flex items-center text-gray-500">
+                              <Calendar size={14} className="mr-1" />
+                              <span>{new Date(list.createdAt).toLocaleDateString()}</span>
+                            </div>
                           )}
+                          {list.createdBy && (
+                            <div className="hidden sm:flex items-center text-gray-500">
+                              <User size={14} className="mr-1" />
+                              <span>{list.createdBy}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                    </div>
+                    
+                    {/* Action Buttons (absolute positioned to stay in place) */}
+                    <div className="absolute top-0 right-0 h-full flex items-center pr-2">
+                      <div className="flex space-x-1">
                         <button
                           onClick={() => onEditList(list)}
-                          className="w-full sm:w-auto px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors flex items-center justify-center"
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
+                          title="Customize"
                         >
-                          <Edit size={16} className="mr-2" />
-                          Customize
-                        </button>
-                        <button
-                          onClick={() => onRemoveList(list)}
-                          className="w-full sm:w-auto px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center"
-                        >
-                          <Trash2 size={16} className="mr-2" />
-                          Remove
+                          <Edit size={16} />
                         </button>
                         <button
                           onClick={() => setSaveAsTemplateModal({ 
@@ -180,18 +252,174 @@ const UserListModal = ({
                             list: list,
                             title: `${list.title} - Template` 
                           })}
-                          className="w-full sm:w-auto px-4 py-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center"
+                          className="p-2 text-purple-600 hover:bg-purple-100 rounded-md transition-colors"
+                          title="Save as template"
                         >
-                          <Save size={16} className="mr-2" />
-                          Save as Template
+                          <Save size={16} />
+                        </button>
+                        <button
+                          onClick={() => onRemoveList(list, false)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                          title="Remove"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
                   </div>
+
+                  {/* Expanded Content */}
+                  {expandedListId === list.id && (
+                    <div className="bg-gray-50">
+                      <ListDetails 
+                        list={list} 
+                        handleCopyBranchCode={handleCopyBranchCode}
+                        isCodeCopied={isCodeCopied}
+                        resetCopiedStatus={resetCopiedStatus}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           ) : (
+            <div className="text-center py-12 bg-white rounded-lg border border-gray-200 mb-8">
+              <div className="flex flex-col items-center justify-center">
+                <div className="bg-gray-100 p-6 rounded-full mb-4">
+                  <GraduationCap size={32} className="text-gray-400" />
+                </div>
+                <h3 className="text-xl font-medium text-gray-700 mb-2">No Assigned Lists Found</h3>
+                <p className="text-gray-500 max-w-md">
+                  {searchQuery 
+                    ? "No assigned lists match your search. Try a different search term."
+                    : "This user doesn't have any lists assigned yet."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Created Lists Section - Only show if we have createdLists */}
+          {createdLists && createdLists.length > 0 && (
+            <>
+
+              {filteredCreatedLists.length > 0 ? (
+                <div className="space-y-4">
+                  {filteredCreatedLists.map(list => (
+                    <div 
+                      key={`created-${list.id}`} 
+                      className={`bg-white border border-green-200 rounded-lg shadow-sm hover:shadow-md transition-all ${
+                        list.colorLabel ? `border-l-4 border-l-${list.colorLabel}-300` : 'border-l-4 border-l-green-300'
+                      }`}
+                    >
+                      {/* Card Header - Same structure as assigned lists */}
+                      <div className={`relative transition-colors duration-200 ${
+                        expandedListId === `created-${list.id}` 
+                          ? 'bg-green-50 border-b border-gray-200' 
+                          : ''
+                      }`}>
+                        {/* Main clickable area */}
+                        <div 
+                          className="flex items-center cursor-pointer p-3 pr-24 sm:pr-32" 
+                          onClick={() => handleListClick(`created-${list.id}`)}
+                        >
+                          {/* Expand/Collapse icon */}
+                          <div className="mr-3">
+                            {expandedListId === `created-${list.id}` ? (
+                              <ChevronUp size={18} className="text-green-600" />
+                            ) : (
+                              <ChevronDown size={18} className="text-gray-400" />
+                            )}
+                          </div>
+                          
+                          {/* List title and metadata */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center">
+                              <h3 className="font-semibold truncate text-gray-800">
+                                {list.title}
+                              </h3>
+                              <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Created</span>
+                              {/* Color label indicator */}
+                              {list.colorLabel && (
+                                <span className={`ml-2 w-3 h-3 rounded-full bg-${list.colorLabel}-500`}></span>
+                              )}
+                            </div>
+                            
+                            {/* List stats */}
+                            <div className="flex items-center space-x-4 mt-1 text-sm">
+                              <div className="flex items-center text-gray-600">
+                                <GraduationCap size={14} className="mr-1" />
+                                <span>
+                                  <span className="font-semibold">{list.colleges?.length || 0}</span> 
+                                  {(list.colleges?.length || 0) === 1 ? ' college' : ' colleges'}
+                                </span>
+                              </div>
+                              
+                              {list.createdAt && (
+                                <div className="hidden sm:flex items-center text-gray-500">
+                                  <Calendar size={14} className="mr-1" />
+                                  <span>{new Date(list.createdAt).toLocaleDateString()}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Action Buttons - Same as assigned lists */}
+                        <div className="absolute top-0 right-0 h-full flex items-center pr-2">
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => onEditList(list)}
+                              className="p-2 text-green-600 hover:bg-green-100 rounded-md transition-colors"
+                              title="Customize"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => setSaveAsTemplateModal({ 
+                                isOpen: true, 
+                                list: list,
+                                title: `${list.title} - Template` 
+                              })}
+                              className="p-2 text-purple-600 hover:bg-purple-100 rounded-md transition-colors"
+                              title="Save as template"
+                            >
+                              <Save size={16} />
+                            </button>
+                            <button
+                              onClick={() => onRemoveList(list, true)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                              title="Remove"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded Content - Same as assigned lists */}
+                      {expandedListId === `created-${list.id}` && (
+                        <div className="bg-green-50">
+                          <ListDetails 
+                            list={list} 
+                            handleCopyBranchCode={handleCopyBranchCode}
+                            isCodeCopied={isCodeCopied}
+                            resetCopiedStatus={resetCopiedStatus}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : searchQuery ? (
+                <div className="text-center py-8 bg-white rounded-lg border border-gray-200">
+                  <p className="text-gray-500">No created lists match your search.</p>
+                </div>
+              ) : null}
+            </>
+          )}
+
+          {/* No Lists Found Message - Modified to only show when both lists are empty */}
+          {!loading && filteredLists.length === 0 && (!filteredCreatedLists || filteredCreatedLists.length === 0) && (
             <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
               <div className="flex flex-col items-center justify-center">
                 <div className="bg-gray-100 p-6 rounded-full mb-4">
@@ -201,7 +429,7 @@ const UserListModal = ({
                 <p className="text-gray-500 max-w-md">
                   {searchQuery 
                     ? "No lists match your search. Try a different search term."
-                    : "This user doesn't have any lists assigned yet."}
+                    : "This user doesn't have any lists assigned or created yet."}
                 </p>
               </div>
             </div>

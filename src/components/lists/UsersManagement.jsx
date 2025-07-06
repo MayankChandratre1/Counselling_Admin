@@ -12,6 +12,7 @@ import ListSelectionModal from './ListSelectionModal';
 import EditListModal from '../lists/EditListModal';
 import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
+import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -74,6 +75,7 @@ const UsersManagement = () => {
   const [editingOrderList, setEditingOrderList] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const navigation = useNavigate();
 
   // Remove fetchUsers implementation and use context's fetchUsers
   useEffect(() => {
@@ -169,16 +171,9 @@ const UsersManagement = () => {
 
   const handleViewUserLists = async (userId, userName) => {
     try {
-      setLoading(true);
-      setSelectedUserName(userName);
-      setSelectedUserListsId(userId);
       
-      const user = users.find(u => u.id === userId);
-      if (user) {
-        setSelectedUserLists(user.lists || []);
-        setShowUserListModal(true);
-      }
-      setError(null);
+      navigation(`/users/lists/${userId}`);
+      
     } catch (err) {
       console.error('Error fetching user lists:', err);
       setError('Failed to fetch user lists');

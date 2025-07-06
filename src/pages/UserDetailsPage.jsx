@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit, Eye } from 'lucide-react';
+import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit, Eye, ListIcon } from 'lucide-react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useUsers } from '../contexts/UsersContext';
@@ -415,6 +415,13 @@ const UserDetailsPage = () => {
             </button>
               )
             }
+                <button
+              onClick={() => navigate(`/users/lists/${id}`)}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              <ListIcon size={18} />
+              Lists
+            </button>
           </div>
 
           {/* Basic Info Card */}

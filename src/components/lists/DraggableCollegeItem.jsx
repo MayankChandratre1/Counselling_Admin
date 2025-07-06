@@ -1,6 +1,5 @@
 import { useDrag, useDrop } from 'react-dnd';
-import { GripVertical } from 'lucide-react';
-
+import { GripVertical, Tag, ChevronDown } from 'lucide-react';
 import { useRef, useEffect, useCallback, useState } from 'react';
 
 // Custom hook for smooth drag scrolling
@@ -117,12 +116,17 @@ const DraggableCollegeItem = ({
   onSelectForExport,
   onDragEnd,
   onDragStart,
-  isDragging: globalIsDragging
+  isDragging: globalIsDragging,
+  colorOption,
+  onChangeColorLabel,
+  colorOptions
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isOver, setIsOver] = useState(false);
+  const [showColorMenu, setShowColorMenu] = useState(false);
   const dragRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
+  const colorMenuRef = useRef(null);
 
   const branchNameFormatter = (branchName) => {
     const commonWords = ['and', 'of', 'the', 'in', 'for', 'with', 'on', 'at', 'by', 'from'];
@@ -226,6 +230,20 @@ const DraggableCollegeItem = ({
     };
   }, []);
 
+  // Close color menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (colorMenuRef.current && !colorMenuRef.current.contains(event.target)) {
+        setShowColorMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
     <tr 
       ref={dragDropRef}
@@ -237,6 +255,7 @@ const DraggableCollegeItem = ({
         ${recentlyMoved ? 'animate-pulse bg-yellow-100' : ''}
         ${isEligible ? 'bg-green-50 border-l-4 !border-l-green-500 hover:bg-green-100' : 'hover:bg-gray-50'}
         ${highlightedIndices?.has(index) ? '!bg-yellow-50 border-l-4 !border-yellow-500' : ''}
+        ${college.colorLabel ? `border-l-4 !border-l-${college.colorLabel}-300` : ''}
         transition-all duration-150 ease-in-out
         ${globalIsDragging ? 'select-none' : ''}
       `}
@@ -259,7 +278,11 @@ const DraggableCollegeItem = ({
             onClick={e => e.stopPropagation()}
             disabled={globalIsDragging}
           />
-          <div className="text-sm font-medium text-gray-600 min-w-[24px]">{index + 1}</div>
+          <div className="flex items-center gap-1 text-sm font-medium text-gray-600 min-w-[24px]">
+            <button  className={`w-3 h-3 rounded-full ${college.colorLabel ? `bg-${college.colorLabel}-500` : 'bg-gray-300'}`}>
+              
+            </button>
+            {index + 1}</div>
           <div className={`transition-opacity duration-150 ${isDragging ? 'opacity-50' : ''}`}>
             <GripVertical size={16} className="text-gray-400 cursor-grab hover:text-gray-600" />
           </div>
@@ -272,7 +295,6 @@ const DraggableCollegeItem = ({
         </div>
       </td>
       
-      {/* Rest of your table cells remain the same */}
       <td className="px-6 py-4 whitespace-nowrap">
         {college.selectedBranchCode ? (
           <span className="inline-flex items-center text-xs leading-5 font-semibold">
@@ -299,6 +321,44 @@ const DraggableCollegeItem = ({
         </span>
       </td>
       
+      {/* Add the Label column here */}
+      <td className="px-6 py-2 whitespace-nowrap">
+        <div className="relative" ref={colorMenuRef}>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowColorMenu(!showColorMenu);
+            }}
+            className={`px-2 py-1 rounded-full border flex items-center gap-1 ${colorOption?.borderClass || 'border-gray-300'} ${colorOption?.bgClass || 'bg-transparent'} ${colorOption?.textClass || 'text-gray-500'} text-xs hover:shadow transition-all`}
+          >
+            <Tag size={12} />
+            <span className="hidden sm:inline">{colorOption?.name || 'No Label'}</span>
+            <ChevronDown size={12} className={`transition-transform ${showColorMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showColorMenu && (
+            <div className="absolute left-0 top-full mt-1 w-40 bg-white shadow-lg rounded-md border border-gray-200 z-50 py-1">
+              {colorOptions && colorOptions.map(color => (
+                <button
+                  key={color.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChangeColorLabel(color.id);
+                    setShowColorMenu(false);
+                  }}
+                  className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-gray-50 ${
+                    college.colorLabel === color.id ? 'bg-gray-50' : ''
+                  }`}
+                >
+                  <div className={`w-3 h-3 rounded-full ${color.id === 'none' ? 'border border-gray-300' : color.bgClass}`}></div>
+                  {color.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </td>
+
       {!selectedUserCategory && !selectedUserMarks && (
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
           {selectedCategoryCuttoff ? (

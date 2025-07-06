@@ -34,6 +34,7 @@ import UserLists from "./pages/UserLists";
 import UserListsPage from "./pages/UserListsPage";
 import { ListsProvider } from "./contexts/ListsContext";
 import Lists2 from "./pages/Lists2";
+import UsersLists from "./pages/UserLists";
 
 function App() {
   return (
@@ -74,6 +75,20 @@ function App() {
           <ProtectedRoute requiredPermission="users">
             
               <Users />
+              
+          </ProtectedRoute>
+        } />
+        <Route path="/users/lists/:id" element={
+          <ProtectedRoute requiredPermission="users">
+            
+              <UsersLists />
+              
+          </ProtectedRoute>
+        } />
+        <Route path="/users/lists/:id/:listId" element={
+          <ProtectedRoute requiredPermission="users">
+            
+              <UsersLists />
               
           </ProtectedRoute>
         } />

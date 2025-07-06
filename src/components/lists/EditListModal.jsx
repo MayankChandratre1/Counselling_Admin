@@ -8,6 +8,7 @@ import SelectedColleges from './SelectedColleges';
 import axiosInstance from '../../utils/axios';
 import { useUsers } from '../../contexts/UsersContext';
 import { set } from 'lodash';
+import { useNavigate } from 'react-router-dom';
 
 const EditListModal = ({
   selectedUser,
@@ -44,6 +45,7 @@ const EditListModal = ({
   // Add state for tracking initial values and confirmation
   const [initialFormData, setInitialFormData] = useState({});
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+  const navigation = useNavigate()
 
   useEffect(() => {
     fetchAllCities();

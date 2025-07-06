@@ -17,10 +17,11 @@ import EditListModal from '../lists/EditListModal';
 import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
 import axiosInstance from '../../utils/axios';
+import { set } from 'lodash';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
-const UsersManagement = ({id, listId, isListEdit}) => {
+const UsersListManagement = ({id, listId, isListEdit}) => {
   const {
     users,
     loading,
@@ -76,8 +77,9 @@ const UsersManagement = ({id, listId, isListEdit}) => {
   const [showListsModal, setShowListsModal] = useState(false);
   const [availableLists, setAvailableLists] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
-  const [showUserListModal, setShowUserListModal] = useState(false);
+  const [showUserListModal, setShowUserListModal] = useState(true);
   const [selectedUserLists, setSelectedUserLists] = useState([]);
+  const [selectedUsersCreatedLists, setSelectedUsersCreatedLists] = useState([]);
   const [selectedUserListsId, setSelectedUserListsId] = useState(null);
   const [selectedUserName, setSelectedUserName] = useState("");
   const [editingUserList, setEditingUserList] = useState(null);
@@ -101,7 +103,6 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     listTitle: '',
     onConfirm: null
   });
-
   const navigation = useNavigate();
 
   const getAuthAxios = () => {
@@ -112,7 +113,70 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     });
   };
 
+  useEffect(() => {
+    if(!id) return;
+    const handleViewUserLists = async (userId, userName) => {
+    try {
+      setLoadingLists(true);
+      setSelectedUserName(userName);
+      setSelectedUserListsId(userId);
+      
+      const user = users.find(u => u.id === userId);
+      if (user) {
+        setSelectedUserLists(user.lists || []);
+        console.log(user.createdList);
+        
+        setSelectedUsersCreatedLists(user.createdList || []);
+        
+        setShowUserListModal(true);
+    }else{
+        const userData = await axiosInstance.get(`/api/admin/user/${userId}`);
+        console.log(userData.data.createdList);
+        
+        setSelectedUserLists(userData.data.lists || []);
+        setSelectedUsersCreatedLists(userData.data.createdList || []);
+        setShowUserListModal(true);
+      }
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching user lists:', err);
+      setError('Failed to fetch user lists');
+    } finally {
+      setLoadingLists(false);
+    }
+  };
+  if(isListEdit && !listId){
+    // If isListEdit is true, fetch user lists
+    handleViewUserLists(id, users.find(u => u.id === id)?.name || 'User');
+  }
 
+   const handleEditUserList = async (listId, userId) => {
+    // Find the user data
+    const userData = await axiosInstance.get(`/api/admin/user/${userId}`);
+    if(!userData.data) return
+    let list = userData.data.lists.find(l => l.id === listId || l.listId === listId);
+    if(!list){
+        // If list not found, try to find by originalListId
+        list = userData.data.createdList.find(l => l.id === listId || l.listId === listId);
+    }
+    if(!list) return
+    setEditingUserList({
+      ...list,
+      userData // Add user data to the list object
+    });
+    setEditListFormData({
+      title: list.title,
+      colleges: list.colleges || [],
+      originalListId: list.originalListId || list.id
+    });
+    setShowEditListModal(true);
+  };
+
+  if(isListEdit && listId){
+    // If isListEdit is true and listId is provided, fetch the specific list
+    handleEditUserList(listId, id);
+  }
+  },[id, listId, isListEdit])
 
   // Sync local filters with context filters when they change
   useEffect(() => {
@@ -279,7 +343,6 @@ const UsersManagement = ({id, listId, isListEdit}) => {
       setLoadingLists(true);
       setSelectedUserName(userName);
       setSelectedUserListsId(userId);
-      navigation(`/users/lists/${userId}`);
       
       const user = users.find(u => u.id === userId);
       if (user) {
@@ -358,25 +421,42 @@ const UsersManagement = ({id, listId, isListEdit}) => {
   // Edit User List functions
   const handleEditUserList = (list) => {
     // Find the user data
-    const selectedUser = users.find(u => u.id === selectedUserListsId);
-    setEditingUserList({
-      ...list,
-      selectedUser // Add user data to the list object
-    });
-    setEditListFormData({
-      title: list.title,
-      colleges: list.colleges || [],
-      originalListId: list.originalListId || list.id
-    });
-    setShowEditListModal(true);
+    // const selectedUser = users.find(u => u.id === selectedUserListsId);
+    // setEditingUserList({
+    //   ...list,
+    //   selectedUser // Add user data to the list object
+    // });
+    // setEditListFormData({
+    //   title: list.title,
+    //   colleges: list.colleges || [],
+    //   originalListId: list.originalListId || list.id
+    // });
+    // setShowEditListModal(true);
+    navigation(`/users/lists/${id}/${list.id}`);
   };
 
-  const handleRemoveUserList = async (list) => {
+  const handleRemoveUserList = async (list, isCreatedList) => {
     if (window.confirm('Are you sure you want to remove this list from the user?')) {
       try {
         setLoadingLists(true);
         const authAxios = getAuthAxios();
-        await authAxios.delete(`/api/admin/user/${selectedUserListsId}/list/${list.id}`);
+        if(isCreatedList){
+            await authAxios.delete(`/api/admin/user/${selectedUserListsId}/created-list/${list.id}`);
+            
+            setSelectedUsersCreatedLists(prevLists => prevLists.filter(l => l.id !== list.id));
+
+            setUsers(users.map(user => {
+          if (user.id === selectedUserListsId) {
+            return {
+              ...user,
+              createdList: user.createdList.filter(l => l.id !== list.id)
+            };
+          }
+          return user;
+        }));
+        
+        }else{
+            await authAxios.delete(`/api/admin/user/${selectedUserListsId}/list/${list.id}`);
         
         setSelectedUserLists(prevLists => prevLists.filter(l => l.id !== list.id));
         setUsers(users.map(user => {
@@ -388,6 +468,8 @@ const UsersManagement = ({id, listId, isListEdit}) => {
           }
           return user;
         }));
+        }
+        
         
         setError(null);
       } catch (err) {
@@ -956,9 +1038,10 @@ const UsersManagement = ({id, listId, isListEdit}) => {
           {/* User List Modal */}
           <UserListModal 
             showModal={showUserListModal}
-            onClose={() => setShowUserListModal(false)}
+            onClose={() => navigation(-1)}
             loading={loadingLists}
             userLists={selectedUserLists}
+            createdLists={selectedUsersCreatedLists}
             userName={selectedUserName}
             onEditList={handleEditUserList}
             onRemoveList={handleRemoveUserList}
@@ -968,7 +1051,10 @@ const UsersManagement = ({id, listId, isListEdit}) => {
           {/* Edit List Modal */}
           <EditListModal 
             show={showEditListModal}
-            onClose={() => setShowEditListModal(false)}
+            onClose={() => {
+                setShowEditListModal(false);
+                navigation(-1);
+            }}
             editingUserList={editingUserList || {}}
             selectedUser={editingUserList?.selectedUser}
             editListFormData={editListFormData}
@@ -1032,4 +1118,4 @@ const UsersManagement = ({id, listId, isListEdit}) => {
   );
 };
 
-export default UsersManagement;
+export default UsersListManagement;

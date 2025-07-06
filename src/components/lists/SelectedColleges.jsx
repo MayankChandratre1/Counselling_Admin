@@ -1,5 +1,5 @@
 import React, { use, useEffect, useState, useRef, useCallback } from 'react';
-import { Plus, Trash2, MoveVertical } from 'lucide-react';
+import { Plus, Trash2, MoveVertical, Tag, ChevronDown } from 'lucide-react';
 import DraggableCollegeItem from './DraggableCollegeItem';
 import NavigationSearch from './NavigationSearch';
 import { set, throttle } from 'lodash';
@@ -31,8 +31,23 @@ const SelectedColleges = ({
   const [selectedCollegesCutoffs, setSelectedCollegesCutoffs] = useState([]);
   const [recentlyMoved, setRecentlyMoved] = useState(new Set());
   const [isDragging, setIsDragging] = useState(false);
+  const [showColorMenu, setShowColorMenu] = useState(false);
+  const [showBulkColorMenu, setShowBulkColorMenu] = useState(false);
+  const [bulkColorAction, setBulkColorAction] = useState('selected'); // 'selected', 'before', 'after'
+  const [bulkColorIndex, setBulkColorIndex] = useState(0);
   const scrollContainerRef = useRef(null);
   const originalScrollBehaviorRef = useRef('smooth');
+  const colorMenuRef = useRef(null);
+  const bulkColorMenuRef = useRef(null);
+
+  const colorOptions = [
+    { id: 'none', name: 'No Label', bgClass: 'bg-transparent', textClass: 'text-gray-500', borderClass: 'border-gray-300' },
+    { id: 'blue', name: 'Blue', bgClass: 'bg-blue-100', textClass: 'text-blue-700', borderClass: 'border-blue-300' },
+    { id: 'green', name: 'Green', bgClass: 'bg-green-100', textClass: 'text-green-700', borderClass: 'border-green-300' },
+    { id: 'amber', name: 'Amber', bgClass: 'bg-amber-100', textClass: 'text-amber-700', borderClass: 'border-amber-300' },
+    { id: 'rose', name: 'Rose', bgClass: 'bg-rose-100', textClass: 'text-rose-700', borderClass: 'border-rose-300' },
+    { id: 'purple', name: 'Purple', bgClass: 'bg-purple-100', textClass: 'text-purple-700', borderClass: 'border-purple-300' },
+  ];
 
   const fetchCutoffs2 = async (callback) => {
     try {
@@ -47,8 +62,6 @@ const SelectedColleges = ({
       console.error('Error fetching city list:', err);
     }
   };
-
-
 
   useEffect(() => {
     fetchCutoffs2 && fetchCutoffs2(setSelectedCollegesCutoffs);
@@ -542,8 +555,79 @@ const SelectedColleges = ({
   return () => el.removeEventListener('dragover', handleDragOver);
 }, []);
 
+// Function to handle bulk removal of selected colleges
+const handleBulkRemove = () => {
+  if (selectedItems.length === 0) return;
+  
+  // Confirm before removing
+  if (window.confirm(`Are you sure you want to remove ${selectedItems.length} selected colleges?`)) {
+    // Sort in descending order to avoid index shifting problems when removing
+    const sortedIndices = [...selectedItems].sort((a, b) => b - a);
+    
+    // Remove each selected college starting from the highest index
+    sortedIndices.forEach(index => {
+      removeCollegeFromList(index);
+    });
+    
+    // Clear selection after removal
+    setSelectedItems([]);
+    setLastSelectedIndex(null);
+  }
+};
 
- 
+
+ // Apply color label to a single college
+const applyColorLabel = (index, colorId) => {
+  const updatedColleges = [...selectedColleges];
+  updatedColleges[index] = {
+    ...updatedColleges[index],
+    colorLabel: colorId === 'none' ? null : colorId
+  };
+  
+  // Using the parent's moveCollege function to update the colleges array
+  moveCollege(null, null, updatedColleges);
+};
+
+// Apply color label to multiple colleges
+const applyBulkColorLabel = (colorId) => {
+  const updatedColleges = [...selectedColleges];
+  
+  switch (bulkColorAction) {
+    case 'selected':
+      // Apply to all selected items
+      selectedItems.forEach(index => {
+        updatedColleges[index] = {
+          ...updatedColleges[index],
+          colorLabel: colorId === 'none' ? null : colorId
+        };
+      });
+      break;
+    
+    case 'before':
+      // Apply to all items before the specified index
+      for (let i = 0; i < bulkColorIndex; i++) {
+        updatedColleges[i] = {
+          ...updatedColleges[i],
+          colorLabel: colorId === 'none' ? null : colorId
+        };
+      }
+      break;
+    
+    case 'after':
+      // Apply to all items after and including the specified index
+      for (let i = bulkColorIndex; i < updatedColleges.length; i++) {
+        updatedColleges[i] = {
+          ...updatedColleges[i],
+          colorLabel: colorId === 'none' ? null : colorId
+        };
+      }
+      break;
+  }
+  
+  // Update colleges with the modified array
+  moveCollege(null, null, updatedColleges);
+  setShowBulkColorMenu(false);
+}
 
   if (selectedColleges.length === 0) {
     return (
@@ -705,6 +789,110 @@ const SelectedColleges = ({
               </button>
             </div>
           )}
+          
+          {/* Add Bulk Color Label Button */}
+          <div className="relative" ref={bulkColorMenuRef}>
+            <button
+              onClick={() => setShowBulkColorMenu(!showBulkColorMenu)}
+              className="px-3 py-1.5 bg-violet-50 text-violet-600 rounded-md flex items-center gap-2 hover:bg-violet-100"
+            >
+              <Tag size={16} />
+              Color Label
+              <ChevronDown size={14} className={`transition-transform ${showBulkColorMenu ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {showBulkColorMenu && (
+              <div className="absolute left-0 top-full mt-1 w-64 bg-white shadow-lg rounded-md border border-gray-200 z-50 py-2">
+                <div className="px-3 py-2 border-b border-gray-100">
+                  <p className="font-medium text-sm text-gray-700">Apply color to:</p>
+                  <div className="mt-2 space-y-2">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        checked={bulkColorAction === 'selected'}
+                        onChange={() => setBulkColorAction('selected')}
+                        className="text-violet-600 focus:ring-violet-500"
+                      />
+                      Selected items ({selectedItems.length})
+                    </label>
+                    
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        checked={bulkColorAction === 'before'}
+                        onChange={() => setBulkColorAction('before')}
+                        className="text-violet-600 focus:ring-violet-500"
+                      />
+                      All items before index:
+                      <input
+                        type="number"
+                        min="1"
+                        max={selectedColleges.length}
+                        value={bulkColorAction === 'before' ? bulkColorIndex : ''}
+                        onChange={(e) => setBulkColorIndex(parseInt(e.target.value) || 0)}
+                        className="w-16 px-2 py-0.5 border border-gray-300 rounded text-sm"
+                        onClick={(e) => {
+                          if (bulkColorAction !== 'before') {
+                            setBulkColorAction('before');
+                          }
+                          e.stopPropagation();
+                        }}
+                      />
+                    </label>
+                    
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        checked={bulkColorAction === 'after'}
+                        onChange={() => setBulkColorAction('after')}
+                        className="text-violet-600 focus:ring-violet-500"
+                      />
+                      All items from index:
+                      <input
+                        type="number"
+                        min="1"
+                        max={selectedColleges.length}
+                        value={bulkColorAction === 'after' ? bulkColorIndex : ''}
+                        onChange={(e) => setBulkColorIndex(parseInt(e.target.value) || 0)}
+                        className="w-16 px-2 py-0.5 border border-gray-300 rounded text-sm"
+                        onClick={(e) => {
+                          if (bulkColorAction !== 'after') {
+                            setBulkColorAction('after');
+                          }
+                          e.stopPropagation();
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="px-3 py-2">
+                  <p className="font-medium text-sm text-gray-700 mb-2">Select color:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {colorOptions.map(color => (
+                      <button
+                        key={color.id}
+                        onClick={() => applyBulkColorLabel(color.id)}
+                        className={`p-2 rounded border ${color.borderClass} ${color.bgClass} ${color.textClass} text-xs flex flex-col items-center transition-all hover:shadow`}
+                      >
+                        <div className={`w-4 h-4 rounded-full ${color.id === 'none' ? 'border border-gray-300' : color.bgClass} mb-1`}></div>
+                        {color.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Add Bulk Remove Button */}
+          <button
+            onClick={handleBulkRemove}
+            className="px-3 py-1.5 bg-red-50 text-red-600 rounded-md flex items-center gap-2 hover:bg-red-100"
+          >
+            <Trash2 size={16} />
+            Remove Selected
+          </button>
         </div>
       )}
 
@@ -738,12 +926,19 @@ const SelectedColleges = ({
                     Clear Selection
                   </button>
                 )}
+                <button
+                  onClick={handleBulkRemove}
+                  className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded-md hover:bg-red-100 border border-red-200"
+                >
+                  Remove Selected
+                </button>
               </div>
             </div>
           )}
         </div>
       )}
 
+      {/* Colleges List */}
       <div className={`flex-1 drag-container ${isDragging ? 'dragging' : ''}`}>
         <div 
           ref={scrollContainerRef}
@@ -764,7 +959,10 @@ const SelectedColleges = ({
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Branch
                       </th>
-                      
+                      {/* Label column header */}
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Label
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Cutoff
                       </th>
@@ -786,6 +984,9 @@ const SelectedColleges = ({
 
                       const selectedCategoryCuttoff = selectedCollegesCutoffs?.find(clg => clg.id === college.id)?.branches?.find(
                         branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.year == 2024 && cutoff.category === selectedCategory);
+                      
+                      // Get color option based on college's colorLabel
+                      const colorOption = colorOptions.find(c => c.id === (college.colorLabel || 'none')) || colorOptions[0];
                       
                       return (
                         <DraggableCollegeItem
@@ -815,6 +1016,10 @@ const SelectedColleges = ({
                           // Pass drag state handlers
                           onDragStart={handleDragStart}
                           onDragEnd={handleDragEnd}
+                          // Pass color label props
+                          colorOption={colorOption}
+                          onChangeColorLabel={(colorId) => applyColorLabel(index, colorId)}
+                          colorOptions={colorOptions}
                         />
                       );
                     })}
