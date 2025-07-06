@@ -13,7 +13,7 @@ import UserEditForm from './UserEditForm';
 import UserSearchForm from './UserSearchForm';
 import UserListModal from './UserListModal';
 import ListSelectionModal from './ListSelectionModal';
-import EditListModal from '../lists/EditListModal';
+import EditListModal from '../users/EditListModal';
 import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
 import axiosInstance from '../../utils/axios';
@@ -116,66 +116,68 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
   useEffect(() => {
     if(!id) return;
     const handleViewUserLists = async (userId, userName) => {
-    try {
-      setLoadingLists(true);
-      setSelectedUserName(userName);
-      setSelectedUserListsId(userId);
-      
-      const user = users.find(u => u.id === userId);
-      if (user) {
-        setSelectedUserLists(user.lists || []);
-        console.log(user.createdList);
+      try {
+        setLoadingLists(true);
+        setSelectedUserName(userName);
+        setSelectedUserListsId(userId);
         
-        setSelectedUsersCreatedLists(user.createdList || []);
-        
-        setShowUserListModal(true);
-    }else{
-        const userData = await axiosInstance.get(`/api/admin/user/${userId}`);
-        console.log(userData.data.createdList);
-        
-        setSelectedUserLists(userData.data.lists || []);
-        setSelectedUsersCreatedLists(userData.data.createdList || []);
-        setShowUserListModal(true);
+        const user = users.find(u => u.id === userId);
+        if (user) {
+          setSelectedUserLists(user.lists || []);
+          console.log(user.createdList);
+          
+          setSelectedUsersCreatedLists(user.createdList || []);
+          
+          setShowUserListModal(true);
+      }else{
+          const userData = await axiosInstance.get(`/api/admin/user/${userId}`);
+          console.log(userData.data.createdList);
+          
+          setSelectedUserLists(userData.data.lists || []);
+          setSelectedUsersCreatedLists(userData.data.createdList || []);
+          setShowUserListModal(true);
+        }
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching user lists:', err);
+        setError('Failed to fetch user lists');
+      } finally {
+        setLoadingLists(false);
       }
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching user lists:', err);
-      setError('Failed to fetch user lists');
-    } finally {
-      setLoadingLists(false);
+    };
+    
+    if(isListEdit && !listId){
+      // If isListEdit is true, fetch user lists
+      handleViewUserLists(id, users.find(u => u.id === id)?.name || 'User');
     }
-  };
-  if(isListEdit && !listId){
-    // If isListEdit is true, fetch user lists
-    handleViewUserLists(id, users.find(u => u.id === id)?.name || 'User');
-  }
 
-   const handleEditUserList = async (listId, userId) => {
-    // Find the user data
-    const userData = await axiosInstance.get(`/api/admin/user/${userId}`);
-    if(!userData.data) return
-    let list = userData.data.lists.find(l => l.id === listId || l.listId === listId);
-    if(!list){
-        // If list not found, try to find by originalListId
-        list = userData.data.createdList.find(l => l.id === listId || l.listId === listId);
+    const handleEditUserList = async (listId, userId) => {
+      // Find the user data
+      const userData = await axiosInstance.get(`/api/admin/user/${userId}`);
+      if(!userData.data) return
+      let list = userData.data.lists.find(l => l.id === listId || l.listId === listId);
+      if(!list){
+          // If list not found, try to find by originalListId
+          list = userData.data.createdList.find(l => l.id === listId || l.listId === listId);
+      }
+      if(!list) return
+      setEditingUserList({
+        ...list,
+        userData // Add user data to the list object
+      });
+      setEditListFormData({
+        title: list.title,
+        colleges: list.colleges || [],
+        originalListId: list.originalListId || list.id
+      });
+      setShowEditListModal(true);
+    };
+
+    if(isListEdit && listId){
+      // If isListEdit is true and listId is provided, fetch the specific list
+      handleEditUserList(listId, id);
+      fetchLists(); // Add this line to fetch available lists when EditListModal is about to be shown
     }
-    if(!list) return
-    setEditingUserList({
-      ...list,
-      userData // Add user data to the list object
-    });
-    setEditListFormData({
-      title: list.title,
-      colleges: list.colleges || [],
-      originalListId: list.originalListId || list.id
-    });
-    setShowEditListModal(true);
-  };
-
-  if(isListEdit && listId){
-    // If isListEdit is true and listId is provided, fetch the specific list
-    handleEditUserList(listId, id);
-  }
   },[id, listId, isListEdit])
 
   // Sync local filters with context filters when they change
@@ -420,18 +422,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
 
   // Edit User List functions
   const handleEditUserList = (list) => {
-    // Find the user data
-    // const selectedUser = users.find(u => u.id === selectedUserListsId);
-    // setEditingUserList({
-    //   ...list,
-    //   selectedUser // Add user data to the list object
-    // });
-    // setEditListFormData({
-    //   title: list.title,
-    //   colleges: list.colleges || [],
-    //   originalListId: list.originalListId || list.id
-    // });
-    // setShowEditListModal(true);
+    fetchLists(); // Add this line to fetch available lists before navigating
     navigation(`/users/lists/${id}/${list.id}`);
   };
 
@@ -1049,26 +1040,37 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
           />
 
           {/* Edit List Modal */}
-          <EditListModal 
-            show={showEditListModal}
-            onClose={() => {
-                setShowEditListModal(false);
+          {showEditListModal && (
+            <EditListModal 
+              show={showEditListModal}
+              onClose={() => {
                 navigation(-1);
-            }}
-            editingUserList={editingUserList || {}}
-            selectedUser={editingUserList?.selectedUser}
-            editListFormData={editListFormData}
-            setEditListFormData={setEditListFormData}
-            searchCollegeQuery={searchCollegeQuery}
-            handleSearchCollegeChange={handleSearchCollegeChange}
-            isSearchingColleges={isSearchingColleges}
-            collegeSearchResults={collegeSearchResults}
-            searchColleges={searchColleges}
-            addCollegeToUserList={addCollegeToUserList}
-            handleRemoveCollegeFromUserList={handleRemoveCollegeFromUserList}
-            moveCollege={moveCollege}
-            handleSaveUserList={handleSaveUserList}
-          />
+                setShowEditListModal(false)
+              }}
+              editingUserList={editingUserList}
+              editListFormData={editListFormData}
+              setEditListFormData={setEditListFormData}
+              searchCollegeQuery={searchCollegeQuery}
+              handleSearchCollegeChange={(e) => setSearchCollegeQuery(e.target.value)}
+              isSearchingColleges={isSearchingColleges}
+              collegeSearchResults={collegeSearchResults}
+              searchColleges={searchColleges}
+              addCollegeToUserList={addCollegeToUserList}
+              handleRemoveCollegeFromUserList={handleRemoveCollegeFromUserList}
+              moveCollege={moveCollege}
+              handleSaveUserList={handleSaveUserList}
+              selectedUserCategory={editingUserList?.selectedUser?.counsellingData?.category || ''}
+              selectedUserListsId={selectedUserListsId}
+              availableLists={availableLists || []} // Make sure we provide a default empty array
+              users={users}
+              setUsers={setUsers}
+              setSelectedUserLists={setSelectedUserLists}
+              setError={setError}
+              setShowEditListModal={setShowEditListModal}
+              setEditingUserList={setEditingUserList}
+              setLoadingLists={setLoadingLists}
+            />
+          )}
           
           {/* Order Editable List Modal */}
           {editingOrderList && (
@@ -1119,3 +1121,4 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
 };
 
 export default UsersListManagement;
+    

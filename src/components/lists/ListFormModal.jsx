@@ -1008,7 +1008,7 @@ const ListFormModal = ({
                   </button>
                   
                   {/* Only show save button if not in template selection mode */}
-                  {(!showTemplateSelection ) && (
+                  {(
                     <button
                       type="submit"
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -1546,7 +1546,7 @@ const ListFormModal = ({
                   </button>
                   
                   {/* Only show save button if not in template selection mode */}
-                  {(!showTemplateSelection ) && (
+                  {(
                     <button
                       type="submit"
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -2073,7 +2073,7 @@ const ListFormModal = ({
                   </button>
                   
                   {/* Only show save button if not in template selection mode */}
-                  {(!showTemplateSelection ) && (
+                  {(
                     <button
                       type="submit"
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -2600,7 +2600,7 @@ const ListFormModal = ({
                   </button>
                   
                   {/* Only show save button if not in template selection mode */}
-                  {(!showTemplateSelection ) && (
+                  {(
                     <button
                       type="submit"
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

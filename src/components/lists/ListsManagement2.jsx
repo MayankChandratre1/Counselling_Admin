@@ -1096,6 +1096,7 @@ const ListsManagement2 = ({listId}) => {
                     list={list}
                     expandedListId={expandedListId}
                     handleListClick={handleListClick}
+                     folders={folders || []}
                     handleEdit={handleEdit}
                     handleDelete={handleDelete}
                     handleFolderMove={handleFolderMove}
@@ -1202,6 +1203,7 @@ const ListsManagement2 = ({listId}) => {
                                       <ListCard 
                                         key={list.id}
                                         list={list}
+                                         folders={folders || []}
                                         expandedListId={expandedListId}
                                         handleListClick={handleListClick}
                                         handleEdit={handleEdit}
@@ -1210,6 +1212,8 @@ const ListsManagement2 = ({listId}) => {
                                         originalFolder={folders.find(f => f.id === list.folderId) || null}
                                         handleCopyBranchCode={handleCopyBranchCode}
                                         isCodeCopied={isCodeCopied}
+                                        handleFolderMove={handleFolderMove}
+                    handleFolderCopy={handleFolderCopy}
                                         resetCopiedStatus={resetCopiedStatus}
                                       />
                                     ))}
@@ -1290,6 +1294,7 @@ const ListsManagement2 = ({listId}) => {
                                     handleFolderMove={handleFolderMove}
                                     handleFolderCopy={handleFolderCopy}
                                     folder={null}
+                                     folders={folders || []}
                                     originalFolder={null} // No folder for unorganized lists
                                     handleCopyBranchCode={handleCopyBranchCode}
                                     isCodeCopied={isCodeCopied}
@@ -1369,6 +1374,7 @@ const ListsManagement2 = ({listId}) => {
                                             handleEdit={handleEdit}
                                             handleDelete={handleDelete}
                                             folder={folder}
+                                            folders={folders || []}
                                             originalFolder={folders.find(f => f.id === list.folderId) || null}
                                           />
                                         </div>
