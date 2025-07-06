@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Search, Check, ChevronDown, ChevronUp, ChevronRight, Folder, FolderOpen } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 
 const ImportColleges = ({ 
@@ -8,7 +8,8 @@ const ImportColleges = ({
   onImport, 
   availableLists, 
   currentListId,
-  currentCollegesCount
+  currentCollegesCount,
+  folders = [] // Add folders prop
 }) => {
   const [selectedListId, setSelectedListId] = useState('');
   const [selectedList, setSelectedList] = useState(null);
@@ -21,6 +22,8 @@ const ImportColleges = ({
   const [insertIndex, setInsertIndex] = useState(0);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [expandedColleges, setExpandedColleges] = useState({});
+  const [expandedFolders, setExpandedFolders] = useState({});
+  const [searchListTerm, setSearchListTerm] = useState('');
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -34,8 +37,15 @@ const ImportColleges = ({
       setInsertPosition('end');
       setInsertIndex(0);
       setShowConfirmation(false);
+      // Initialize all folders as expanded
+      const initialExpandedState = {};
+      folders.forEach(folder => {
+        initialExpandedState[folder.id] = false;
+      });
+      initialExpandedState['no-folder'] = true;
+      setExpandedFolders(initialExpandedState);
     }
-  }, [isOpen]);
+  }, [isOpen, folders]);
 
   // Filter colleges based on search
   useEffect(() => {
@@ -65,6 +75,37 @@ const ImportColleges = ({
     setFilteredColleges(filtered);
   }, [searchQuery, selectedList]);
 
+  // Group lists by folder
+  const groupedLists = React.useMemo(() => {
+    const grouped = {
+      'no-folder': []
+    };
+    
+    // Initialize groups for all folders
+    folders.forEach(folder => {
+      grouped[folder.id] = [];
+    });
+    
+    // Group lists by their folderId
+    availableLists
+      .filter(list => list.id !== currentListId) // Exclude current list
+      .forEach(list => {
+        if (searchListTerm && 
+            !list.title.toLowerCase().includes(searchListTerm.toLowerCase())) {
+          return; // Skip lists that don't match search
+        }
+        
+        const folderId = list.folderId || 'no-folder';
+        if (grouped[folderId]) {
+          grouped[folderId].push(list);
+        } else {
+          grouped['no-folder'].push(list);
+        }
+      });
+    
+    return grouped;
+  }, [availableLists, currentListId, folders, searchListTerm]);
+
   // Fetch list details when list is selected
   const handleListSelect = async (listId) => {
     if (!listId) {
@@ -74,6 +115,7 @@ const ImportColleges = ({
       return;
     }
 
+    setSelectedListId(listId);
     setLoading(true);
     try {
       const response = await axiosInstance.get(`/api/admin/list/${listId}`);
@@ -84,6 +126,14 @@ const ImportColleges = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Toggle folder expansion
+  const toggleFolder = (folderId) => {
+    setExpandedFolders(prev => ({
+      ...prev,
+      [folderId]: !prev[folderId]
+    }));
   };
 
   // Toggle college selection
@@ -142,6 +192,9 @@ const ImportColleges = ({
 
   if (!isOpen) return null;
 
+  // Check if there are any lists to show after filtering
+  const hasLists = Object.values(groupedLists).some(lists => lists.length > 0);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
@@ -156,28 +209,154 @@ const ImportColleges = ({
         {/* Content */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {/* List Selection */}
-          {!showConfirmation && (
-            <div className="p-4 border-b border-gray-200">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select a list to import colleges from:
-              </label>
-              <select
-                value={selectedListId}
-                onChange={(e) => {
-                  setSelectedListId(e.target.value);
-                  handleListSelect(e.target.value);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select a list...</option>
-                {availableLists
-                  .filter(list => list.id !== currentListId)
-                  .map(list => (
-                    <option key={list.id} value={list.id}>
-                      {list.title} ({list.colleges?.length || 0} colleges)
-                    </option>
-                  ))}
-              </select>
+          {!showConfirmation && !selectedListId && (
+            <div className="flex-1 flex flex-col">
+              {/* Search for lists */}
+              <div className="p-4 border-b border-gray-200">
+                <div className="relative">
+                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchListTerm}
+                    onChange={(e) => setSearchListTerm(e.target.value)}
+                    placeholder="Search lists..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              
+              {/* Lists organized by folders */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {!hasLists ? (
+                  <div className="text-center py-10">
+                    <p className="text-gray-500">No lists found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Folders with lists */}
+                    {folders.map(folder => {
+                      if (groupedLists[folder.id]?.length === 0) return null;
+                      
+                      return (
+                        <div key={folder.id} className="border rounded-lg shadow-sm">
+                          {/* Folder header */}
+                          <div 
+                            className="p-3 bg-blue-50 rounded-t-lg border-b border-blue-100 flex items-center cursor-pointer"
+                            onClick={() => toggleFolder(folder.id)}
+                          >
+                            <button className="text-blue-600 p-1 rounded-full hover:bg-blue-100 mr-2">
+                              {expandedFolders[folder.id] ? 
+                                <ChevronDown size={18} /> : 
+                                <ChevronRight size={18} />
+                              }
+                            </button>
+                            <div className="flex items-center">
+                              <Folder size={18} className="text-blue-600 mr-2" />
+                              <h4 className="font-medium text-blue-900">{folder.name}</h4>
+                            </div>
+                            <span className="ml-auto bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+                              {groupedLists[folder.id].length} lists
+                            </span>
+                          </div>
+                          
+                          {/* Folder content */}
+                          {expandedFolders[folder.id] && (
+                            <div className="divide-y divide-gray-100">
+                              {groupedLists[folder.id].map(list => (
+                                <div
+                                  key={list.id}
+                                  className={`p-3 flex justify-between items-center hover:bg-blue-50 cursor-pointer ${
+                                    selectedListId === list.id ? 'bg-blue-100' : ''
+                                  }`}
+                                  onClick={() => handleListSelect(list.id)}
+                                >
+                                  <div>
+                                    <h5 className="font-medium text-gray-900">{list.title}</h5>
+                                    <p className="text-sm text-gray-500">
+                                      {list.colleges?.length || 0} colleges
+                                    </p>
+                                  </div>
+                                  {selectedListId === list.id && (
+                                    <Check size={18} className="text-green-600" />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    
+                    {/* No Folder section */}
+                    {groupedLists['no-folder'].length > 0 && (
+                      <div className="border rounded-lg shadow-sm">
+                        {/* No Folder header */}
+                        <div 
+                          className="p-3 bg-gray-50 rounded-t-lg border-b border-gray-100 flex items-center cursor-pointer"
+                          onClick={() => toggleFolder('no-folder')}
+                        >
+                          <button className="text-gray-600 p-1 rounded-full hover:bg-gray-200 mr-2">
+                            {expandedFolders['no-folder'] ? 
+                              <ChevronDown size={18} /> : 
+                              <ChevronRight size={18} />
+                            }
+                          </button>
+                          <div className="flex items-center">
+                            <FolderOpen size={18} className="text-gray-600 mr-2" />
+                            <h4 className="font-medium text-gray-900">No Folder</h4>
+                          </div>
+                          <span className="ml-auto bg-gray-200 text-gray-800 text-xs px-2 py-0.5 rounded-full">
+                            {groupedLists['no-folder'].length} lists
+                          </span>
+                        </div>
+                        
+                        {/* No Folder content */}
+                        {expandedFolders['no-folder'] && (
+                          <div className="divide-y divide-gray-100">
+                            {groupedLists['no-folder'].map(list => (
+                              <div
+                                key={list.id}
+                                className={`p-3 flex justify-between items-center hover:bg-gray-50 cursor-pointer ${
+                                  selectedListId === list.id ? 'bg-gray-100' : ''
+                                }`}
+                                onClick={() => handleListSelect(list.id)}
+                              >
+                                <div>
+                                  <h5 className="font-medium text-gray-900">{list.title}</h5>
+                                  <p className="text-sm text-gray-500">
+                                    {list.colleges?.length || 0} colleges
+                                  </p>
+                                </div>
+                                {selectedListId === list.id && (
+                                  <Check size={18} className="text-green-600" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Back to lists button (when a list is selected) */}
+              {selectedListId && (
+                <div className="border-t border-gray-200 p-4">
+                  <button
+                    onClick={() => {
+                      setSelectedListId('');
+                      setSelectedList(null);
+                      setSelectedColleges([]);
+                      setFilteredColleges([]);
+                    }}
+                    className="flex items-center text-blue-600 hover:text-blue-800"
+                  >
+                    <ChevronLeft size={16} className="mr-1" />
+                    Back to lists
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -189,7 +368,7 @@ const ImportColleges = ({
           )}
 
           {/* No List Selected */}
-          {!loading && !selectedList && !showConfirmation && (
+          {!loading && !selectedList && !showConfirmation && selectedListId === '' && (
             <div className="flex-1 flex items-center justify-center p-6 text-center">
               <div>
                 <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">

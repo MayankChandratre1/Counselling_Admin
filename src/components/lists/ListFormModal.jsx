@@ -1159,6 +1159,7 @@ const ListFormModal = ({
         availableLists={availableTemplates || []} // Using available templates as the list of available lists
         currentListId={editingList?.id}
         currentCollegesCount={selectedColleges.length}
+        folders={folders || []}
       />
 
       {/* Template Selection - For new lists */}

@@ -316,6 +316,7 @@ const ListsManagement2 = ({listId}) => {
   const [expandedFolders, setExpandedFolders] = useState({});
   const navigation = useNavigate()
   const [activeTab, setActiveTab] = useState('folders'); // Add new state for active tab
+  const [copiedCodes, setCopiedCodes] = useState({}); // Track copied codes by list and college ID
 
   useEffect(() => {
         if(listId && lists.length > 0) {
@@ -896,6 +897,44 @@ const ListsManagement2 = ({listId}) => {
     }
   }, [branchSearchInput, availableBranches]);
 
+  // Function to handle copying of branch code
+  const handleCopyBranchCode = (listId, college) => {
+    const code = college.selectedBranchCode;
+    if (!code) return;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(code)
+      .then(() => {
+        // Track that this college's code has been copied for this list
+        setCopiedCodes(prev => ({
+          ...prev,
+          [listId]: {
+            ...(prev[listId] || {}),
+            [college.uniqueId || college.id]: true
+          }
+        }));
+        
+        // Provide feedback that code was copied (optional toast or alert)
+        // You can use your existing feedback mechanism
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+  };
+  
+  // Function to check if a college code has been copied
+  const isCodeCopied = (listId, collegeId) => {
+    return copiedCodes[listId]?.[collegeId] || false;
+  };
+  
+  // Function to reset copied status for a list
+  const resetCopiedStatus = (listId) => {
+    setCopiedCodes(prev => ({
+      ...prev,
+      [listId]: {}
+    }));
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -1169,10 +1208,9 @@ const ListsManagement2 = ({listId}) => {
                                         handleDelete={handleDelete}
                                         folder={folder}
                                         originalFolder={folders.find(f => f.id === list.folderId) || null}
-                                        handleRestore={handleRestore}
-                                        handleFolderMove={handleFolderMove}
-                                        handleFolderCopy={handleFolderCopy}
-                                        folders={folders.filter(f => !f.isArchive)} // Only pass non-archived folders
+                                        handleCopyBranchCode={handleCopyBranchCode}
+                                        isCodeCopied={isCodeCopied}
+                                        resetCopiedStatus={resetCopiedStatus}
                                       />
                                     ))}
                                   </div>
@@ -1253,7 +1291,9 @@ const ListsManagement2 = ({listId}) => {
                                     handleFolderCopy={handleFolderCopy}
                                     folder={null}
                                     originalFolder={null} // No folder for unorganized lists
-                                    folders={folders.filter(f => !f.isArchive)} // Only pass non-archived folders
+                                    handleCopyBranchCode={handleCopyBranchCode}
+                                    isCodeCopied={isCodeCopied}
+                                    resetCopiedStatus={resetCopiedStatus}
                                   />
                                 ))}
                               </div>

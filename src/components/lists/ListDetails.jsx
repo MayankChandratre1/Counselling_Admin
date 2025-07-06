@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { Search, MapPin, Building, GraduationCap, Filter, Download, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, MapPin, Building, GraduationCap, Filter, Download, Copy, Check, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 
-const ListDetails = ({ list }) => {
+const ListDetails = ({ 
+  list, 
+  handleCopyBranchCode, 
+  isCodeCopied, 
+  resetCopiedStatus 
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCity, setFilterCity] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
-  const [copiedCode, setCopiedCode] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
 
@@ -39,16 +43,11 @@ const ListDetails = ({ list }) => {
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterCity, filterBranch, itemsPerPage]);
-
-  const copyToClipboard = async (text, collegeId) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedCode(collegeId);
-      setTimeout(() => setCopiedCode(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy: ', err);
-    }
-  };
+  
+  // Count how many codes have been copied
+  const copiedCount = list?.colleges?.reduce((count, college) => {
+    return count + (isCodeCopied(college.uniqueId || college.id) ? 1 : 0);
+  }, 0) || 0;
 
   const exportToCSV = () => {
     const headers = ['Index', 'Institute Name', 'Institute Code', 'Branch Code', 'City', 'Branch', 'Status'];
@@ -120,6 +119,33 @@ const ListDetails = ({ list }) => {
           )}
         </div>
       </div>
+
+      {/* Add progress indicator and reset button for copied status */}
+      {colleges.length > 0 && (
+        <div className="flex justify-between items-center mb-3">
+          <div className="text-sm text-gray-600">
+            <span className="font-medium">{copiedCount}</span> of <span className="font-medium">{colleges.length}</span> codes copied
+            {copiedCount > 0 && (
+              <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full" 
+                  style={{ width: `${(copiedCount / colleges.length) * 100}%` }}
+                ></div>
+              </div>
+            )}
+          </div>
+          {copiedCount > 0 && (
+            <button
+              onClick={resetCopiedStatus}
+              className="text-xs flex items-center gap-1 px-2 py-1 text-blue-600 hover:bg-blue-50 rounded"
+              title="Reset copied status"
+            >
+              <RotateCcw size={14} />
+              Reset
+            </button>
+          )}
+        </div>
+      )}
 
       {colleges.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
@@ -204,10 +230,11 @@ const ListDetails = ({ list }) => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedColleges.map((college, index) => {
                     const globalIndex = startIndex + index + 1;
-                    const collegeId = college.uniqueId || `${college.id}_${index}`;
+                    const collegeId = college.uniqueId || college.id;
+                    const isCopied = isCodeCopied(collegeId);
                     
                     return (
-                      <tr key={collegeId} className="hover:bg-gray-50 transition-colors">
+                      <tr key={collegeId} className={isCopied ? "bg-green-50" : "hover:bg-gray-50 transition-colors"}>
                         {/* Index */}
                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                           {globalIndex}
@@ -243,15 +270,21 @@ const ListDetails = ({ list }) => {
                         <td className="px-4 py-3">
                           {college.selectedBranchCode ? (
                             <div className="flex items-center space-x-2">
-                              <span className="text-sm font-mono font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                              <span className={`text-sm font-mono font-medium ${
+                                isCopied ? "bg-green-100 text-green-600" : "bg-blue-50 text-blue-600"
+                              } px-2 py-1 rounded`}>
                                 {college.selectedBranchCode}
                               </span>
                               <button
-                                onClick={() => copyToClipboard(college.selectedBranchCode, collegeId)}
-                                className="inline-flex items-center justify-center w-6 h-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                onClick={() => handleCopyBranchCode(college)}
+                                className={`inline-flex items-center justify-center w-6 h-6 ${
+                                  isCopied 
+                                    ? 'text-green-600 bg-green-50' 
+                                    : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                                } rounded transition-colors`}
                                 title="Copy branch code"
                               >
-                                {copiedCode === collegeId ? (
+                                {isCopied ? (
                                   <Check size={14} className="text-green-600" />
                                 ) : (
                                   <Copy size={14} />

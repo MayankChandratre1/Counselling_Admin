@@ -23,6 +23,38 @@ const ListCard = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [actionSuccess, setActionSuccess] = useState(null);
   
+  // Add state to track copied branch codes
+  const [copiedCodes, setCopiedCodes] = useState({});
+  
+  // Function to handle copying of branch code
+  const handleCopyBranchCode = (college) => {
+    const code = college.selectedBranchCode;
+    if (!code) return;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(code)
+      .then(() => {
+        // Track that this college's code has been copied
+        setCopiedCodes(prev => ({
+          ...prev,
+          [college.uniqueId || college.id]: true
+        }));
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+  };
+  
+  // Function to check if a college code has been copied
+  const isCodeCopied = (collegeId) => {
+    return copiedCodes[collegeId] || false;
+  };
+  
+  // Function to reset copied status for the list
+  const resetCopiedStatus = () => {
+    setCopiedCodes({});
+  };
+  
   const handleMoveAction = async () => {
     if (!targetFolderId) return;
     
@@ -228,7 +260,12 @@ const ListCard = ({
       {/* Expanded Content */}
       {isExpanded && (
         <div className={isInArchivedFolder ? "bg-amber-50/50" : "bg-gray-50"}>
-          <ListDetails list={list} />
+          <ListDetails 
+            list={list} 
+            handleCopyBranchCode={handleCopyBranchCode}
+            isCodeCopied={isCodeCopied}
+            resetCopiedStatus={resetCopiedStatus}
+          />
         </div>
       )}
 
