@@ -2,10 +2,12 @@ import React, { useState } from 'react'
 import Navbar from '../components/Navbar'
 import ListsManagement from '../components/lists/ListsManagement'
 import { Menu } from 'lucide-react'
+import { useParams } from 'react-router-dom'
 import ListsManagement2 from '../components/lists/ListsManagement2'
 
-const Lists = () => {
+const Lists2 = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { id } = useParams();
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -28,10 +30,10 @@ const Lists = () => {
 
       {/* Main content */}
       <div className="flex-1 overflow-auto w-full">
-        <ListsManagement2 />
+        <ListsManagement2 listId={id} />
       </div>
     </div>
   )
 }
 
-export default Lists;
+export default Lists2;

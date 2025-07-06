@@ -32,6 +32,8 @@ import SendPushNotification from "./pages/SendPushNotification";
 import FormProgressTracking from "./pages/FormProgressTracking";
 import UserLists from "./pages/UserLists";
 import UserListsPage from "./pages/UserListsPage";
+import { ListsProvider } from "./contexts/ListsContext";
+import Lists2 from "./pages/Lists2";
 
 function App() {
   return (
@@ -110,6 +112,13 @@ function App() {
         <Route path="/lists" element={
           <ProtectedRoute requiredPermission="lists">
             <Lists />
+          </ProtectedRoute>
+        } />
+        <Route path="/lists/:id" element={
+          <ProtectedRoute requiredPermission="lists">
+            <ListsProvider>
+              <Lists2 />
+            </ListsProvider>
           </ProtectedRoute>
         } />
         <Route path="/change-password" element={
