@@ -18,6 +18,10 @@ import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
 import axiosInstance from '../../utils/axios';
 import { set } from 'lodash';
+import ListFormModal from '../lists/ListFormModal';
+import ListFormModalForUser from '../lists/ListFormModalForUsers';
+import ListsManagement2 from '../lists/ListsManagement2';
+import ListsManagement3 from '../lists/ListManageMent3';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -163,7 +167,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
       if(!list) return
       setEditingUserList({
         ...list,
-        userData // Add user data to the list object
+        userData: userData.data // Add user data to the list object
       });
       setEditListFormData({
         title: list.title,
@@ -584,8 +588,8 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
         return;
       }
       
-      const response = await authAxios.get('/api/admin/search-colleges', { params });
-      setCollegeSearchResults(response.data);
+      const response = await authAxios.get('/api/colleges/search', { params });
+      setCollegeSearchResults(response.data.colleges || []);
     } catch (err) {
       console.error('Error searching colleges:', err);
       setCollegeSearchResults([]);
@@ -1029,7 +1033,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
           {/* User List Modal */}
           <UserListModal 
             showModal={showUserListModal}
-            onClose={() => navigation(-1)}
+            onClose={() => navigation(`/users/${id}`)}
             loading={loadingLists}
             userLists={selectedUserLists}
             createdLists={selectedUsersCreatedLists}
@@ -1041,36 +1045,41 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
 
           {/* Edit List Modal */}
           {showEditListModal && (
-            <EditListModal 
-              show={showEditListModal}
-              onClose={() => {
-                navigation(-1);
-                setShowEditListModal(false)
-              }}
-              editingUserList={editingUserList}
-              editListFormData={editListFormData}
-              setEditListFormData={setEditListFormData}
-              searchCollegeQuery={searchCollegeQuery}
-              handleSearchCollegeChange={(e) => setSearchCollegeQuery(e.target.value)}
-              isSearchingColleges={isSearchingColleges}
-              collegeSearchResults={collegeSearchResults}
-              searchColleges={searchColleges}
-              addCollegeToUserList={addCollegeToUserList}
-              handleRemoveCollegeFromUserList={handleRemoveCollegeFromUserList}
-              moveCollege={moveCollege}
-              handleSaveUserList={handleSaveUserList}
-              selectedUserCategory={editingUserList?.selectedUser?.counsellingData?.category || ''}
-              selectedUserListsId={selectedUserListsId}
-              availableLists={availableLists || []} // Make sure we provide a default empty array
+            <ListsManagement3 
+              list={editingUserList}
+              user={editingUserList?.userData}
               users={users}
               setUsers={setUsers}
+              setSelectedUsersCreatedLists={setSelectedUsersCreatedLists}
               setSelectedUserLists={setSelectedUserLists}
-              setError={setError}
-              setShowEditListModal={setShowEditListModal}
-              setEditingUserList={setEditingUserList}
-              setLoadingLists={setLoadingLists}
             />
           )}
+          {/* {showEditListModal && (
+            <ListFormModalForUser 
+              editingList={editingUserList}
+              formData={editListFormData}
+              setFormData={setEditListFormData}
+              handleSubmit={handleSaveUserList}
+              closeModal={() => {
+                setShowEditListModal(false);
+                setEditingUserList(null);
+                setEditListFormData({ title: '', colleges: [] });
+                navigation(-1);}}
+            selectedColleges={editListFormData.colleges}
+            setSelectedColleges={(colleges) => setEditListFormData(prev => ({ ...prev, colleges }))}
+            searchQuery={searchCollegeQuery}
+            handleSearchChange={handleSearchCollegeChange}
+            isSearching={isSearchingColleges}
+            searchResults={collegeSearchResults}
+            searchColleges={searchColleges}
+            addCollegeToList={addCollegeToUserList}
+            
+
+            removeCollegeFromList={handleRemoveCollegeFromUserList}
+            moveCollege={moveCollege}
+            />
+            
+          )} */}
           
           {/* Order Editable List Modal */}
           {editingOrderList && (

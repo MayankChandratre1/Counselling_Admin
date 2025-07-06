@@ -71,22 +71,26 @@ const SelectedColleges = ({
 
   useEffect(() => {    
     if (selectedCollegesCutoffs && selectedCollegesCutoffs.length > 0) {
+      const selectedBranchCodes = selectedColleges.map(college => college.selectedBranchCode || college.branchCode);
       let extractedData;
-      if(selectedUserCategory)
+      if(selectedCategory)
       extractedData = selectedCollegesCutoffs.map(college => {
         const eligibleBranches = college.branches
           .filter(branch => {
+
             const categoryData = branch.cutoffs.find(
-              c => c.category === selectedUserCategory
+              c => c.category === selectedCategory 
             );
-            return categoryData && selectedUserMarks >= categoryData.percentile;
+            return selectedBranchCodes.includes(branch.branchCode) && categoryData && selectedUserMarks >= categoryData.percentile;
           })
           .map(branch => ({
             collegeId: college.id,
             branchCode: branch.branchCode,
             branchName: branch.branchName,
-            cutoffData: branch.cutoffs.find(c => c.category === selectedUserCategory)
+            cutoffData: branch.cutoffs.find(c => c.category === selectedCategory)
           }));
+       
+        
 
           
 

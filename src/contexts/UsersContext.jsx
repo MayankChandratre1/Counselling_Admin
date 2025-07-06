@@ -220,6 +220,10 @@ export const UsersProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await axiosInstance.post('/api/admin/user/search', searchParams);
+       setPaginationCache(new Map());
+    setLastDocCache(new Map());
+    setDataLoaded(false);
+    setLastDoc(null);
       setUsers(response.data);
       setError(null);
       return response.data;

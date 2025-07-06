@@ -244,6 +244,8 @@ const DraggableCollegeItem = ({
     };
   }, []);
 
+
+
   return (
     <tr 
       ref={dragDropRef}
@@ -254,13 +256,16 @@ const DraggableCollegeItem = ({
         ${isSelected ? 'bg-blue-100 border-l-4 border-l-blue-500' : ''}
         ${recentlyMoved ? 'animate-pulse bg-yellow-100' : ''}
         ${isEligible ? 'bg-green-50 border-l-4 !border-l-green-500 hover:bg-green-100' : 'hover:bg-gray-50'}
+        
         ${highlightedIndices?.has(index) ? '!bg-yellow-50 border-l-4 !border-yellow-500' : ''}
-        ${college.colorLabel ? `border-l-4 !border-l-${college.colorLabel}-300` : ''}
+        
         transition-all duration-150 ease-in-out
         ${globalIsDragging ? 'select-none' : ''}
+        
       `}
     >
-      <td className="px-6 py-2 nowrap max-w-[300px]">
+
+      <td className={`px-6 py-2 nowrap max-w-[300px] `}>
         <div className="flex items-center gap-3">
           <input
             type="checkbox"
@@ -387,8 +392,17 @@ const DraggableCollegeItem = ({
                 Rank: {eligibleData.cutoffData.rank}
               </span>
             </div>
+          ) : selectedCategoryCuttoff ? (
+            <div className="flex flex-col">
+              <span className="text-gray-700 font-medium">
+                {selectedCategoryCuttoff.percentile.toFixed(2)}%
+              </span>
+              <span className="text-xs text-blue-600">
+                Rank: {selectedCategoryCuttoff.rank}
+              </span>
+            </div>
           ) : (
-            <span className="text-gray-400">Not Eligible</span>
+            <span className="text-gray-400">-</span>
           )}
         </td>
       )}

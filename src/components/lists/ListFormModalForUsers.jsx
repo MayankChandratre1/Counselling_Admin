@@ -7,8 +7,9 @@ import CollegeSearchResults from './CollegeSearchResults';
 import SelectedColleges from './SelectedColleges';
 import DraggableCollegeItem from '../users/DraggableCollegeItem';
 import ImportColleges from './ImportColleges';
+import { set } from 'lodash';
 
-const ListFormModal = ({
+const ListFormModalForUsers = ({
   editingList,
   formData,
   setFormData,
@@ -87,7 +88,7 @@ const ListFormModal = ({
     });
     setHasUnsavedChanges(false);
     setCategorySearchInput(selectedCategory || '');
-  }, [editingList?.id, selectedColleges, selectedCategory, formData.title]); 
+  }, [editingList?.id, selectedCategory, formData.title]); 
 
   useEffect(() => {
     const currentState = {
@@ -107,8 +108,17 @@ const ListFormModal = ({
       JSON.stringify(initialState.selectedColleges.map(c => c.selectedBranchCode || c.selectedBranchCode))
     );
 
+    console.log('Checking unsaved changes:', {
+      titleChanged: currentState.title !== initialState.title,
+      categoryChanged: currentState.selectedCategory !== initialState.selectedCategory,
+      collegesLengthChanged: currentState.selectedColleges.length !== initialState.selectedColleges.length,
+      collegesBranchesChanged: JSON.stringify(currentState.selectedColleges.map(c => c.selectedBranchCode || c.selectedBranchCode)) !== 
+        JSON.stringify(initialState.selectedColleges.map(c => c.selectedBranchCode || c.selectedBranchCode))
+    });
+    
+
     setHasUnsavedChanges(hasChanges);
-  }, [formData.title, selectedColleges, selectedCategory, initialState]);
+  }, [formData, selectedColleges, selectedCategory, initialState]);
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -236,15 +246,22 @@ const ListFormModal = ({
   };
 
   const handleUndo = () => {
+    console.log('Undoing last change, current history:', collegeHistory);
     if (collegeHistory.length > 0) {
+      
       const previousState = collegeHistory[collegeHistory.length - 1];
-      setSelectedColleges(previousState);
+      setSelectedColleges([...previousState]);
       setCollegeHistory(prev => prev.slice(0, -1));
     }
   };
 
   const handleCollegeMove = (dragIndex, hoverIndex, newOrder = null) => {
-    setCollegeHistory(prev => [...prev, selectedColleges]);
+    if(collegeHistory.length == 0) {
+      console.log('Moving college, current history:', collegeHistory);
+      setCollegeHistory(prev => [ selectedColleges]);
+    }else{
+      setCollegeHistory(prev => [...prev, selectedColleges]);
+    }
     if (newOrder) {
       setSelectedColleges(newOrder);
     } else {
@@ -356,7 +373,6 @@ const ListFormModal = ({
     alert(`Successfully imported ${collegesToImport.length} colleges!`);
   };
 
-  console.log(userData);
   
 
   return (
@@ -656,6 +672,9 @@ const ListFormModal = ({
                   editingList={editingList}
                   selectedForExport={selectedForExport}
                   onSelectForExport={handleSelectForExport}
+                  selectedUserMarks={userData?.counsellingData?.cetPercentile || NaN}
+                  selectedUserCategory={selectedCategory || "GOPENH"}
+
                 />
               </div>
             </div>
@@ -2721,4 +2740,4 @@ const ListFormModal = ({
   );
 };
 
-export default ListFormModal;
+export default ListFormModalForUsers;
