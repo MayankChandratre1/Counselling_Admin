@@ -12,6 +12,7 @@ import ListFormModal from './ListFormModal';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { useLists } from '../../contexts/ListsContext';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 const PREDEFINED_CATEGORIES =[
   "AI",
@@ -733,7 +734,7 @@ const ListsManagement2 = ({listId}) => {
       if (editingList?.id) {
         await axiosInstance.post(`/api/admin/edit-list/${editingList.id}`, submitData);
         setLists(lists.map(list => 
-          list.id === editingList.id ? { ...list, ...submitData } : list
+          list.id === editingList.id ? { ...list, ...submitData, folderId: list.folderId } : list
         ));
       } else {
         const response = await axiosInstance.post('/api/admin/add-list', submitData);
@@ -743,6 +744,8 @@ const ListsManagement2 = ({listId}) => {
       setEditingList(null);
       setFormData({ title: '', folderId: '' });
       setSelectedColleges([]);
+
+      toast.success('List saved successfully!');
     } catch (err) {
       console.log(err);
       
@@ -1092,10 +1095,8 @@ const ListsManagement2 = ({listId}) => {
                   }`}
                 >
                   <Archive size={18} />
-                  Archived
-                  <span className="bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full ml-1">
-                    {folders.filter(folder => folder.isArchive).length}
-                  </span>
+                  Archived Lists
+                  
                 </button>
               </div>
               
@@ -1270,7 +1271,7 @@ const ListsManagement2 = ({listId}) => {
                     {folders.filter(folder => folder.isArchive).length > 0 ? (
                       <div className="space-y-3">
                         {folders.filter(folder => folder.isArchive).map(folder => (
-                          <div key={folder.id} className="bg-amber-50 rounded-lg border-2 border-amber-200 shadow-sm opacity-90">
+                          <div key={folder.id} className="bg-amber-50 rounded-lg border-2 border-gray-300 shadow-sm opacity-90">
                             <div className="p-4 border-b border-amber-200 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-t-lg">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
@@ -1310,7 +1311,7 @@ const ListsManagement2 = ({listId}) => {
                             </div>
                             
                             {(expandedFolders[folder.id] || expandedFolders[folder.id] === undefined) && (
-                              <div className="p-4 bg-amber-25">
+                              <div className="p-4 bg-gray-100">
                                 {groupedLists[folder.id]?.length > 0 ? (
                                   <div className="space-y-3">
                                     <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-100 p-2 rounded-md">
