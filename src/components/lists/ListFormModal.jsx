@@ -87,7 +87,7 @@ const ListFormModal = ({
     });
     setHasUnsavedChanges(false);
     setCategorySearchInput(selectedCategory || '');
-  }, [editingList?.id, selectedColleges, selectedCategory, formData.title]); 
+  }, [editingList?.id, selectedCategory, formData.title]); 
 
   useEffect(() => {
     const currentState = {
