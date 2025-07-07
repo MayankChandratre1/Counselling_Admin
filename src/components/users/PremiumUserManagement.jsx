@@ -5,7 +5,7 @@ import { usePremiumPage } from '../../contexts/PremiumPageContext';
 import UsersTable from './UsersTable';
 import Navbar from '../Navbar';
 import axios from "axios";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 // Import all extracted components
 import DraggableCollegeItem from './DraggableCollegeItem';
@@ -107,6 +107,7 @@ const PremiumUsersManagement = () => {
     const [uniquePlans, setUniquePlans] = useState([]);
   const [showListReleaseModal, setShowListReleaseModal] = useState(false);
   const [selectedUserForRelease, setSelectedUserForRelease] = useState(null);
+  const navigation = useNavigate();
 
   const getAuthAxios = () => {
     const token = localStorage.getItem('adminToken');
@@ -287,7 +288,7 @@ const PremiumUsersManagement = () => {
       setLoadingLists(true);
       setSelectedUserName(userName);
       setSelectedUserListsId(userId);
-      
+      navigation(`/users/lists/${userId}`);
       const user = users.find(u => u.id === userId);
       if (user) {
         setSelectedUserLists(user.lists || []);

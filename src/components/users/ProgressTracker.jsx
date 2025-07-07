@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, MessageSquare, Edit, Lock } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 import { set } from 'lodash';
 
-const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick }) => {
+const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick, onEditClick }) => {
   const [forms, setForms] = useState([]);
   const [selectedForm, setSelectedForm] = useState(form || null);
   const [formSteps, setFormSteps] = useState([]);
@@ -54,6 +54,28 @@ const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick }) => {
     setExpandedStep(expandedStep === stepNumber ? null : stepNumber);
   };
 
+  const getStepStatusIcon = (status) => {
+    switch (status) {
+      case 'Yes':
+        return <CheckCircle className="text-green-500" />;
+      case 'No':
+        return <XCircle className="text-red-500" />;
+      default:
+        return <Clock className="text-yellow-500" />;
+    }
+  };
+
+  const getStepStatusText = (status) => {
+    switch (status) {
+      case 'Yes':
+        return <span className="text-green-600 font-medium">Completed</span>;
+      case 'No':
+        return <span className="text-red-600 font-medium">Rejected</span>;
+      default:
+        return <span className="text-yellow-600 font-medium">Pending</span>;
+    }
+  };
+
   const getStepStatusBadge = (status) => {
     switch (status) {
       case 'Yes':
@@ -68,6 +90,11 @@ const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick }) => {
   const getStepTypeBadges = (step) => {
     return (
       <div className="flex flex-wrap gap-2">
+         {step.isLocked && (
+          <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
+            <Lock size={14} className="inline" />
+          </span>
+        )}
         {step.isCapSpecific && (
           <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
             CAP {step.cap || ''}
@@ -83,6 +110,7 @@ const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick }) => {
             CAP Query
           </span>
         )}
+       
       </div>
     );
   };
@@ -152,10 +180,12 @@ const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick }) => {
                           'bg-gray-100 text-gray-800'}`}
                       >
                         {step.number}
+
                       </div>
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">{step.title}</h3>
                         <div className="flex items-center mt-1 gap-2">
+                                                  
                           {getStepStatusBadge(step.status)}
                           {getStepTypeBadges(step)}
                         </div>
@@ -174,6 +204,16 @@ const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick }) => {
                           Add Verdict
                         </button>
                       )}
+                     {!step.isLocked &&  <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditClick(step);
+                        }}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-full"
+                        title="Edit Step"
+                      >
+                        <Edit size={16} />
+                      </button>}
                       {expandedStep === step.number ? (
                         <ChevronUp size={20} className="text-gray-500" />
                       ) : (

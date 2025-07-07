@@ -316,7 +316,7 @@ export const UsersProvider = ({ children }) => {
   };
 
   // Initial fetch only when component mounts
-  useEffect(() => {
+  useEffect(() => {  
     if (!dataLoaded) {
       fetchUsers(1, true, premiumUsersOnly); // Default to non-premium users
     }

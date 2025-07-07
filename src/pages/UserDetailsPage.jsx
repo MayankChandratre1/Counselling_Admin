@@ -7,6 +7,7 @@ import { useUsers } from '../contexts/UsersContext';
 import VerdictModal from '../components/users/VerdictModal';
 import UserEditModal from '../components/users/UserEditModal';
 import ProgressTracker from '../components/users/ProgressTracker';
+import StepEditModal from '../components/users/StepEditModal';
 import axiosInstance from '../utils/axios';
 import { checkPermission } from '../utils/checkPermission';
 
@@ -23,6 +24,7 @@ const UserDetailsPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const {notes} = useUsers();
   const [verdictModal, setVerdictModal] = useState({ isOpen: false, stepNumber: null });
+  const [stepEditModal, setStepEditModal] = useState({ isOpen: false, step: null });
   const [expandedStep, setExpandedStep] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
@@ -142,6 +144,47 @@ const UserDetailsPage = () => {
     console.log(`Adding verdict for step ${stepNumber}`);
     
     setVerdictModal({ isOpen: true, stepNumber });
+  };
+
+  const handleEditStep = (step) => {
+    setStepEditModal({ isOpen: true, step });
+  };
+
+  const handleStepSave = async (updatedStep) => {
+    try {
+      if (!user || !user.stepsData || !user.stepsData.steps) {
+        console.error('User steps data is missing');
+        return;
+      }
+      
+      // Update the specific step in the steps array
+      const updatedSteps = user.stepsData.steps.map(step => 
+        step.number === updatedStep.number ? updatedStep : step
+      );
+      
+      // Create updated stepsData object
+      const updatedStepsData = {
+        ...user.stepsData,
+        steps: updatedSteps,
+      };
+      
+      // Update user in backend
+      const response = await axiosInstance.put(`${API_URL}/api/admin/update-user-step-data/${id}`, 
+        updatedStepsData, 
+        { headers: { token: localStorage.getItem('adminToken') } }
+      );
+      
+      if (response.data.error) {
+        console.error("Error updating step:", response.data.error);
+        return;
+      }
+      
+      // Close modal and refresh user data
+      setStepEditModal({ isOpen: false, step: null });
+      fetchUserDetails();
+    } catch (err) {
+      console.error("Error updating step:", err);
+    }
   };
 
   const handleVerdictConfirm = async (stepNumber, verdict) => {
@@ -397,7 +440,7 @@ const UserDetailsPage = () => {
           {/* Back Button and Header */}
           <div className="flex items-center mb-8 gap-4">
             <button
-              onClick={() => navigate('/users')}
+              onClick={() => navigate("/users")}
               className="flex items-center text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft size={20} className="mr-2" />
@@ -530,7 +573,7 @@ const UserDetailsPage = () => {
 
             {/* Steps Progress */}
           { user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
-           <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step)=> handleAddVerdict(step.number)} />
+           <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step)=> handleAddVerdict(step.number)} onEditClick={handleEditStep} />
            </div>}
 
           {/* Orders Section */}
@@ -715,7 +758,7 @@ const UserDetailsPage = () => {
             </div>
           )}
 
-         
+        
 
           {isEditModalOpen && (
             <UserEditModal
@@ -734,6 +777,14 @@ const UserDetailsPage = () => {
             onClose={() => setVerdictModal({ isOpen: false, stepNumber: null })}
             onConfirm={handleVerdictConfirm}
             stepNumber={verdictModal.stepNumber}
+          />
+
+          {/* Step Edit Modal */}
+          <StepEditModal
+            isOpen={stepEditModal.isOpen}
+            onClose={() => setStepEditModal({ isOpen: false, step: null })}
+            step={stepEditModal.step}
+            onSave={handleStepSave}
           />
         </div>
       </div>
