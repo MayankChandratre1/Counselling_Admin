@@ -161,7 +161,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
       if(!userData.data) return
       let list = null
       if(userData.data.lists)
-        userData.data.lists.find(l => l.id === listId || l.listId === listId);
+        list = userData.data.lists.find(l => l.id === listId || l.listId === listId);
       if(!list){
           // If list not found, try to find by originalListId
           if(userData.data.createdList)
