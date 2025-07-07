@@ -1203,7 +1203,7 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
               editingList={editingList}
               formData={formData}
               setFormData={setFormData}
-              handleSubmit={handleSubmit}
+              handleSave={handleSubmit}
               handleAppendColleges={handleAppendColleges}
               closeModal={() => {
                 setShowModal(false);

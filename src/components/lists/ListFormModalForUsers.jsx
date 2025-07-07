@@ -13,7 +13,7 @@ const ListFormModalForUsers = ({
   editingList,
   formData,
   setFormData,
-  handleSubmit,
+  handleSave,
   closeModal,
   selectedColleges,
   setSelectedColleges,
@@ -129,6 +129,8 @@ const ListFormModalForUsers = ({
       }
     };
 
+    
+
     const handlePopState = (e) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
@@ -179,6 +181,17 @@ const ListFormModalForUsers = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+
+  const handleSubmit = async (e) => {
+      setInitialState({
+        title: formData.title || '',
+        selectedColleges: [...selectedColleges],
+        selectedCategory: selectedCategory || ''
+      })
+      setHasUnsavedChanges(false);
+      await handleSave(e);
+    }
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
