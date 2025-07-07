@@ -565,13 +565,12 @@ const handleBulkRemove = () => {
   
   // Confirm before removing
   if (window.confirm(`Are you sure you want to remove ${selectedItems.length} selected colleges?`)) {
-    // Sort in descending order to avoid index shifting problems when removing
-    const sortedIndices = [...selectedItems].sort((a, b) => b - a);
+    // Create a new array excluding the selected items
+    const indicesToRemove = new Set(selectedItems);
+    const newColleges = selectedColleges.filter((_, index) => !indicesToRemove.has(index));
     
-    // Remove each selected college starting from the highest index
-    sortedIndices.forEach(index => {
-      removeCollegeFromList(index);
-    });
+    // Update the entire list at once
+    moveCollege(null, null, newColleges);
     
     // Clear selection after removal
     setSelectedItems([]);
