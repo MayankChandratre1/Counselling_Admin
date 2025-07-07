@@ -1057,6 +1057,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
               setSelectedUserLists={setSelectedUserLists}
               selectedUserLists={selectedUserLists}
               selectedUsersCreatedLists={selectedUsersCreatedLists}
+              isCreatedList={selectedUsersCreatedLists.some(l => l.id === editingUserList?.id)}
               />
           )}
           {/* {showEditListModal && (

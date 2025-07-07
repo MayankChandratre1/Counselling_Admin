@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axiosInstance from '../../utils/axios';
 import { Plus, ChevronDown, ChevronRight, Lock, Archive, Folder, FolderOpen } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
@@ -272,7 +272,9 @@ const PREDEFINED_BRANCHES =[
   "VLSI"
 ]
 
-const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setUsers, setSelectedUserLists, selectedUserLists, selectedUsersCreatedLists}) => {
+const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setUsers, setSelectedUserLists, selectedUserLists, selectedUsersCreatedLists, isCreatedList}) => {
+  console.log("isCreaetedList:", isCreatedList);
+  
   const [lists, setLists] = useState([]);
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -730,11 +732,9 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      
+      
       await handleSaveUserList(editingList?.id);
-      setEditingList(null);
-      setFormData({ title: '', folderId: '' });
-      setSelectedColleges([]);
-      navigation(0); // Redirect to lists page after saving
 
       toast.success('List saved successfully!');
     } catch (err) {
@@ -744,10 +744,12 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
     }
   };
 
-  const handleSaveUserList = async (listId) => {
+  const handleSaveUserList = async (listId, isCreatedListProp=false) => {
     try {
       setLoadingLists(true);
       const authAxios = axiosInstance;
+
+      
       
       // Use the listId passed from EditListModal component
       const targetListId = listId || editingUserList.id || editingUserList.listId || editingUserList.originalListId;
@@ -757,7 +759,7 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
       }
       
       // Determine if this is a created list or assigned list based on where it came from
-      const isCreatedList = editingUserList && editingUserList.isCreatedList;
+      const isCreatedList = window.confirm('Is it a created List ?');;
       const userId = selectedUserListsId || user?.id;
       
       if (!userId) {
