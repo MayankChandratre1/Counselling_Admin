@@ -159,9 +159,12 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
       // Find the user data
       const userData = await axiosInstance.get(`/api/admin/user/${userId}`);
       if(!userData.data) return
-      let list = userData.data.lists.find(l => l.id === listId || l.listId === listId);
+      let list = null
+      if(userData.data.lists)
+        userData.data.lists.find(l => l.id === listId || l.listId === listId);
       if(!list){
           // If list not found, try to find by originalListId
+          if(userData.data.createdList)
           list = userData.data.createdList.find(l => l.id === listId || l.listId === listId);
       }
       if(!list) return
@@ -1052,7 +1055,9 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
               setUsers={setUsers}
               setSelectedUsersCreatedLists={setSelectedUsersCreatedLists}
               setSelectedUserLists={setSelectedUserLists}
-            />
+              selectedUserLists={selectedUserLists}
+              selectedUsersCreatedLists={selectedUsersCreatedLists}
+              />
           )}
           {/* {showEditListModal && (
             <ListFormModalForUser 

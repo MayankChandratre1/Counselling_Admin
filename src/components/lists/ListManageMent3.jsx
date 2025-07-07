@@ -272,7 +272,7 @@ const PREDEFINED_BRANCHES =[
   "VLSI"
 ]
 
-const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setUsers, setSelectedUserLists}) => {
+const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setUsers, setSelectedUserLists, selectedUserLists, selectedUsersCreatedLists}) => {
   const [lists, setLists] = useState([]);
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
