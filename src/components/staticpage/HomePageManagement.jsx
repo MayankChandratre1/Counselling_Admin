@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, Trash2, ExternalLink, Save, Calendar, Film, Newspaper, Search, Youtube } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2, ExternalLink, Save, Calendar, Film, Newspaper, Search, Youtube, Image } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -9,15 +9,17 @@ const HomePageManagement = () => {
   const [successMessages, setSuccessMessages] = useState({
     events: false,
     updates: false,
-    colleges: false
+    colleges: false,
+    banners: false
   });
   
   // Expanded state for each section
   const [expandedSections, setExpandedSections] = useState({
-    events: true,
+    events: false,
     updates: false,
     colleges: false,
-    cutoff_video: false
+    cutoff_video: false,
+    banners: false
   });
 
   // Form data
@@ -25,7 +27,8 @@ const HomePageManagement = () => {
     events: [],
     updates: [],
     recommended_colleges: [],
-    cutoff_video: ''
+    cutoff_video: '',
+    banners: []
   });
 
   // New items form data
@@ -47,6 +50,15 @@ const HomePageManagement = () => {
     link: '',
     thumbnail: ''
   });
+  const [newBanner, setNewBanner] = useState({
+    id: '',
+    title: '',
+    url: '',
+    bannerUrl: '',
+    isInAppNavigation: false,
+    isForCounsellingDashboard: false,
+    html: ''
+  });
 
   const [collegeSearch, setCollegeSearch] = useState('');
   const [collegeSearchResults, setCollegeSearchResults] = useState([]);
@@ -60,7 +72,9 @@ const HomePageManagement = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get('/api/admin/get-home-page');
-      setHomePageData(response.data);
+      setHomePageData({
+        ...response.data,
+      });
       setError(null);
     } catch (error) {
       console.error('Error fetching home page data:', error);
@@ -226,6 +240,60 @@ const HomePageManagement = () => {
     setHomePageData(prev => ({
       ...prev,
       recommended_colleges: updatedColleges
+    }));
+  };
+
+  // Banner handlers
+  const handleNewBannerChange = (field, value) => {
+    setNewBanner(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleBannerChange = (index, field, value) => {
+    const updatedBanners = [...homePageData.banners];
+    updatedBanners[index] = {
+      ...updatedBanners[index],
+      [field]: value
+    };
+    setHomePageData(prev => ({
+      ...prev,
+      banners: updatedBanners
+    }));
+  };
+
+  const addBanner = () => {
+    if (newBanner.title && newBanner.bannerUrl) {
+      setHomePageData(prev => ({
+        ...prev,
+        banners: [
+          ...prev.banners,
+          {
+            ...newBanner,
+            id: uuidv4()
+          }
+        ]
+      }));
+      // Reset the form
+      setNewBanner({
+        id: '',
+        title: '',
+        url: '',
+        bannerUrl: '',
+        isInAppNavigation: false,
+        isForCounsellingDashboard: false,
+        html: ''
+      });
+    }
+  };
+
+  const removeBanner = (index) => {
+    const updatedBanners = [...homePageData.banners];
+    updatedBanners.splice(index, 1);
+    setHomePageData(prev => ({
+      ...prev,
+      banners: updatedBanners
     }));
   };
 
@@ -877,6 +945,239 @@ const HomePageManagement = () => {
               >
                 <Save size={16} className="mr-2" />
                 Save Video
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Section: Banners */}
+      <div className="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
+        {renderSectionHeader('Banners', 'banners')}
+        
+        {expandedSections.banners && (
+          <div className="p-6 border-t border-gray-200">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Current Banners</h3>
+              
+              {homePageData.banners.length === 0 ? (
+                <p className="text-gray-500 italic">No banners added yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  {homePageData.banners.map((banner, index) => (
+                    <div key={banner.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-3 flex-1">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Title
+                              </label>
+                              <input
+                                type="text"
+                                value={banner.title}
+                                onChange={(e) => handleBannerChange(index, 'title', e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded-md"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                URL (Optional)
+                              </label>
+                              <input
+                                type="url"
+                                value={banner.url || ''}
+                                onChange={(e) => handleBannerChange(index, 'url', e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded-md"
+                                placeholder="https://..."
+                              />
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Banner Image URL
+                            </label>
+                            <input
+                              type="url"
+                              value={banner.bannerUrl || ''}
+                              onChange={(e) => handleBannerChange(index, 'bannerUrl', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md"
+                              placeholder="https://example.com/image.jpg"
+                            />
+                            {banner.bannerUrl && (
+                              <div className="mt-2">
+                                <img
+                                  src={banner.bannerUrl}
+                                  alt="Banner preview"
+                                  className="h-20 w-40 object-cover rounded-md border"
+                                />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              HTML (Optional)
+                            </label>
+                            <textarea
+                              value={banner.html || ''}
+                              onChange={(e) => handleBannerChange(index, 'html', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md"
+                              rows="3"
+                              placeholder="Custom HTML content"
+                            />
+                          </div>
+                          
+                          <div className="flex gap-4">
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={banner.isInAppNavigation || false}
+                                onChange={(e) => handleBannerChange(index, 'isInAppNavigation', e.target.checked)}
+                                className="mr-2"
+                              />
+                              <span className="text-sm text-gray-700">In-App Navigation</span>
+                            </label>
+                            
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={banner.isForCounsellingDashboard || false}
+                                onChange={(e) => handleBannerChange(index, 'isForCounsellingDashboard', e.target.checked)}
+                                className="mr-2"
+                              />
+                              <span className="text-sm text-gray-700">For Counselling Dashboard</span>
+                            </label>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => removeBanner(index)}
+                          className="ml-4 text-red-500 hover:text-red-700"
+                          title="Remove banner"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Add New Banner</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="newBannerTitle" className="block text-sm font-medium text-gray-700 mb-1">
+                      Title
+                    </label>
+                    <input
+                      type="text"
+                      id="newBannerTitle"
+                      value={newBanner.title}
+                      onChange={(e) => handleNewBannerChange('title', e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="newBannerUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                      URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      id="newBannerUrl"
+                      value={newBanner.url}
+                      onChange={(e) => handleNewBannerChange('url', e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label htmlFor="newBannerImageUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                    Banner Image URL
+                  </label>
+                  <input
+                    type="url"
+                    id="newBannerImageUrl"
+                    value={newBanner.bannerUrl}
+                    onChange={(e) => handleNewBannerChange('bannerUrl', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  {newBanner.bannerUrl && (
+                    <div className="mt-2">
+                      <img
+                        src={newBanner.bannerUrl}
+                        alt="Banner preview"
+                        className="h-20 w-40 object-cover rounded-md border"
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <label htmlFor="newBannerHtml" className="block text-sm font-medium text-gray-700 mb-1">
+                    HTML (Optional)
+                  </label>
+                  <textarea
+                    id="newBannerHtml"
+                    value={newBanner.html}
+                    onChange={(e) => handleNewBannerChange('html', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    rows="3"
+                    placeholder="Custom HTML content"
+                  />
+                </div>
+                
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newBanner.isInAppNavigation}
+                      onChange={(e) => handleNewBannerChange('isInAppNavigation', e.target.checked)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">In-App Navigation</span>
+                  </label>
+                  
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newBanner.isForCounsellingDashboard}
+                      onChange={(e) => handleNewBannerChange('isForCounsellingDashboard', e.target.checked)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">For Counselling Dashboard</span>
+                  </label>
+                </div>
+                
+                <div>
+                  <button
+                    onClick={addBanner}
+                    disabled={!newBanner.title || !newBanner.bannerUrl}
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Add Banner
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => saveSection('banners')}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                <Save size={16} className="mr-2" />
+                Save Banners
               </button>
             </div>
           </div>

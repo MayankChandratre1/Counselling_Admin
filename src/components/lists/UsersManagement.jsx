@@ -209,7 +209,7 @@ const UsersManagement = () => {
         if (user.id === selectedUserId) {
           return {
             ...user,
-            lists: [...(user.lists || []), listAssignment]
+            createdList: [...(user.createdList || []), listAssignment]
           };
         }
         return user;

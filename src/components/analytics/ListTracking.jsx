@@ -276,6 +276,7 @@ const ListTracking = ({listData}) => {
             onClick={async () => {
               const users = await getMetricUsers('with-lists', planName, type);
               const userIds = users.map(user => user.id);
+              
               handleBulkRelease(userIds, planName);
             }}
             disabled={isReleasingUsers}
@@ -414,7 +415,7 @@ const ListTracking = ({listData}) => {
     const handleReleaseUserLists = async (userId, userName) => {
       const confirmed = window.confirm(
         `Are you sure you want to release all created lists for ${userName}?\n\n` +
-        `This action will make their lists available for other users.`
+        `This action will make their lists available for user in app.`
       );
 
       if (confirmed) {
@@ -443,7 +444,7 @@ const ListTracking = ({listData}) => {
 
       const confirmed = window.confirm(
         `Are you sure you want to release all created lists for ${userIds.length} users from ${planName}?\n\n` +
-        `This action cannot be undone and will make all their lists available for other users.`
+        `This action cannot be undone and will make all their lists available for user in there app.`
       );
 
       if (confirmed) {
@@ -861,6 +862,8 @@ const ListTracking = ({listData}) => {
                 
                 if (allUsersWithCreatedLists.length > 0) {
                   const userIds = allUsersWithCreatedLists.map(user => user.id);
+                  console.log(`Releasing all created lists for ${userIds.length} users across all plans...`);
+                  
                   handleBulkRelease(userIds, 'All Plans');
                 }
               }}
