@@ -450,7 +450,7 @@ const ListTracking = ({listData}) => {
       if (confirmed) {
         try {
           setIsReleasingUsers(true);
-          await axiosInstance.post('/api/admin/bulk-release-lists', {
+          await axiosInstance.post('/api/admin/user/bulk-release-lists', {
             userIds: userIds
           });
           
