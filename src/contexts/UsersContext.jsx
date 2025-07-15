@@ -116,6 +116,14 @@ export const UsersProvider = ({ children }) => {
       setError(null);
       setDataLoaded(true);
 
+      let notes = {}
+      
+      responseData.users.forEach(u => {
+        notes[u.id] = {notes: u.notes}
+      })
+
+      setNotes(notes) 
+
       // Update current page after successful fetch
       setCurrentPage(page);
 
@@ -225,6 +233,14 @@ export const UsersProvider = ({ children }) => {
     setDataLoaded(false);
     setLastDoc(null);
       setUsers(response.data);
+      
+      let notes = {}
+      
+      response.data.forEach(u => {
+        notes[u.id] = {notes: u.notes}
+      })
+
+      setNotes(notes)      
       setError(null);
       return response.data;
     } catch (err) {

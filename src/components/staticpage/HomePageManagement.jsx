@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, Trash2, ExternalLink, Save, Calendar, Film, Newspaper, Search, Youtube, Image } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp, Plus, Trash2, Save, Search, Youtube } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 import { v4 as uuidv4 } from 'uuid';
+
+const cloudName = 'dqt03lz3g'; // from Cloudinary dashboard
+const uploadPreset = 'counselling'; // optional, if unsigned uploads
 
 const HomePageManagement = () => {
   const [loading, setLoading] = useState(true);
@@ -12,6 +15,7 @@ const HomePageManagement = () => {
     colleges: false,
     banners: false
   });
+  const [widgetLoading, setWidgetLoading] = useState(false);
   
   // Expanded state for each section
   const [expandedSections, setExpandedSections] = useState({
@@ -67,6 +71,9 @@ const HomePageManagement = () => {
   useEffect(() => {
     fetchHomePageData();
   }, []);
+
+ 
+
 
   const fetchHomePageData = async () => {
     try {
@@ -262,6 +269,53 @@ const HomePageManagement = () => {
       banners: updatedBanners
     }));
   };
+
+   const openWidget = (index) => {
+    setWidgetLoading(true);
+  window.cloudinary.openUploadWidget(
+    {
+      cloudName,
+      uploadPreset,
+      sources: ['local', 'url', 'camera', 'image_search'],
+      multiple: false,
+      cropping: false,
+      folder: 'banners', // optional: your desired folder
+      resourceType: 'image',
+    },
+    (error, result) => {
+      if (!error && result && result.event === 'success') {
+        const imageUrl = result.info.secure_url;
+        handleBannerChange(index, 'bannerUrl', imageUrl);
+      }
+      setWidgetLoading(false);
+    }
+  );
+};
+
+const openNewBannerWidget = () => {
+  if (!window.cloudinary) return;
+  setWidgetLoading(true);
+  const widget = window.cloudinary.createUploadWidget(
+    {
+      cloudName, // 🔁 Replace this
+      uploadPreset, // 🔁 Replace this
+      sources: ['local', 'url', 'camera'],
+      multiple: false,
+      cropping: false,
+      folder: 'banners',
+    },
+    (error, result) => {
+      if (!error && result && result.event === 'success') {
+        const imageUrl = result.info.secure_url;
+        handleNewBannerChange('bannerUrl', imageUrl);
+      }
+      setWidgetLoading(false);
+    }
+  );
+
+  widget.open();
+};
+
 
   const addBanner = () => {
     if (newBanner.title && newBanner.bannerUrl) {
@@ -996,26 +1050,39 @@ const HomePageManagement = () => {
                           </div>
                           
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Banner Image URL
-                            </label>
-                            <input
-                              type="url"
-                              value={banner.bannerUrl || ''}
-                              onChange={(e) => handleBannerChange(index, 'bannerUrl', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md"
-                              placeholder="https://example.com/image.jpg"
-                            />
-                            {banner.bannerUrl && (
-                              <div className="mt-2">
-                                <img
-                                  src={banner.bannerUrl}
-                                  alt="Banner preview"
-                                  className="h-20 w-40 object-cover rounded-md border"
-                                />
-                              </div>
-                            )}
-                          </div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Banner Image URL
+  </label>
+  <div className="flex gap-2">
+    <input
+      type="url"
+      value={banner.bannerUrl || ''}
+      onChange={(e) => handleBannerChange(index, 'bannerUrl', e.target.value)}
+      className="flex-1 p-2 border border-gray-300 rounded-md"
+      placeholder="https://example.com/image.jpg"
+    />
+    <button
+      type="button"
+      onClick={() => openWidget(index)}
+      className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md"
+    >
+      {
+        widgetLoading ? "Opening...":"Upload"
+      }
+    </button>
+  </div>
+
+  {banner.bannerUrl && (
+    <div className="mt-2">
+      <img
+        src={banner.bannerUrl}
+        alt="Banner preview"
+        className="h-30 w-60 object-cover rounded-md border"
+      />
+    </div>
+  )}
+</div>
+
                           
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1100,27 +1167,41 @@ const HomePageManagement = () => {
                 </div>
                 
                 <div>
-                  <label htmlFor="newBannerImageUrl" className="block text-sm font-medium text-gray-700 mb-1">
-                    Banner Image URL
-                  </label>
-                  <input
-                    type="url"
-                    id="newBannerImageUrl"
-                    value={newBanner.bannerUrl}
-                    onChange={(e) => handleNewBannerChange('bannerUrl', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  {newBanner.bannerUrl && (
-                    <div className="mt-2">
-                      <img
-                        src={newBanner.bannerUrl}
-                        alt="Banner preview"
-                        className="h-20 w-40 object-cover rounded-md border"
-                      />
-                    </div>
-                  )}
-                </div>
+  <label htmlFor="newBannerImageUrl" className="block text-sm font-medium text-gray-700 mb-1">
+    Banner Image URL
+  </label>
+
+  <div className="flex gap-2">
+    <input
+      type="url"
+      id="newBannerImageUrl"
+      value={newBanner.bannerUrl}
+      onChange={(e) => handleNewBannerChange('bannerUrl', e.target.value)}
+      className="flex-1 p-2 border border-gray-300 rounded-md"
+      placeholder="https://example.com/image.jpg"
+    />
+    <button
+      type="button"
+      onClick={openNewBannerWidget}
+      className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md"
+    >
+      {
+        widgetLoading ? "Opening...":"Upload"
+      }
+    </button>
+  </div>
+
+  {newBanner.bannerUrl && (
+    <div className="mt-2">
+      <img
+        src={newBanner.bannerUrl}
+        alt="Banner preview"
+        className="h-30 w-60 object-stretch rounded-md border"
+      />
+    </div>
+  )}
+</div>
+
                 
                 <div>
                   <label htmlFor="newBannerHtml" className="block text-sm font-medium text-gray-700 mb-1">

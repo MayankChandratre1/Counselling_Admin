@@ -457,7 +457,7 @@ const ListTracking = ({listData}) => {
           // Clear selections
           setSelectedUsersForBulkRelease([]);
           
-          // Refresh the analytics data to reflect changes
+          // Refresh the anahlytics data to reflect changes
           window.location.reload(); // Simple refresh - you could implement a more sophisticated refresh
           
           alert(`Successfully released lists for ${userIds.length} users`);

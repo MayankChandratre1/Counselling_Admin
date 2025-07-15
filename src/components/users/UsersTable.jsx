@@ -16,14 +16,16 @@ import {
   Users,
   SortAsc,
   SortDesc,
-  Filter
+  Filter,
+  Edit2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import axiosInstance from '../../utils/axios';
 import { useUsers } from '../../contexts/UsersContext';
 import ListReleaseModal from './ListReleaseModal';
+import { toast } from 'react-toastify';
 
-const NotesModal = ({ isOpen, onClose, userNotes, userName }) => {
+const NotesModal = ({ isOpen, onClose, userNotes, userName, onEditNote }) => {
   if (!isOpen) return null;
 
   const [selectedAdmin, setSelectedAdmin] = useState('all');
@@ -64,13 +66,16 @@ const NotesModal = ({ isOpen, onClose, userNotes, userName }) => {
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">
             Notes for {userName}
+            
           </h3>
+      
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500 transition-colors"
           >
             <X size={20} />
           </button>
+         
         </div>
 
         {/* Search and Filter Controls */}
@@ -87,6 +92,7 @@ const NotesModal = ({ isOpen, onClose, userNotes, userName }) => {
               </option>
             ))}
           </select>
+          
         </div>
 
         {/* Notes List */}
@@ -146,6 +152,7 @@ const ActionsDropdown = ({ user, onAddToList, onViewLists, onEdit, onDelete, onV
       case 'edit':
         onEdit(user);
         break;
+     
       case 'delete':
         onDelete(user);
         break;
@@ -195,6 +202,7 @@ const ActionsDropdown = ({ user, onAddToList, onViewLists, onEdit, onDelete, onV
                 <List size={14} className="mr-2" />
                 View Lists
               </button>
+            
               <div className="border-t border-gray-100 my-1" />
               
               <button
@@ -285,6 +293,18 @@ const UsersTable = ({
   const handleUserNameClick = (userId) => {
     navigate(`/users/${userId}`);
   };
+
+  const logoutUser = async (user)=>{
+    try{
+      await axiosInstance.put(`/api/admin/update-user/${user.id}`, {
+        hasLoggedIn : false,
+      });
+      toast.success("User Logged out.");
+    }catch(e){
+      console.log(e);
+      toast.error("Someting went wrong!");
+    }
+  }
 
   const handleAddNote = (userId, userName) => {
     setNoteModal({
@@ -483,6 +503,9 @@ const UsersTable = ({
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Notes
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Login Status
+              </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
@@ -608,7 +631,50 @@ const UsersTable = ({
                   
                   {/* Notes */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {notes && notes[user.id] && Object.keys(notes[user.id].notes || {}).length > 0 ? (
+                    {notes && notes[user.id] && Object.keys(notes[user.id].notes || []).length > 0 ? (
+                      <>
+                      <button
+                        onClick={() => setViewNotesModal({
+                          isOpen: true,
+                          userId: user.id,
+                          userName: user.name
+                        })}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors"
+                      >
+                        <MessageSquare size={12} className="mr-1" />
+                        {Object.keys(notes[user.id].notes).length}
+                      </button>
+                      <button
+                        onClick={() => setNoteModal({
+                          isOpen: true,
+                          userId: user.id,
+                          userName: user.name,
+                          note: ''
+                        })}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                      >
+                        <Plus size={12} className="mr-1" />
+                        Add Note
+                      </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setNoteModal({
+                          isOpen: true,
+                          userId: user.id,
+                          userName: user.name,
+                          note: ''
+                        })}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                      >
+                        <Plus size={12} className="mr-1" />
+                        Add Note
+                      </button>
+                    )}
+                  
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {/* {notes && notes[user.id] && Object.keys(notes[user.id].notes || {}).length > 0 ? (
                       <button
                         onClick={() => setViewNotesModal({
                           isOpen: true,
@@ -633,7 +699,17 @@ const UsersTable = ({
                         <Plus size={12} className="mr-1" />
                         Add Note
                       </button>
-                    )}
+                    )} */}
+                    {
+                      user.hasLoggedIn ? <button
+                        className='text-xs px-2 py-1 rounded-full bg-red-500 text-white active:scale-95'
+                        onClick={() => logoutUser(user)}
+                      >Logout</button> : <button
+                        className='text-xs px-2 py-1 rounded-full bg-green-500 text-white active:scale-95'
+                      >
+                        Not Logged In
+                      </button>
+                    }
                   </td>
                   
                   {/* Actions Dropdown */}
@@ -761,7 +837,7 @@ const UsersTable = ({
                 value={noteModal.note}
                 onChange={(e) => setNoteModal(prev => ({ ...prev, note: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 min-h-[100px]"
-                placeholder="Enter your note here..."
+                placeholder="Your previous note will be modified..."
               />
             </div>
 
