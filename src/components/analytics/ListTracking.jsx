@@ -629,7 +629,7 @@ const ListTracking = ({listData}) => {
                                       </th>
                                     )}
                                     
-                                    {['Name', 'Email', 'Phone', 'Premium Plan', `${trackingType === 'assigned' ? 'Assigned' : 'Created'} Lists`].map(header => (
+                                    {['Name', 'Email', 'Phone', 'Premium Plan', `Lists`].map(header => (
                                         <th 
                                             key={header.toLowerCase().replace(/\s+/g, '')}
                                             onClick={() => handleSort(header.toLowerCase().replace(/\s+/g, '') === 'premiumplan' ? 'planTitle' : header.toLowerCase().replace(/\s+/g, ''))}
@@ -689,9 +689,9 @@ const ListTracking = ({listData}) => {
                                                     <span key={listName} className={`inline-block px-2 py-1 m-1 rounded-full text-xs ${
                                                       trackingType === 'assigned' 
                                                         ? 'bg-blue-100 text-blue-800' 
-                                                        : 'bg-purple-100 text-purple-800'
+                                                        : listName.includes("#RL") ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
                                                     }`}>
-                                                        {listName}
+                                                        {listName.includes("#RL") ? listName.replace("#RL", "") : listName}
                                                     </span>
                                                 ))
                                             ) : (
