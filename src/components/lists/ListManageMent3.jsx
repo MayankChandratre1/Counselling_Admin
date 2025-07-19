@@ -835,7 +835,7 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
   const handleAppendColleges = async (listId, exportedColleges = []) => {
     try {
       if (listId) {
-        const isCreatedList = editingUserList && editingUserList.isCreatedList;
+        const isCreatedList = (editingUserList && editingUserList.isCreatedList) && user.createdList?.some(l => l.id === listId); ;
         const userId = selectedUserListsId || user?.id;
         
         if (!userId) {
@@ -876,6 +876,8 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
           colleges: updatedColleges,
           isCustomized: true
         };
+
+        
 
         const endpoint = isCreatedList 
           ? `/api/admin/user/${userId}/created-list/${listId}`

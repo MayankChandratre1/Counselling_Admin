@@ -325,9 +325,7 @@ export const FormProgressProvider = ({ children }) => {
         complete.push(userWithProgress);
       } else if (step.status === 'No') {
         rejected.push(userWithProgress);
-      } else {
-        unattended.push(userWithProgress);
-      }
+      } 
     });
 
     // Add users that haven't been processed (not in cache) as unattended

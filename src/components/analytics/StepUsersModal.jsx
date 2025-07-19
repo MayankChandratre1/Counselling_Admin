@@ -88,7 +88,7 @@ const StepUsersModal = ({
       PreferredField: user.counsellingData?.preferredField || '-',
       PreferredLocations: user.counsellingData?.preferredLocations || '-',
       Budget: user.counsellingData?.budget || '-',
-      PremiumPlanTitle: user.premiumPlan?.planTitle || '-',
+      PremiumPlanTitle: user?.planTitle || '-',
       PlanPurchaseDate: user.premiumPlan?.purchasedDate?._seconds ? 
         new Date(user.premiumPlan.purchasedDate._seconds * 1000).toLocaleDateString() : '-',
       PlanExpiryDate: user.premiumPlan?.expiryDate?._seconds ?

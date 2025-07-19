@@ -217,10 +217,10 @@ const ListDetails = ({
                       College Name
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Selected Branch
+                      Branch Code
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Branch Code
+                      Selected Branch
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       City
@@ -252,19 +252,7 @@ const ListDetails = ({
                           </div>
                         </td>
                         
-                        {/* Selected Branch */}
-                        <td className="px-4 py-3">
-                          {college.selectedBranch ? (
-                            <div className="flex items-center space-x-2">
-                              <Building size={14} className="text-blue-500 flex-shrink-0" />
-                              <span className="text-sm text-gray-900 truncate max-w-xs" title={college.selectedBranch}>
-                                {college.selectedBranch}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400">All Branches</span>
-                          )}
-                        </td>
+                        
                         
                         {/* Branch Code */}
                         <td className="px-4 py-3">
@@ -293,6 +281,20 @@ const ListDetails = ({
                             </div>
                           ) : (
                             <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+
+                        {/* Selected Branch */}
+                        <td className="px-4 py-3">
+                          {college.selectedBranch ? (
+                            <div className="flex items-center space-x-2">
+                              <Building size={14} className="text-blue-500 flex-shrink-0" />
+                              <span className="text-sm text-gray-900 truncate max-w-xs" title={college.selectedBranch}>
+                                {college.selectedBranch}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">All Branches</span>
                           )}
                         </td>
                         

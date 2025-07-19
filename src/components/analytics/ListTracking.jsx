@@ -141,16 +141,64 @@ const ListTracking = ({listData}) => {
     if ( userIds.length > 0) {
       try {
         if (listData.metrics?.enrolled?.users) {
-          return listData.metrics.enrolled.users
-            .filter(user => userIds.includes(user.id))
-            .map(user => {
-              const listUser = userData.find(u => u.id === user.id);
-              return {
-                ...user,
-                lists: listUser?.lists || []
-              };
-            });
+          let data = listData.metrics.enrolled.users
+          .filter(user => userIds.includes(user.id))
+          .map(user => {
+            const listUser = userData.find(u => u.id === user.id);
+            return {
+              ...user,
+              lists: listUser?.lists || []
+            };
+          })?.sort((a, b) => {
+                // Helper function to determine the user type
+                const getUserType = (user) => {
+                  const hasCreatedLists = user.lists.some(list => !list.endsWith(" #RL"));
+                  const hasRegularLists = user.lists.some(list => list.endsWith(" #RL"));
+                  
+                  if (hasCreatedLists && !hasRegularLists) {
+                    return 1; // Only created lists
+                  } else if (hasCreatedLists && hasRegularLists) {
+                    return 2; // Both
+                  } else if (!hasCreatedLists && hasRegularLists) {
+                    return 3; // Only regular lists
+                  }
+                  return 4; // Should not happen if initial check is correct, but for safety
+                };
+                
+                const typeA = getUserType(a);
+                const typeB = getUserType(b);
+                console.log(typeA-typeB+"sorting");
+
+                    return typeA - typeB;
+                });;
+                
+                return data;
         }
+        if(userData.length > 0) {
+          
+          userData = userData.sort((a, b) => {
+                // Helper function to determine the user type
+                        const getUserType = (user) => {
+                            const hasCreatedLists = user.lists.some(list => !list.endsWith(" #RL"));
+                            const hasRegularLists = user.lists.some(list => list.endsWith(" #RL"));
+
+                            if (hasCreatedLists && !hasRegularLists) {
+                                return 1; // Only created lists
+                            } else if (hasCreatedLists && hasRegularLists) {
+                                return 2; // Both
+                            } else if (!hasCreatedLists && hasRegularLists) {
+                                return 3; // Only regular lists
+                            }
+                            return 4; // Should not happen if initial check is correct, but for safety
+                        };
+
+                    const typeA = getUserType(a);
+                    const typeB = getUserType(b);
+
+                    return typeA - typeB;
+                });
+        }
+        
         return userData;
       } catch (error) {
         console.error('Error fetching user details:', error);
@@ -359,6 +407,22 @@ const ListTracking = ({listData}) => {
                     aVal = a.premiumPlan?.planTitle || a.planTitle || '';
                     bVal = b.premiumPlan?.planTitle || b.planTitle || '';
                 }
+
+                 const getUserType = (user) => {
+                            const hasCreatedLists = user.lists.some(list => !list.endsWith(" #RL"));
+                            const hasRegularLists = user.lists.some(list => list.endsWith(" #RL"));
+
+                            if (hasCreatedLists && !hasRegularLists) {
+                                return 1; // Only created lists
+                            } else if (hasCreatedLists && hasRegularLists) {
+                                return 2; // Both
+                            } else if (!hasCreatedLists && hasRegularLists) {
+                                return 3; // Only regular lists
+                            }
+                            return 4; // Should not happen if initial check is correct, but for safety
+                 };
+
+                 return getUserType(a) - getUserType(b);
                 
                 if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
                 if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
