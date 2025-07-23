@@ -188,7 +188,7 @@ const UsersManagement = () => {
       setLoading(true);
       const authAxios = getAuthAxios();
       
-      const listResponse = await authAxios.get(`/api/admin/list/${listId}`);
+      const listResponse = await axiosInstance.get(`/api/admin/list/${listId}`);
       const selectedList = listResponse.data;
       const timestamp = new Date().toISOString();
       console.log(`Assigning list ${listId} to user ${selectedUserId}`);
@@ -204,7 +204,7 @@ const UsersManagement = () => {
         isCustomized: false
       };
       
-      await authAxios.post(`/api/admin/user/${selectedUserId}/assign-list`, listAssignment);
+      await axiosInstance.post(`/api/admin/user/${selectedUserId}/assign-list`, listAssignment);
       
       setUsers(users.map(user => {
         if (user.id === selectedUserId) {
@@ -243,9 +243,8 @@ const UsersManagement = () => {
     if (window.confirm('Are you sure you want to remove this list from the user?')) {
       try {
         setLoading(true);
-        const authAxios = getAuthAxios();
-        await authAxios.delete(`/api/admin/user/${selectedUserListsId}/list/${list.id}`);
-        
+        await axiosInstance.delete(`/api/admin/user/${selectedUserListsId}/list/${list.id}`);
+
         setSelectedUserLists(prevLists => prevLists.filter(l => l.id !== list.id));
         setUsers(users.map(user => {
           if (user.id === selectedUserListsId) {
@@ -288,7 +287,7 @@ const UsersManagement = () => {
       };
       
       
-      const response = await authAxios.put(
+      const response = await axiosInstance.put(
         `/api/admin/user/${selectedUserListsId}/list/${targetListId}`,
         listData
       );
@@ -327,7 +326,7 @@ const UsersManagement = () => {
       setLoading(true);
       const authAxios = getAuthAxios();
       
-      const response = await authAxios.put(
+      const response = await axiosInstance.put(
         `/api/admin/user/${selectedUserListsId}/list/${updatedList.listId}`, 
         updatedList
       );
@@ -380,7 +379,7 @@ const UsersManagement = () => {
         return;
       }
       
-      const response = await authAxios.get('/api/admin/search-colleges', { params });
+      const response = await axiosInstance.get('/api/admin/search-colleges', { params });
       setCollegeSearchResults(response.data);
     } catch (err) {
       console.error('Error searching colleges:', err);

@@ -110,7 +110,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
   const navigation = useNavigate();
 
   const getAuthAxios = () => {
-    const token = localStorage.getItem('adminToken');
+    const token = sessionStorage.getItem('adminToken');
     return axios.create({
       baseURL: API_URL,
       headers: { token }
@@ -374,7 +374,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
         return;
       }
       const authAxios = getAuthAxios();
-      const listResponse = await authAxios.get(`/api/admin/list/${listId}`);
+      const listResponse = await axiosInstance.get(`/api/admin/list/${listId}`);
       const selectedList = listResponse.data;
 
       setConfirmationModal({
@@ -396,7 +396,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
               isCustomized: false
             };
 
-            await authAxios.post(`/api/admin/user/${selectedUserId.id}/assign-list`, listAssignment);
+            await axiosInstance.post(`/api/admin/user/${selectedUserId.id}/assign-list`, listAssignment);
             
             setUsers(users.map(user => {
               if (user.id === selectedUserId.id) {
@@ -439,7 +439,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
         setLoadingLists(true);
         const authAxios = getAuthAxios();
         if(isCreatedList){
-            await authAxios.delete(`/api/admin/user/${selectedUserListsId}/created-list/${list.id}`);
+            await axiosInstance.delete(`/api/admin/user/${selectedUserListsId}/created-list/${list.id}`);
             
             setSelectedUsersCreatedLists(prevLists => prevLists.filter(l => l.id !== list.id));
 
@@ -454,7 +454,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
         }));
         
         }else{
-            await authAxios.delete(`/api/admin/user/${selectedUserListsId}/list/${list.id}`);
+            await axiosInstance.delete(`/api/admin/user/${selectedUserListsId}/list/${list.id}`);
         
         setSelectedUserLists(prevLists => prevLists.filter(l => l.id !== list.id));
         setUsers(users.map(user => {
@@ -499,7 +499,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
       
       console.log(`Saving list with ID: ${targetListId} for user ${selectedUserListsId}`);
       
-      const response = await authAxios.put(
+      const response = await axiosInstance.put(
         `/api/admin/user/${selectedUserListsId}/list/${targetListId}`,
         listData
       );
@@ -538,7 +538,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
       setLoadingLists(true);
       const authAxios = getAuthAxios();
       
-      const response = await authAxios.put(
+      const response = await axiosInstance.put(
         `/api/admin/user/${selectedUserListsId}/list/${updatedList.listId}`, 
         updatedList
       );
@@ -591,7 +591,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
         return;
       }
       
-      const response = await authAxios.get('/api/colleges/search', { params });
+      const response = await axiosInstance.get('/api/colleges/search', { params });
       setCollegeSearchResults(response.data.colleges || []);
     } catch (err) {
       console.error('Error searching colleges:', err);

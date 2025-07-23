@@ -8,6 +8,7 @@ import SelectedColleges from '../lists/SelectedColleges';
 import ImportColleges from '../lists/ImportColleges';
 import axiosInstance from '../../utils/axios';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 const EditListModal = ({
   show,
@@ -366,7 +367,7 @@ const EditListModal = ({
       
       console.log(`Saving list with ID: ${targetListId} for user ${selectedUserListsId}`);
       
-      const response = await authAxios.put(
+      const response = await axiosInstance.put(
         `/api/admin/user/${selectedUserListsId}/list/${targetListId}`,
         listData
       );
