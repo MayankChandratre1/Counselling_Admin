@@ -69,6 +69,7 @@ const StepUsersModal = ({
     });
 
     const csvData = enrichedData.map(user => ({
+      id: user.id,
       Name: user.name,
       Phone: user.phone,
       Email: user.email,

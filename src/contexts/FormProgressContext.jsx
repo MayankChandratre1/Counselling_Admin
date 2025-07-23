@@ -123,7 +123,7 @@ export const FormProgressProvider = ({ children }) => {
       // Calculate pagination
       const startIndex = (page - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage;
-      const pageUserIds = userIds.slice(startIndex, endIndex);
+      const pageUserIds = userIds;
       const response = await axiosInstance.post(`/api/admin/users/form/${formId}`, {
         userIds: pageUserIds
       });
@@ -207,6 +207,7 @@ export const FormProgressProvider = ({ children }) => {
             stepsProgress[step.number] = {
               title: step.title,
               completedCount: 0,
+              rejectedCount: 0,
               online: 0,
               offline: 0,
               totalCount: enrolledUserIds.length
@@ -220,8 +221,12 @@ export const FormProgressProvider = ({ children }) => {
             } else if (userBatch === 'offline') {
               stepsProgress[step.number].offline++;
             }
+          }else if (step.status === 'No') {
+            stepsProgress[step.number].rejectedCount++;
           }
         });
+        console.log(stepData);
+        
       }
     });
 
@@ -318,14 +323,16 @@ export const FormProgressProvider = ({ children }) => {
       
       const step = userData.stepsData?.steps?.find(s => s.number === stepNumber);
       
-      if (!step || !step.status || userData.stepsData?.steps?.length === 0) {
+      if (!step  || userData.stepsData?.steps?.length === 0) {
         // If no step data exists or steps array is empty, user is unattended
         unattended.push(userWithProgress);
       } else if (step.status === 'Yes') {
         complete.push(userWithProgress);
       } else if (step.status === 'No') {
         rejected.push(userWithProgress);
-      } 
+      } else{
+        unattended.push(userWithProgress);
+      }
     });
 
     // Add users that haven't been processed (not in cache) as unattended

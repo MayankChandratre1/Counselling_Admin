@@ -171,9 +171,7 @@ const FormProgressTracker = () => {
       user.planTitle === currentPlan.title
     );
 
-    console.log('Filtered Users for Plan:', currentPlan.title, filteredUsers.length);
-    console.log('Enrolled Users Total:', enrolledUsers.length);
-    console.log('Sample enrolled user planTitle:', enrolledUsers[0]?.planTitle);
+  
     
 
     return {
@@ -456,9 +454,9 @@ const FormProgressTracker = () => {
                             >
                               <div className="text-center">
                                 <div className="text-sm font-bold space-y-1">
-                                  <div className="text-green-600">Completed: {completedCount}</div>
-                                  <div className="text-red-600">Rejected: {rejectedCount}</div>
-                                  <div className="text-gray-600">Unattended: {unattendedCount}</div>
+                                  <div className="text-green-600">Completed: {stepData[step.number]?.completedCount}</div>
+                                  <div className="text-red-600">Rejected: {stepData[step.number]?.rejectedCount}</div>
+                                  <div className="text-gray-600">Unattended: {filteredCounts.total - stepData[step.number]?.rejectedCount - stepData[step.number]?.completedCount}</div>
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1 border-t pt-1">
                                   Total: {completedCount + rejectedCount + unattendedCount}

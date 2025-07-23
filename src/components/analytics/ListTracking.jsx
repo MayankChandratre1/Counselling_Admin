@@ -341,7 +341,7 @@ const ListTracking = ({listData}) => {
   const UsersModal = () => {
     if (!showModal) return null;
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(50);
+    const [itemsPerPage, setItemsPerPage] = useState(20);
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
     const [localSearch, setLocalSearch] = useState('');
     const [selectedListFilter, setSelectedListFilter] = useState('');
@@ -798,7 +798,7 @@ const ListTracking = ({listData}) => {
                                 }}
                                 className="border rounded px-2 py-1"
                             >
-                                {[25, 50, 100, 200].map(size => (
+                                {[20, 50, 100, 200].map(size => (
                                     <option key={size} value={size}>{size} per page</option>
                                 ))}
                             </select>
