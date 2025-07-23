@@ -110,7 +110,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
   const navigation = useNavigate();
 
   const getAuthAxios = () => {
-    const token = localStorage.getItem('adminToken');
+    const token = sessionStorage.getItem('adminToken');
     return axios.create({
       baseURL: API_URL,
       headers: { token }
