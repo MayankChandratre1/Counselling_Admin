@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import axios from 'axios';
+import axiosInstance from '../../utils/axios';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -36,7 +37,7 @@ const ListReleaseModal = ({
       setLoading(true);
       const authAxios = getAuthAxios();
       
-      await authAxios.post(`/api/admin/user/${selectedUser.id}/release-list`, {
+      await axiosInstance.post(`/api/admin/user/${selectedUser.id}/release-list`, {
         listId
       });
 

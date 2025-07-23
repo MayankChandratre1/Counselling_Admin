@@ -778,7 +778,7 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
         ? `/api/admin/user/${userId}/created-list/${targetListId}`
         : `/api/admin/user/${userId}/list/${targetListId}`;
         
-      const response = await authAxios.put(endpoint, listData);
+      const response = await axiosInstance.put(endpoint, listData);
 
       // Update the appropriate state based on list type
       if (isCreatedList) {
@@ -883,7 +883,7 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
           ? `/api/admin/user/${userId}/created-list/${listId}`
           : `/api/admin/user/${userId}/list/${listId}`;
           
-        const response = await authAxios.put(endpoint, submitData);
+        const response = await axiosInstance.put(endpoint, submitData);
 
         // Update the appropriate state based on list type
         if (isCreatedList) {
@@ -965,7 +965,7 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
         ? `/api/admin/user/${userId}/created-list/${targetListId}`
         : `/api/admin/user/${userId}/list/${targetListId}`;
         
-      const response = await authAxios.put(endpoint, submitData);
+      const response = await axiosInstance.put(endpoint, submitData);
   
       // Update the appropriate state based on list type
       if (isCreatedList) {

@@ -302,7 +302,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
         return;
       }
       const authAxios = getAuthAxios();
-      const listResponse = await authAxios.get(`/api/admin/list/${listId}`);
+      const listResponse = await axiosInstance.get(`/api/admin/list/${listId}`);
       const selectedList = listResponse.data;
 
       setConfirmationModal({
@@ -324,7 +324,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
               isCustomized: false
             };
 
-            await authAxios.post(`/api/admin/user/${selectedUserId.id}/assign-list`, listAssignment);
+            await axiosInstance.post(`/api/admin/user/${selectedUserId.id}/assign-list`, listAssignment);
             
             setUsers(users.map(user => {
               if (user.id === selectedUserId.id) {
@@ -376,7 +376,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
       try {
         setLoadingLists(true);
         const authAxios = getAuthAxios();
-        await authAxios.delete(`/api/admin/user/${selectedUserListsId}/list/${list.id}`);
+        await axiosInstance.delete(`/api/admin/user/${selectedUserListsId}/list/${list.id}`);
         
         setSelectedUserLists(prevLists => prevLists.filter(l => l.id !== list.id));
         setUsers(users.map(user => {
@@ -419,7 +419,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
       
       console.log(`Saving list with ID: ${targetListId} for user ${selectedUserListsId}`);
       
-      const response = await authAxios.put(
+      const response = await axiosInstance.put(
         `/api/admin/user/${selectedUserListsId}/list/${targetListId}`,
         listData
       );
@@ -458,7 +458,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
       setLoadingLists(true);
       const authAxios = getAuthAxios();
       
-      const response = await authAxios.put(
+      const response = await axiosInstance.put(
         `/api/admin/user/${selectedUserListsId}/list/${updatedList.listId}`, 
         updatedList
       );
@@ -511,7 +511,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
         return;
       }
       
-      const response = await authAxios.get('/api/admin/search-colleges', { params });
+      const response = await axiosInstance.get('/api/admin/search-colleges', { params });
       setCollegeSearchResults(response.data);
     } catch (err) {
       console.error('Error searching colleges:', err);
