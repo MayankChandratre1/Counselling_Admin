@@ -693,7 +693,7 @@ const ListTracking = ({listData}) => {
                                       </th>
                                     )}
                                     
-                                    {['Name', 'Email', 'Phone', 'Premium Plan', `Lists`].map(header => (
+                                    {['Name', 'Email', 'Phone', 'Form','Premium Plan', `Lists`].map(header => (
                                         <th 
                                             key={header.toLowerCase().replace(/\s+/g, '')}
                                             onClick={() => handleSort(header.toLowerCase().replace(/\s+/g, '') === 'premiumplan' ? 'planTitle' : header.toLowerCase().replace(/\s+/g, ''))}
@@ -742,6 +742,15 @@ const ListTracking = ({listData}) => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.phone}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            {user.isFormFilled ? <div className='text-green-500 px-2'>
+                                                <div className='text-xs'>
+                                                  {user.formFilledBy}
+                                                </div>
+                                            </div>:<div className='text-gray-500 px-2'>
+                                                -
+                                              </div>}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
                                                 {user.premiumPlan?.planTitle || user.planTitle || 'No Plan'}

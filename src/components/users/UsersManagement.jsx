@@ -105,7 +105,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
   const navigation = useNavigate();
 
   const getAuthAxios = () => {
-    const token = localStorage.getItem('adminToken');
+    const token = sessionStorage.getItem('adminToken');
     return axios.create({
       baseURL: API_URL,
       headers: { token }
@@ -256,7 +256,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     try {
       setLoadingLists(true);
       const authAxios = getAuthAxios();
-      const response = await authAxios.get('/api/admin/lists');
+      const response = await axiosInstance.get('/api/admin/lists');
       setAvailableLists(response.data);
       setError(null);
     } catch (err) {

@@ -30,6 +30,8 @@ const AdminLogin = () => {
 
     try {
       const response = await axios.post(`${API_URL}/api/admin/login`, credentials);
+      console.log(response.data);
+      
       
       // Store the token in sessionStorage instead of localStorage
       sessionStorage.setItem('adminToken', response.data.token);
