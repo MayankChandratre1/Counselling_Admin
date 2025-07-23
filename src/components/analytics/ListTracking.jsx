@@ -93,7 +93,7 @@ const ListTracking = ({listData}) => {
       
     Object.values(dataSource || {}).forEach(users => {
       users.forEach(user => {
-        user.lists?.forEach(listName => lists.add(listName));
+        user.lists?.forEach(listName => lists.add(listName.replace(' #RL', '')));
       });
     });
     
@@ -145,8 +145,14 @@ const ListTracking = ({listData}) => {
           .filter(user => userIds.includes(user.id))
           .map(user => {
             const listUser = userData.find(u => u.id === user.id);
+            if(listUser && listUser.phone == "1231231231"){
+              console.log(`User with ID ${user.id} has phone number 1231231231, skipping... ${listUser.formFilled}`);
+              console.log(`User Data: ${JSON.stringify(listUser)}`);
+              
+            }
             return {
               ...user,
+              ...listUser,
               lists: listUser?.lists || []
             };
           })?.sort((a, b) => {
@@ -209,7 +215,7 @@ const ListTracking = ({listData}) => {
     return [];
   };
 
-  const exportToCSV = (data) => {
+  const exportToCSV = async (data) => {
     const csvData = data.map(user => ({
       Name: user.name,
       Phone: user.phone,
@@ -218,6 +224,9 @@ const ListTracking = ({listData}) => {
       Batch: user.batch || 'Unassigned',
       IsPremium: user.isPremium ? 'Yes' : 'No',
       HasLoggedIn: user.hasLoggedIn ? 'Yes' : 'No',
+      FormFilled: user.formFilled ? 'Yes' : 'No',
+      FormFilledBy: user.formFilledBy || '-',
+      FormFilledAt: user.formFilledAt ? new Date(user.formFilledAt).toLocaleString("en-IN") : '-',
       // Add counselling data fields
       FullName: user.counsellingData?.fullName || '-',
       DateOfBirth: user.counsellingData?.dob || '-', 
@@ -349,6 +358,8 @@ const ListTracking = ({listData}) => {
     const [showFilters, setShowFilters] = useState(false);
     const [modalUsers, setModalUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
+    const [isFormFilledFilter, setIsFormFilledFilter] = useState(false);
+    const [isFormNotFilledFilter, setIsFormNotFilledFilter] = useState(false);
 
     // Fetch users when modal opens
     React.useEffect(() => {
@@ -391,9 +402,17 @@ const ListTracking = ({listData}) => {
                 if (userPlan !== selectedPlanFilter) return false;
             }
 
+            if( isFormFilledFilter && !user.formFilled) {
+              return false;
+            }
+
+            if( isFormNotFilledFilter && user.formFilled) {
+              return false;
+            }
+
             return true;
         });
-    }, [modalUsers, localSearch, selectedListFilter, selectedPlanFilter]);
+    }, [modalUsers, localSearch, selectedListFilter, selectedPlanFilter, isFormFilledFilter, isFormNotFilledFilter]);
 
     const sortedUsers = useMemo(() => {
         const sorted = [...filteredUsers];
@@ -559,6 +578,21 @@ const ListTracking = ({listData}) => {
       }
     };
 
+    const handleToggleFormFilled = async (userId) => { 
+      try{
+        const prompt = window.confirm("Are you sure you want to toggle the form filled status for this user?");
+        if (prompt) {
+          // Proceed with the toggle action
+          await axiosInstance.post(`/api/admin/user/${userId}/toggle-form-filled`);
+          alert('Successfully toggled form filled status');
+        }
+      }catch (error) {
+        console.error('Error toggling form filled status:', error);
+        alert('Failed to toggle form filled status. Please try again.');
+      }
+    }
+
+  
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg w-full max-w-7xl mx-4 max-h-[90vh] overflow-hidden">
@@ -611,6 +645,7 @@ const ListTracking = ({listData}) => {
                     {showFilters && (
                         <div className="mb-4 p-4 bg-gray-50 rounded-lg">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Search Users</label>
                                     <input
@@ -651,6 +686,29 @@ const ListTracking = ({listData}) => {
                                             <option key={plan} value={plan}>{plan}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Form Filled Status</label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="inline-flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={isFormFilledFilter}
+                                                onChange={(e) => setIsFormFilledFilter(e.target.checked)}
+                                                className="form-checkbox"
+                                            />
+                                            <span className="ml-2">Form Filled</span>
+                                        </label>
+                                        <label className="inline-flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={isFormNotFilledFilter}
+                                                onChange={(e) => setIsFormNotFilledFilter(e.target.checked)}
+                                                className="form-checkbox"
+                                            />
+                                            <span className="ml-2">Form Not Filled</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                             <div className="mt-3 flex gap-2">
@@ -740,16 +798,19 @@ const ListTracking = ({listData}) => {
                                         >
                                             {user.name}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
+                                        <td title={user.email} className="px-6 py-4 whitespace-nowrap text-sm">{user.email ? user.email.length > 10 ? user.email.slice(0, 10) + '...' : user.email : 'No Email'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.phone}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                            {user.isFormFilled ? <div className='text-green-500 px-2'>
-                                                <div className='text-xs'>
-                                                  {user.formFilledBy}
-                                                </div>
-                                            </div>:<div className='text-gray-500 px-2'>
-                                                -
-                                              </div>}
+                                        <td className="px-6 py-4 text-sm">
+                                            {user.formFilled ? (
+                                                <button title='Toggle Form Filled' onClick={() => handleToggleFormFilled(user.id)} className='text-sm text-green-800'>
+                                                  {user.formFilledBy ? user.formFilledBy: 'Filled'} 
+                                                  <span title='Toggle Form Filled' className='text-gray-500 block text-xs'>{user.formFilledAt ? new Date(user.formFilledAt).toLocaleString("en-IN") : ''}</span>
+                                                </button>
+                                            ) : (
+                                                <button title='Toggle Form Filled' onClick={() => handleToggleFormFilled(user.id)} className='text-gray-500 px-2 text-xs hover:text-gray-700 transition-colors'>
+                                                    Mark As Filled
+                                                </button>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
