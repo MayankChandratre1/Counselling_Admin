@@ -13,6 +13,7 @@ import EditListModal from '../lists/EditListModal';
 import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
 import { useNavigate } from 'react-router-dom';
+import axiosInstance from '../../utils/axios';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -152,7 +153,7 @@ const UsersManagement = () => {
     try {
       setLoading(true);
       const authAxios = getAuthAxios();
-      const response = await authAxios.get('/api/admin/lists');
+      const response = await axiosInstance.get('/api/admin/lists');
       setAvailableLists(response.data);
       setError(null);
     } catch (err) {

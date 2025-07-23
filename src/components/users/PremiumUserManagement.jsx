@@ -18,6 +18,7 @@ import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
 import ListReleaseModal from './ListReleaseModal';
 import { set } from 'lodash';
+import axiosInstance from '../../utils/axios';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -265,7 +266,7 @@ const PremiumUsersManagement = () => {
     try {
       setLoadingLists(true);
       const authAxios = getAuthAxios();
-      const response = await authAxios.get('/api/admin/lists');
+      const response = await axiosInstance.get('/api/admin/lists');
       setAvailableLists(response.data);
       setError(null);
     } catch (err) {

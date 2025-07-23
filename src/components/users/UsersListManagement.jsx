@@ -329,7 +329,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
     try {
       setLoadingLists(true);
       const authAxios = getAuthAxios();
-      const response = await authAxios.get('/api/admin/lists');
+      const response = await axiosInstance.get('/api/admin/lists');
       setAvailableLists(response.data);
       setError(null);
     } catch (err) {
