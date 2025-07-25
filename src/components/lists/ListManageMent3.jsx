@@ -771,6 +771,15 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
         colleges: selectedColleges || formData.items || [],
         isCustomized: true
       };
+
+      listData.colleges = listData.colleges.map(c => {
+        return {
+          ...c,
+          branches: [],
+          additionalMetadata: {},
+          keywords: []
+        }
+      })
       
       console.log(`Saving ${isCreatedList ? 'created' : ''} list with ID: ${targetListId} for user ${userId}`);
       
@@ -873,7 +882,14 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
         
         const submitData = {
           title: currentList?.title || "Updated List",
-          colleges: updatedColleges,
+          colleges: updatedColleges ? updatedColleges.map(c => {
+            return {
+              ...c,
+              branches: [],
+              additionalMetadata: {},
+              keywords: []
+            }
+          }) : [],
           isCustomized: true
         };
 
