@@ -195,7 +195,7 @@ const CapProgressTracker = () => {
       Name: user.name,
       Phone: user.phone,
       Email: user.email,
-      CreatedAt: user.createdAt?._seconds ? new Date(user.createdAt._seconds * 1000).toLocaleDateString() : '-',
+      CreatedAt: user.createdAt ? new Date((user.createdAt && user.createdAt._seconds ? user.createdAt._seconds * 1000 : new Date(user.createdAt).getTime())).toLocaleDateString() : '-',
       Batch: user.batch || 'Unassigned',
       IsPremium: user.isPremium ? 'Yes' : 'No',
       HasLoggedIn: user.hasLoggedIn ? 'Yes' : 'No',
@@ -215,10 +215,10 @@ const CapProgressTracker = () => {
       Budget: user.counsellingData?.budget || '-',
       // Add premium plan info
       PremiumPlanTitle: user.premiumPlan?.planTitle || '-',
-      PlanPurchaseDate: user.premiumPlan?.purchasedDate?._seconds ? 
-        new Date(user.premiumPlan.purchasedDate._seconds * 1000).toLocaleDateString() : '-',
-      PlanExpiryDate: user.premiumPlan?.expiryDate?._seconds ?
-        new Date(user.premiumPlan.expiryDate._seconds * 1000).toLocaleDateString() : '-',
+      PlanPurchaseDate: user.premiumPlan?.purchasedDate ? 
+        new Date((user.premiumPlan.purchasedDate && user.premiumPlan.purchasedDate._seconds ? user.premiumPlan.purchasedDate._seconds * 1000 : new Date(user.premiumPlan.purchasedDate).getTime())).toLocaleDateString() : '-',
+      PlanExpiryDate: user.premiumPlan?.expiryDate ?
+        new Date((user.premiumPlan.expiryDate && user.premiumPlan.expiryDate._seconds ? user.premiumPlan.expiryDate._seconds * 1000 : new Date(user.premiumPlan.expiryDate).getTime())).toLocaleDateString() : '-',
       // Add assigned lists info  
       AssignedLists: user.lists?.map(list => list.title).join('; ') || '-'
     }));

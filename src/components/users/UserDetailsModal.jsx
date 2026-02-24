@@ -5,7 +5,7 @@ const UserDetailsModal = ({ user, showModal, onClose }) => {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
-    return new Date(timestamp._seconds * 1000).toLocaleDateString();
+    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleDateString();
   };
 
   return (

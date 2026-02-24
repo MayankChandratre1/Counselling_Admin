@@ -251,8 +251,8 @@ const PaymentLogs = () => {
   };
 
   const formatDate = (timestamp) => {
-    if (!timestamp || !timestamp._seconds) return 'N/A';
-    const date = new Date(timestamp._seconds * 1000);
+    if (!timestamp) return 'N/A';
+    const date = new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime()));
     return date.toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -427,8 +427,8 @@ const PaymentLogs = () => {
   const renderDetailRow = (payment) => {
     const formatTimestamp = (timestamp) => {
       if (!timestamp) return 'N/A';
-      if (timestamp._seconds) {
-        return new Date(timestamp._seconds * 1000).toLocaleString('en-IN');
+      if (timestamp) {
+        return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleString('en-IN');
       }
       return new Date(timestamp * 1000).toLocaleString('en-IN');
     };

@@ -49,7 +49,7 @@ export function StaticPageProvider({ children }) {
     try {
       setLandingLoading(true);
       setLandingError(null);
-      const response = await axiosInstance.get('/api/admin/landing-page');
+      const response = await axiosInstance.get('/api/admin/get-landing-page');
       setLandingPageData(response.data);
     } catch (error) {
       console.error('Error fetching landing page data:', error);

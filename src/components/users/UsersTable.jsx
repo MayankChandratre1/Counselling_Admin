@@ -259,8 +259,8 @@ const UsersTable = ({
   useEffect(() => {
     if (users && users.length > 0) {
       const sorted = [...users].sort((a, b) => {
-        const dateA = a.createdAt?._seconds || 0;
-        const dateB = b.createdAt?._seconds || 0;
+        const dateA = a.createdAt || 0;
+        const dateB = b.createdAt || 0;
         
         if (sortOrder === 'desc') {
           return dateB - dateA; // Newest first
@@ -279,8 +279,8 @@ const UsersTable = ({
   };
 
   const formatDate = (timestamp) => {
-    if (!timestamp?._seconds) return 'N/A';
-    return new Date(timestamp._seconds * 1000).toLocaleDateString('en-IN', {
+    if (!timestamp) return 'N/A';
+    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleDateString('en-IN', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -371,7 +371,7 @@ const UsersTable = ({
         Name: user.name,
         Phone: user.phone,
         Email: user.email || '-',
-        CreatedAt: user.createdAt?._seconds ? new Date(user.createdAt._seconds * 1000).toLocaleDateString() : '-',
+        CreatedAt: user.createdAt ? new Date((user.createdAt && user.createdAt._seconds ? user.createdAt._seconds * 1000 : new Date(user.createdAt).getTime())).toLocaleDateString() : '-',
         Batch: user.batch || 'Unassigned',
         IsPremium: user.isPremium ? 'Yes' : 'No',
         HasLoggedIn: user.hasLoggedIn ? 'Yes' : 'No',

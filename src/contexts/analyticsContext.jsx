@@ -115,8 +115,8 @@ export const AnalyticsProvider = ({ children }) => {
     if (filters.sortOrder) {
       
       filteredUsers.sort((a, b) => {
-        const dateA = a.purchasedDate?._seconds || new Date(a.purchasedDate).getTime() || 0;
-        const dateB = b.purchasedDate?._seconds || new Date(b.purchasedDate).getTime() || 0;
+        const dateA = a.purchasedDate || new Date(a.purchasedDate).getTime() || 0;
+        const dateB = b.purchasedDate || new Date(b.purchasedDate).getTime() || 0;
         
         if (filters.sortOrder === 'desc') {
           return dateB - dateA;

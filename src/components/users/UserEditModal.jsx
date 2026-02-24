@@ -117,12 +117,12 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
         
         // Format dates for the date inputs
         if (premiumPlan.purchasedDate && premiumPlan.purchasedDate._seconds) {
-          const purchaseDate = new Date(premiumPlan.purchasedDate._seconds * 1000);
+          const purchaseDate = new Date((premiumPlan.purchasedDate && premiumPlan.purchasedDate._seconds ? premiumPlan.purchasedDate._seconds * 1000 : new Date(premiumPlan.purchasedDate).getTime()));
           premiumPlan.purchasedDate = purchaseDate.toISOString().split('T')[0];
         }
         
         if (premiumPlan.expiryDate && premiumPlan.expiryDate._seconds) {
-          const expiryDate = new Date(premiumPlan.expiryDate._seconds * 1000);
+          const expiryDate = new Date((premiumPlan.expiryDate && premiumPlan.expiryDate._seconds ? premiumPlan.expiryDate._seconds * 1000 : new Date(premiumPlan.expiryDate).getTime()));
           premiumPlan.expiryDate = expiryDate.toISOString().split('T')[0];
         }
 

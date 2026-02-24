@@ -68,12 +68,12 @@ const UserDetailsByPhone = () => {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
-    return new Date(timestamp._seconds * 1000).toLocaleDateString();
+    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleDateString();
   };
 
   const formatDateTime = (timestamp) => {
-    if (!timestamp || !timestamp._seconds) return 'N/A';
-    const date = new Date(timestamp._seconds * 1000);
+    if (!timestamp) return 'N/A';
+    const date = new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime()));
     return date.toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',

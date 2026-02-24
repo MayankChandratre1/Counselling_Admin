@@ -1,26 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
-console.log('API_URL:', API_URL);
-
+import axiosInstance from '../utils/axios';
 
 const AdminLogin = () => {
-  const [credentials, setCredentials] = useState({
-    email: '',
-    password: ''
-  });
+  const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setCredentials(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setCredentials((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -29,24 +19,21 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/api/admin/login`, credentials);
-      console.log(response.data);
-      
-      
-      // Store the token in sessionStorage instead of localStorage
-      sessionStorage.setItem('adminToken', response.data.token);
-      
-      // Store admin info in sessionStorage
-      sessionStorage.setItem('adminInfo', JSON.stringify(response.data.admin));
-      
-      // Set default Authorization header for future requests
-      axios.defaults.headers.common['token'] = response.data.token;
-      
-      // Redirect to home page
+      const response = await axiosInstance.post('/api/admin/login', credentials);
+      const { token, admin, pages } = response.data;
+
+      // Store auth data — new contract:
+      //   adminToken  → JWT string
+      //   adminInfo   → { id, email, name, role }
+      //   adminPages  → string[] of allowed page keys
+      sessionStorage.setItem('adminToken', token);
+      sessionStorage.setItem('adminInfo', JSON.stringify(admin));
+      sessionStorage.setItem('adminPages', JSON.stringify(pages || []));
+
       navigate('/home');
-    } catch (error) {
-      console.error('Login error:', error);
-      setError(error.response?.data?.error || 'Login failed. Please try again.');
+    } catch (err) {
+      console.error('Login error:', err);
+      setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -59,13 +46,11 @@ const AdminLogin = () => {
           <h2 className="text-3xl font-bold text-gray-800">Admin Portal</h2>
           <p className="text-gray-600 mt-2">Enter your credentials to access the dashboard</p>
         </div>
-        
+
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
-            {error}
-          </div>
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">{error}</div>
         )}
-        
+
         <form onSubmit={handleSubmit}>
           <div className="mb-6">
             <label htmlFor="email" className="block text-gray-700 text-sm font-medium mb-2">
@@ -82,7 +67,7 @@ const AdminLogin = () => {
               required
             />
           </div>
-          
+
           <div className="mb-6">
             <label htmlFor="password" className="block text-gray-700 text-sm font-medium mb-2">
               Password
@@ -98,18 +83,18 @@ const AdminLogin = () => {
               required
             />
           </div>
-          
+
           <div className="mb-6">
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200"
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200 disabled:opacity-60"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </div>
         </form>
-        
+
         <div className="text-center text-sm text-gray-600">
           <p>Secure Admin Access Only</p>
         </div>

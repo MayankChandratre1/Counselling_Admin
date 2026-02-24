@@ -354,12 +354,41 @@ const openNewBannerWidget = () => {
   // Save section data
   const saveSection = async (section) => {
     try {
-      const dataToSave = { ...homePageData };
+      let dataToSave = {};
       
-      await axiosInstance.post('/api/admin/update-home-page', {
+      // Only send the specific fields for each section
+      switch (section) {
+        case 'events':
+          dataToSave = { events: homePageData.events };
+          break;
+        case 'updates':
+          dataToSave = { updates: homePageData.updates };
+          break;
+        case 'colleges':
+          dataToSave = { recommended_colleges: homePageData.recommended_colleges };
+          break;
+        case 'video':
+          dataToSave = { cutoff_video: homePageData.cutoff_video };
+          break;
+        case 'banners':
+          dataToSave = { banners: homePageData.banners };
+          break;
+        default:
+          console.error('Unknown section:', section);
+          return;
+      }
+      
+      console.log(`Saving ${section} data:`, dataToSave);
+      
+      const response = await axiosInstance.post('/api/admin/update-home-page', {
         section,
         data: dataToSave
       });
+      
+      console.log('Save response:', response.data);
+      
+      // Refetch latest data to ensure UI is in sync
+      await fetchHomePageData();
       
       // Show success message
       setSuccessMessages(prev => ({
@@ -377,7 +406,8 @@ const openNewBannerWidget = () => {
       
     } catch (error) {
       console.error(`Error saving ${section}:`, error);
-      alert(`Failed to save ${section}. Please try again.`);
+      const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+      alert(`Failed to save ${section}: ${errorMsg}`);
     }
   };
 

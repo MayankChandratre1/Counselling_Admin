@@ -109,7 +109,7 @@ const AnalyticsDashboard = () => {
         if (!user.premiumPlan?.purchasedDate) return false;
         
         const purchaseDate = new Date(
-          user.premiumPlan.purchasedDate._seconds * 1000
+          (user.premiumPlan.purchasedDate && user.premiumPlan.purchasedDate._seconds ? user.premiumPlan.purchasedDate._seconds * 1000 : new Date(user.premiumPlan.purchasedDate).getTime())
         ).toISOString().split('T')[0];
         
         return purchaseDate === today;
@@ -171,7 +171,7 @@ const AnalyticsDashboard = () => {
   };
 
   const formatDate = (timestamp) => {
-    if (!timestamp?._seconds){
+    if (!timestamp){
       const date = new Date(timestamp);
       if (isNaN(date.getTime())) {
         return 'N/A';
@@ -184,7 +184,7 @@ const AnalyticsDashboard = () => {
         minute: '2-digit'
       });
     };
-    return new Date(timestamp._seconds * 1000).toLocaleDateString('en-IN', {
+    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleDateString('en-IN', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',

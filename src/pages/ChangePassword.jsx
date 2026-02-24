@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { FaEnvelope, FaLock, FaKey, FaArrowLeft } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import axiosInstance from '../utils/axios';
 
 const ChangePassword = () => {
-  const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+
+  // Pre-fill with the logged-in admin's email
+  const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo') || 'null');
+  const [email, setEmail] = useState(adminInfo?.email || '');
+
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
-  const navigate = useNavigate();
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
@@ -18,18 +22,18 @@ const ChangePassword = () => {
       setMessage({ text: 'Please enter your email', type: 'error' });
       return;
     }
-    
+
     setLoading(true);
     setMessage({ text: '', type: '' });
-    
+
     try {
-      const res = await axios.post(`${import.meta.env.VITE_REACT_APP_ADMIN_API_URL}/api/admin/request-otp`, { email });
+      const res = await axiosInstance.post('/api/admin/request-otp', { email });
       setMessage({ text: res.data.message, type: 'success' });
       setStep(2);
     } catch (error) {
-      setMessage({ 
-        text: error.response?.data?.error || 'Error sending OTP', 
-        type: 'error' 
+      setMessage({
+        text: error.response?.data?.error || 'Error sending OTP',
+        type: 'error',
       });
     } finally {
       setLoading(false);
@@ -42,18 +46,18 @@ const ChangePassword = () => {
       setMessage({ text: 'Please enter the OTP', type: 'error' });
       return;
     }
-    
+
     setLoading(true);
     setMessage({ text: '', type: '' });
-    
+
     try {
-      const res = await axios.post(`${import.meta.env.VITE_REACT_APP_ADMIN_API_URL}/api/admin/verify-otp`, { email, otp });
+      const res = await axiosInstance.post('/api/admin/verify-otp', { email, otp });
       setMessage({ text: res.data.message, type: 'success' });
       setStep(3);
     } catch (error) {
-      setMessage({ 
-        text: error.response?.data?.error || 'Invalid OTP', 
-        type: 'error' 
+      setMessage({
+        text: error.response?.data?.error || 'Invalid OTP',
+        type: 'error',
       });
     } finally {
       setLoading(false);
@@ -66,36 +70,33 @@ const ChangePassword = () => {
       setMessage({ text: 'Please enter a new password', type: 'error' });
       return;
     }
-    
     if (newPassword.length < 6) {
       setMessage({ text: 'Password must be at least 6 characters', type: 'error' });
       return;
     }
-    
+
     setLoading(true);
     setMessage({ text: '', type: '' });
-    
+
     try {
-      const res = await axios.post(`${import.meta.env.VITE_REACT_APP_ADMIN_API_URL}/api/admin/change-password`, { 
-        email, 
-        otp, 
-        newPassword 
+      const res = await axiosInstance.post('/api/admin/change-password', {
+        email,
+        otp,
+        newPassword,
       });
       setMessage({ text: res.data.message, type: 'success' });
-      
-      // Reset form after success
+
+      // Clear auth and force re-login after password change
       setTimeout(() => {
-        setStep(1);
-        setEmail('');
-        setOtp('');
-        setNewPassword('');
-        setMessage({ text: '', type: '' });
-      }, 3000);
-      navigate('/');
+        sessionStorage.removeItem('adminToken');
+        sessionStorage.removeItem('adminInfo');
+        sessionStorage.removeItem('adminPages');
+        navigate('/');
+      }, 2000);
     } catch (error) {
-      setMessage({ 
-        text: error.response?.data?.error || 'Error changing password', 
-        type: 'error' 
+      setMessage({
+        text: error.response?.data?.error || 'Error changing password',
+        type: 'error',
       });
     } finally {
       setLoading(false);
@@ -109,10 +110,10 @@ const ChangePassword = () => {
 
   const getStepTitle = () => {
     switch (step) {
-      case 1: return "Request Password Reset";
-      case 2: return "Verify OTP";
-      case 3: return "Create New Password";
-      default: return "Password Reset";
+      case 1: return 'Request Password Reset';
+      case 2: return 'Verify OTP';
+      case 3: return 'Create New Password';
+      default: return 'Password Reset';
     }
   };
 
@@ -122,41 +123,40 @@ const ChangePassword = () => {
         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
           <h1 className="text-xl md:text-2xl font-bold text-white">{getStepTitle()}</h1>
           <p className="text-blue-100 mt-1">
-            {step === 1 && "Enter your email to receive a verification code"}
-            {step === 2 && "Enter the OTP sent to your email"}
-            {step === 3 && "Create a new secure password"}
+            {step === 1 && 'Enter your email to receive a verification code'}
+            {step === 2 && 'Enter the OTP sent to your email'}
+            {step === 3 && 'Create a new secure password'}
           </p>
         </div>
-        
+
         <div className="p-6">
           {/* Progress indicator */}
           <div className="flex mb-8 justify-center">
-            <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-semibold mr-2 
-              ${step >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-              1
-            </div>
-            <div className={`w-16 h-1 mt-4 mr-2 
-              ${step >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-            <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-semibold mr-2 
-              ${step >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-              2
-            </div>
-            <div className={`w-16 h-1 mt-4 mr-2 
-              ${step >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-            <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-semibold 
-              ${step >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-              3
-            </div>
+            {[1, 2, 3].map((s, i) => (
+              <React.Fragment key={s}>
+                <div
+                  className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-semibold
+                    ${step >= s ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}
+                >
+                  {s}
+                </div>
+                {i < 2 && (
+                  <div className={`w-16 h-1 mt-4 mx-2 ${step > s ? 'bg-blue-500' : 'bg-gray-200'}`} />
+                )}
+              </React.Fragment>
+            ))}
           </div>
-          
+
           {/* Alert message */}
           {message.text && (
-            <div className={`p-3 rounded mb-4 text-sm
-              ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+            <div
+              className={`p-3 rounded mb-4 text-sm
+                ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+            >
               {message.text}
             </div>
           )}
-          
+
           {/* Step 1: Request OTP */}
           {step === 1 && (
             <form onSubmit={handleSendOTP}>
@@ -174,20 +174,20 @@ const ChangePassword = () => {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
-              <button 
+              <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50"
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50"
               >
                 {loading ? 'Sending...' : 'Request Verification Code'}
               </button>
             </form>
           )}
-          
+
           {/* Step 2: Verify OTP */}
           {step === 2 && (
             <form onSubmit={verifyOTP}>
@@ -205,7 +205,7 @@ const ChangePassword = () => {
                     placeholder="Enter 6-digit OTP"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     maxLength="6"
                   />
                 </div>
@@ -214,24 +214,24 @@ const ChangePassword = () => {
                 </p>
               </div>
               <div className="flex space-x-2">
-                <button 
+                <button
                   type="button"
                   onClick={goBack}
-                  className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+                  className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition duration-200"
                 >
                   <FaArrowLeft className="mr-1" /> Back
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50"
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50"
                 >
                   {loading ? 'Verifying...' : 'Verify Code'}
                 </button>
               </div>
             </form>
           )}
-          
+
           {/* Step 3: Change Password */}
           {step === 3 && (
             <form onSubmit={resetPassword}>
@@ -249,25 +249,23 @@ const ChangePassword = () => {
                     placeholder="Create new password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <p className="mt-2 text-sm text-gray-500">
-                  Password must be at least 6 characters
-                </p>
+                <p className="mt-2 text-sm text-gray-500">Password must be at least 6 characters</p>
               </div>
               <div className="flex space-x-2">
-                <button 
+                <button
                   type="button"
                   onClick={goBack}
-                  className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+                  className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition duration-200"
                 >
                   <FaArrowLeft className="mr-1" /> Back
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50"
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50"
                 >
                   {loading ? 'Updating...' : 'Update Password'}
                 </button>

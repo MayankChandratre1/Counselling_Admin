@@ -75,8 +75,8 @@ const Appointments = () => {
   };
 
   const formatDate = (timestamp) => {
-    if (!timestamp || !timestamp._seconds) return 'N/A';
-    return new Date(timestamp._seconds * 1000).toLocaleString('en-IN', {
+    if (!timestamp) return 'N/A';
+    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -160,8 +160,8 @@ const Appointments = () => {
 
     // Sort appointments
     filtered.sort((a, b) => {
-      const dateA = a.createdAt?._seconds || 0;
-      const dateB = b.createdAt?._seconds || 0;
+      const dateA = a.createdAt || 0;
+      const dateB = b.createdAt || 0;
       
       switch (sortBy) {
         case 'newest':

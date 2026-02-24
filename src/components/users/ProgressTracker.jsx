@@ -262,7 +262,7 @@ const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick, onEditCl
                       {/* Show timestamp if available */}
                       {step.timestamp && (
                         <div className="text-xs text-gray-500 italic">
-                          Last updated: {new Date(step.timestamp._seconds * 1000).toLocaleString()}
+                          Last updated: {new Date((step.timestamp && step.timestamp._seconds ? step.timestamp._seconds * 1000 : new Date(step.timestamp).getTime())).toLocaleString()}
                         </div>
                       )}
                     </div>

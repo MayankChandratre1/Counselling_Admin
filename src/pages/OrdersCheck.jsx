@@ -64,8 +64,8 @@ const OrdersCheck = () => {
   };
 
   const formatDate = (timestamp) => {
-    if (!timestamp?._seconds) return 'N/A';
-    return new Date(timestamp._seconds * 1000).toLocaleString('en-IN', {
+    if (!timestamp) return 'N/A';
+    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',

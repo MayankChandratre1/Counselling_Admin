@@ -48,12 +48,12 @@ const FormProgressTracker = () => {
     }
   }, [analyticsData, initializeFormProgress]);
 
-  useEffect(()=>{
-      if (analyticsData?.metrics?.enrolled?.users && analyticsData.metrics.enrolled.users.length > 0) {
+  useEffect(() => {
+    if (analyticsData?.metrics?.enrolled?.users && analyticsData.metrics.enrolled.users.length > 0) {
       console.log('Initializing EnrilledUsers progress with enrolled users:', analyticsData.metrics.enrolled.users);
       setEnrolledUsers(analyticsData.metrics.enrolled.users);
     }
-  },[analyticsData])
+  }, [analyticsData])
 
   // Load forms on component mount
   useEffect(() => {
@@ -67,7 +67,7 @@ const FormProgressTracker = () => {
       const timer = setTimeout(() => {
         initializeFormData(analyticsData);
       }, 0);
-      
+
       return () => clearTimeout(timer);
     }
   }, [selectedForm, analyticsData, initializeFormData]);
@@ -117,13 +117,13 @@ const FormProgressTracker = () => {
       Name: user.name,
       Phone: user.phone,
       Email: user.email,
-      CreatedAt: user.createdAt?._seconds ? new Date(user.createdAt._seconds * 1000).toLocaleDateString() : '-',
+      CreatedAt: user.createdAt ? new Date((user.createdAt && user.createdAt._seconds ? user.createdAt._seconds * 1000 : new Date(user.createdAt).getTime())).toLocaleDateString() : '-',
       Batch: user.batch || 'Unassigned',
       IsPremium: user.isPremium ? 'Yes' : 'No',
       HasLoggedIn: user.hasLoggedIn ? 'Yes' : 'No',
       // ...existing counselling data fields...
       FullName: user.counsellingData?.fullName || '-',
-      DateOfBirth: user.counsellingData?.dob || '-', 
+      DateOfBirth: user.counsellingData?.dob || '-',
       City: user.counsellingData?.city || '-',
       State: user.counsellingData?.state || '-',
       BoardMarks: user.counsellingData?.boardMarks || '-',
@@ -136,10 +136,10 @@ const FormProgressTracker = () => {
       PreferredLocations: user.counsellingData?.preferredLocations || '-',
       Budget: user.counsellingData?.budget || '-',
       PremiumPlanTitle: user.premiumPlan?.planTitle || '-',
-      PlanPurchaseDate: user.premiumPlan?.purchasedDate?._seconds ? 
-        new Date(user.premiumPlan.purchasedDate._seconds * 1000).toLocaleDateString() : '-',
-      PlanExpiryDate: user.premiumPlan?.expiryDate?._seconds ?
-        new Date(user.premiumPlan.expiryDate._seconds * 1000).toLocaleDateString() : '-',
+      PlanPurchaseDate: user.premiumPlan?.purchasedDate ?
+        new Date((user.premiumPlan.purchasedDate && user.premiumPlan.purchasedDate._seconds ? user.premiumPlan.purchasedDate._seconds * 1000 : new Date(user.premiumPlan.purchasedDate).getTime())).toLocaleDateString() : '-',
+      PlanExpiryDate: user.premiumPlan?.expiryDate ?
+        new Date((user.premiumPlan.expiryDate && user.premiumPlan.expiryDate._seconds ? user.premiumPlan.expiryDate._seconds * 1000 : new Date(user.premiumPlan.expiryDate).getTime())).toLocaleDateString() : '-',
       AssignedLists: user.lists?.map(list => list.title).join('; ') || '-'
     }));
 
@@ -157,7 +157,7 @@ const FormProgressTracker = () => {
         enrolledUsersLength: enrolledUsers?.length,
         selectedForm
       });
-      
+
       return { online: 0, offline: 0, total: 0 };
     }
 
@@ -167,12 +167,12 @@ const FormProgressTracker = () => {
       return { online: 0, offline: 0, total: 0 };
     }
 
-    const filteredUsers = enrolledUsers.filter(user => 
+    const filteredUsers = enrolledUsers.filter(user =>
       user.planTitle === currentPlan.title
     );
 
-  
-    
+
+
 
     return {
       online: filteredUsers.filter(u => u.batch === 'online').length,
@@ -199,7 +199,7 @@ const FormProgressTracker = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
@@ -209,13 +209,13 @@ const FormProgressTracker = () => {
                   <ChevronLeft size={16} className="mr-1" />
                   Previous
                 </button>
-                
+
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
                   <span className="text-sm font-medium text-blue-800">
                     Page {currentPage} of {totalPages}
                   </span>
                 </div>
-                
+
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages || loading}
@@ -283,7 +283,7 @@ const FormProgressTracker = () => {
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             </div>
           </div>
-          
+
           {selectedForm && (
             <div className="bg-white rounded-lg p-3 border border-gray-200">
               <div className="flex items-center justify-between text-sm">
@@ -342,7 +342,7 @@ const FormProgressTracker = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -352,13 +352,13 @@ const FormProgressTracker = () => {
                 <ChevronLeft size={16} className="mr-1" />
                 Previous
               </button>
-              
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
                 <span className="text-sm font-medium text-blue-800">
                   Page {currentPage} of {totalPages}
                 </span>
               </div>
-              
+
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages || loading}
@@ -412,21 +412,21 @@ const FormProgressTracker = () => {
                 <div className="space-y-4">
                   {formSteps.map((step) => {
                     const filteredCounts = getFilteredUserCounts();
-                    
+
 
                     // Calculate status breakdown from cached data
                     const stepUsers = getStepUsers(step.number, null, analyticsData);
-                    const completedCount = analyticsData.formStepsAnalysis[selectedForm]?.steps[step.number]?.completedCount || stepUsers.complete?.length || 0; 
-                    const rejectedCount = analyticsData.formStepsAnalysis[selectedForm]?.steps[step.number]?.rejectedCount || stepUsers.rejected?.length || 0;
-                    const unattendedCount = ( filteredCounts.total - completedCount - rejectedCount) || stepUsers.unattended?.length || 0;
+                    const completedCount = analyticsData?.formStepsAnalysis?.[selectedForm]?.steps?.[step.number]?.completedCount || stepUsers.complete?.length || 0;
+                    const rejectedCount = analyticsData?.formStepsAnalysis?.[selectedForm]?.steps?.[step.number]?.rejectedCount || stepUsers.rejected?.length || 0;
+                    const unattendedCount = (filteredCounts.total - completedCount - rejectedCount) || stepUsers.unattended?.length || 0;
 
-                    const completionRate = filteredCounts.total > 0 
+                    const completionRate = filteredCounts.total > 0
                       ? Math.round(((completedCount || 0) / filteredCounts.total) * 100)
                       : 0;
-                    
+
                     return (
-                      <div 
-                        key={step.number} 
+                      <div
+                        key={step.number}
                         className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:bg-gray-100 transition-colors"
                       >
                         <div className="flex items-center justify-between">
@@ -448,7 +448,7 @@ const FormProgressTracker = () => {
                           </div>
 
                           <div className="flex space-x-3">
-                            <button 
+                            <button
                               className="bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium rounded-lg px-4 py-3 transition-colors min-w-[180px]"
                               onClick={() => handleStepClick(step.number, null)}
                             >
@@ -465,11 +465,11 @@ const FormProgressTracker = () => {
                             </button>
                           </div>
                         </div>
-                        
+
                         {/* Progress Bar */}
                         <div className="mt-4">
                           <div className="bg-gray-200 rounded-full h-2">
-                            <div 
+                            <div
                               className="bg-green-500 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${completionRate}%` }}
                             ></div>
@@ -479,7 +479,7 @@ const FormProgressTracker = () => {
                     );
                   })}
                 </div>
-                
+
                 {formSteps.length === 0 && (
                   <div className="text-center py-12">
                     <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">

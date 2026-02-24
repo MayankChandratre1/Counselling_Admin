@@ -22,7 +22,7 @@ const UserDetailsPage = () => {
   const [error, setError] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const {notes} = useUsers();
+  const { notes } = useUsers();
   const [verdictModal, setVerdictModal] = useState({ isOpen: false, stepNumber: null });
   const [stepEditModal, setStepEditModal] = useState({ isOpen: false, step: null });
   const [expandedStep, setExpandedStep] = useState(null);
@@ -42,9 +42,9 @@ const UserDetailsPage = () => {
       const response = await axios.get(`${API_URL}/api/admin/user/${id}`, {
         headers: { token }
       });
-      
+
       setUser(response.data);
-      if(notes){
+      if (notes) {
         console.log(notes[`${id}`]);
         setNotesToShow(notes[`${id}`]?.notes);
       }
@@ -54,14 +54,14 @@ const UserDetailsPage = () => {
     } catch (err) {
       setError('Failed to fetch user details');
       setLoading(false);
-    }finally {
+    } finally {
       setLoading(false);
     }
   };
 
   const fetchPaymentHistory = async () => {
     if (!user?.phone) return;
-    
+
     setLoadingPayments(true);
     try {
       const token = localStorage.getItem('adminToken');
@@ -90,15 +90,15 @@ const UserDetailsPage = () => {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
-    if (timestamp._seconds) {
-      return new Date(timestamp._seconds * 1000).toLocaleString('en-IN');
+    if (timestamp) {
+      return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleString('en-IN');
     }
     return new Date(timestamp * 1000).toLocaleString('en-IN');
   };
 
   const formatDateTime = (timestamp) => {
-    if (!timestamp || !timestamp._seconds) return 'N/A';
-    const date = new Date(timestamp._seconds * 1000);
+    if (!timestamp) return 'N/A';
+    const date = new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime()));
     return date.toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -128,7 +128,7 @@ const UserDetailsPage = () => {
 
   const copyAllCounsellingData = () => {
     if (!user?.counsellingData) return;
-    
+
     const formattedData = Object.entries(user.counsellingData)
       .map(([key, value]) => {
         if (key === 'password' || key === 'confirmPassword' || key === 'termsAccepted') return null;
@@ -136,13 +136,13 @@ const UserDetailsPage = () => {
       })
       .filter(Boolean)
       .join('\n');
-    
+
     copyToClipboard(formattedData, 'all');
   };
 
   const handleAddVerdict = (stepNumber) => {
     console.log(`Adding verdict for step ${stepNumber}`);
-    
+
     setVerdictModal({ isOpen: true, stepNumber });
   };
 
@@ -156,29 +156,29 @@ const UserDetailsPage = () => {
         console.error('User steps data is missing');
         return;
       }
-      
+
       // Update the specific step in the steps array
-      const updatedSteps = user.stepsData.steps.map(step => 
+      const updatedSteps = user.stepsData.steps.map(step =>
         step.number === updatedStep.number ? updatedStep : step
       );
-      
+
       // Create updated stepsData object
       const updatedStepsData = {
         ...user.stepsData,
         steps: updatedSteps,
       };
-      
+
       // Update user in backend
-      const response = await axiosInstance.put(`${API_URL}/api/admin/update-user-step-data/${id}`, 
-        updatedStepsData, 
+      const response = await axiosInstance.put(`${API_URL}/api/admin/update-user-step-data/${id}`,
+        updatedStepsData,
         { headers: { token: localStorage.getItem('adminToken') } }
       );
-      
+
       if (response.data.error) {
         console.error("Error updating step:", response.data.error);
         return;
       }
-      
+
       // Close modal and refresh user data
       setStepEditModal({ isOpen: false, step: null });
       fetchUserDetails();
@@ -197,12 +197,12 @@ const UserDetailsPage = () => {
         console.error(`Step ${stepNumber} not found in user data`);
         return;
       }
-      
+
       const updatedStep = {
         ...desiredStep,
         verdict: verdict,
       }
-      
+
       const updatedUserSteps = user.stepsData.steps.map(step =>
         step.number === stepNumber ? updatedStep : step)
       // TODO: Implement backend call
@@ -210,9 +210,9 @@ const UserDetailsPage = () => {
         ...user.stepsData,
         steps: updatedUserSteps,
       }, { headers: { token: localStorage.getItem('adminToken') } });
-      
+
       console.log("Response from backend:", response.data);
-      if(response.data.error) {
+      if (response.data.error) {
         console.error("Error from backend:", response.data.error);
         return;
       }
@@ -318,19 +318,19 @@ const UserDetailsPage = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Amount:</span>
               <span className="text-sm text-gray-900 font-semibold">
                 {formatAmount(order.amount)}
               </span>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Currency:</span>
               <span className="text-sm text-gray-900">{order.currency}</span>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Status:</span>
               <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
@@ -338,7 +338,7 @@ const UserDetailsPage = () => {
               </span>
             </div>
           </div>
-          
+
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Receipt:</span>
@@ -356,12 +356,12 @@ const UserDetailsPage = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Created At:</span>
               <span className="text-sm text-gray-900">{formatDate(order.createdAt)}</span>
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Payment Status:</span>
               <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.paymentStatus)}`}>
@@ -370,7 +370,7 @@ const UserDetailsPage = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Notes Section */}
         {order.notes && (
           <div className="mt-4">
@@ -450,15 +450,15 @@ const UserDetailsPage = () => {
             {
               checkPermission('edit-users') && (
                 <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="ml-auto flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              <Edit size={18} />
-              Edit User
-            </button>
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="ml-auto flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  <Edit size={18} />
+                  Edit User
+                </button>
               )
             }
-                <button
+            <button
               onClick={() => navigate(`/users/lists/${id}`)}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
             >
@@ -471,9 +471,8 @@ const UserDetailsPage = () => {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Basic Information</h2>
-              <span className={`px-3 py-1 rounded-full text-sm ${
-                user.isPremium ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-sm ${user.isPremium ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                }`}>
                 {user.isPremium ? 'Premium' : 'Standard'}
               </span>
             </div>
@@ -497,46 +496,46 @@ const UserDetailsPage = () => {
 
           {
             user.isPremium && user.premiumPlan && (
-               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Premium Plan</h2>
-              
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Plan</p>
-                <p className="font-medium">{user.premiumPlan.planTitle}</p>
-              </div>
-             <div>
-                  <p className="text-sm text-gray-600">Purchased Date</p>
-                  <p className="font-medium">{formatDate(user.premiumPlan.purchasedDate)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Expiry Date</p>
-                  <p className="font-medium">{formatDate(user.premiumPlan.expiryDate)}</p>
-                </div>
-                {
-                  user.premiumPlan.isPaymentPending && (
-                    <>
-                <div>
-                  <p className="text-sm text-gray-600">Amount Paid</p>
-                  <p className="font-medium text-green-500">{user.premiumPlan.amountPaid}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Amount Remaining</p>
-                  <p className="font-medium text-red-500">{user.premiumPlan.amountRemaining}</p>
-                </div>
-                    </>
-                  )
-                }
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">Premium Plan</h2>
 
-               
-              
-            </div>
-          </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Plan</p>
+                    <p className="font-medium">{user.premiumPlan.planTitle}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Purchased Date</p>
+                    <p className="font-medium">{formatDate(user.premiumPlan.purchasedDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Expiry Date</p>
+                    <p className="font-medium">{formatDate(user.premiumPlan.expiryDate)}</p>
+                  </div>
+                  {
+                    user.premiumPlan.isPaymentPending && (
+                      <>
+                        <div>
+                          <p className="text-sm text-gray-600">Amount Paid</p>
+                          <p className="font-medium text-green-500">{user.premiumPlan.amountPaid}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Amount Remaining</p>
+                          <p className="font-medium text-red-500">{user.premiumPlan.amountRemaining}</p>
+                        </div>
+                      </>
+                    )
+                  }
+
+
+
+                </div>
+              </div>
             )
-         
-          
+
+
           }
 
           {notesToShow && Object.keys(notesToShow).length > 0 && (
@@ -544,8 +543,8 @@ const UserDetailsPage = () => {
               <h2 className="text-xl font-semibold mb-4">Notes</h2>
               <div className="space-y-4">
                 {Object.entries(notesToShow).map(([noteKey, noteData], index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className="border-l-4 border-blue-500 bg-gray-50 p-4 rounded-r-lg hover:shadow-md transition-shadow"
                   >
                     <div className="flex justify-between items-start mb-2">
@@ -571,10 +570,10 @@ const UserDetailsPage = () => {
             </div>
           )}
 
-            {/* Steps Progress */}
-          { user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
-           <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step)=> handleAddVerdict(step.number)} onEditClick={handleEditStep} />
-           </div>}
+          {/* Steps Progress */}
+          {user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
+            <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step) => handleAddVerdict(step.number)} onEditClick={handleEditStep} />
+          </div>}
 
           {/* Orders Section */}
           {user?.orders && user.orders.length > 0 && (
@@ -608,7 +607,7 @@ const UserDetailsPage = () => {
                         )}
                       </button>
                     </div>
-                    
+
                     {expandedOrders.has(order.orderId) && renderOrderDetails(order)}
                   </div>
                 ))}
@@ -618,100 +617,100 @@ const UserDetailsPage = () => {
 
           {/* Payment History Section */}
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Payment History</h2>
-          {!showPaymentHistory && (
-            <button
-              onClick={() => {
-                setShowPaymentHistory(true);
-                fetchPaymentHistory();
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-            >
-              <Eye size={16} className="mr-2" />
-              View Payment History
-            </button>
-          )}
-        </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">Payment History</h2>
+              {!showPaymentHistory && (
+                <button
+                  onClick={() => {
+                    setShowPaymentHistory(true);
+                    fetchPaymentHistory();
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <Eye size={16} className="mr-2" />
+                  View Payment History
+                </button>
+              )}
+            </div>
 
-        {showPaymentHistory && (
-          <>
-            {loadingPayments ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-              </div>
-            ) : paymentHistory.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No payment history found for this user.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date & Time
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Event Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Amount
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Payment ID
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Order ID
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {paymentHistory.map((payment, index) => {
-                      const isPaymentEvent = payment.eventType === 'payment.captured';
-                      const paymentData = isPaymentEvent ? payment.data : {};
-                      const orderData = !isPaymentEvent ? payment.data : {};
-                      
-                      const amount = paymentData.amount || orderData.amount;
-                      const status = paymentData.status || orderData.status;
-                      const orderId = paymentData.order_id || orderData.id;
-                      const paymentId = paymentData.id || '';
-                      
-                      return (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {formatDate(payment.timestamp)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
-                              {payment.eventType}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {formatAmount(amount)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
-                              {status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {paymentId}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {orderId}
-                          </td>
+            {showPaymentHistory && (
+              <>
+                {loadingPayments ? (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
+                ) : paymentHistory.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No payment history found for this user.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date & Time
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Event Type
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Amount
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Payment ID
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Order ID
+                          </th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {paymentHistory.map((payment, index) => {
+                          const isOrderEvent = payment.eventType && payment.eventType.startsWith('order.');
+                          const paymentData = isOrderEvent ? (payment.data.payment || {}) : (payment.data || {});
+                          const orderData = isOrderEvent ? (payment.data.order || {}) : {};
+
+                          const amount = paymentData.amount || orderData.amount || payment.data.amount;
+                          const status = isOrderEvent ? orderData.status : paymentData.status;
+                          const orderId = orderData.id || paymentData.order_id || payment.data.order_id;
+                          const paymentId = paymentData.id || payment.data.id || '';
+
+                          return (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {formatDate(payment.timestamp)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
+                                  {payment.eventType}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {formatAmount(amount)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
+                                  {status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {paymentId}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {orderId}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
+          </div>
 
           {/* Counselling Data Card */}
           {user.counsellingData && (
@@ -726,11 +725,11 @@ const UserDetailsPage = () => {
                   Copy All Info
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Object.entries(user.counsellingData).map(([key, value]) => {
                   if (key === 'password' || key === 'confirmPassword' || key === 'termsAccepted') return null;
-                  
+
                   return (
                     <div key={key} className="relative group">
                       <div className="bg-gray-50 p-4 rounded-lg">
@@ -758,7 +757,7 @@ const UserDetailsPage = () => {
             </div>
           )}
 
-        
+
 
           {isEditModalOpen && (
             <UserEditModal
@@ -769,7 +768,7 @@ const UserDetailsPage = () => {
             />
           )}
 
-        
+
 
           {/* Verdict Modal */}
           <VerdictModal

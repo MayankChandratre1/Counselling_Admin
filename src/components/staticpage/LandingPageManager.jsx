@@ -4,6 +4,55 @@ import axiosInstance from '../../utils/axios';
 import { FaHeartPulse } from 'react-icons/fa6';
 import { set } from 'lodash';
 
+const getInitialLandingPageData = () => ({
+  title: { english: '', marathi: '' },
+  slogan: { english: '', marathi: '' },
+  videoUrl: '',
+  testimonials: [],
+  features: [],
+  ctaText: { english: '', marathi: '' },
+  updatedAt: ''
+});
+
+const normalizeMultilingualField = (value) => {
+  if (!value) return { english: '', marathi: '' };
+
+  if (typeof value === 'string') {
+    return { english: value, marathi: '' };
+  }
+
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return {
+      ...value,
+      english: value.english || '',
+      marathi: value.marathi || ''
+    };
+  }
+
+  return { english: '', marathi: '' };
+};
+
+const normalizeLandingPageData = (apiPayload) => {
+  const rawPayload = apiPayload?.data || apiPayload || {};
+  const payload = rawPayload.homepage && typeof rawPayload.homepage === 'object'
+    ? rawPayload.homepage
+    : rawPayload;
+
+  const base = getInitialLandingPageData();
+
+  return {
+    ...base,
+    ...payload,
+    title: normalizeMultilingualField(payload.title),
+    slogan: normalizeMultilingualField(payload.slogan),
+    ctaText: normalizeMultilingualField(payload.ctaText),
+    videoUrl: payload.videoUrl || payload.videoURL || '',
+    testimonials: Array.isArray(payload.testimonials) ? payload.testimonials : [],
+    features: Array.isArray(payload.features) ? payload.features : [],
+    updatedAt: payload.updatedAt || payload.createdAt || ''
+  };
+};
+
 const LandingPageManager = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -57,7 +106,8 @@ const LandingPageManager = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get('/api/admin/get-landing-page');
-      setLandingPageData(response.data);
+      const normalizedPayload = normalizeLandingPageData(response?.data);
+      setLandingPageData(normalizedPayload);
       setError(null);
     } catch (error) {
       console.error('Error fetching landing page data:', error);
@@ -212,20 +262,20 @@ const LandingPageManager = () => {
       // Additional logging to debug what's being sent to the API
       console.log(`Saving ${section} data:`, dataToSave);
       
-      await axiosInstance.put('/api/admin/edit-landing-page', {
+      const response = await axiosInstance.put('/api/admin/edit-landing-page', {
         section,
         data: dataToSave
       });
       
-      // Show success message and update updatedAt timestamp
+      console.log('Save response:', response.data);
+      
+      // Refetch latest data to ensure UI is in sync
+      await fetchLandingPageData();
+      
+      // Show success message
       setSuccessMessages(prev => ({
         ...prev,
         [section]: true
-      }));
-      
-      setLandingPageData(prev => ({
-        ...prev,
-        updatedAt: new Date().toISOString()
       }));
       
       // Clear success message after 3 seconds
@@ -238,7 +288,8 @@ const LandingPageManager = () => {
       
     } catch (error) {
       console.error(`Error saving ${section}:`, error);
-      alert(`Failed to save ${section}. Please try again.`);
+      const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+      alert(`Failed to save ${section}: ${errorMsg}`);
     }
   };
 
@@ -274,6 +325,9 @@ const LandingPageManager = () => {
   // Helper function to get display value for multilingual fields
   const getDisplayValue = (field, language) => {
     if (!field) return '';
+    if (typeof field === 'string') {
+      return language === 'english' ? field : '';
+    }
     return field[language] || '';
   };
 

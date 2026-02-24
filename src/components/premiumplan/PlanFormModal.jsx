@@ -103,7 +103,7 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
   // Convert timestamp to datetime-local format
   const getDateTimeValue = () => {
     if (formData.opensAt && formData.opensAt._seconds) {
-      const date = new Date(formData.opensAt._seconds * 1000);
+      const date = new Date((formData.opensAt && formData.opensAt._seconds ? formData.opensAt._seconds * 1000 : new Date(formData.opensAt).getTime()));
       return date.toISOString().slice(0, 16);
     }
     return new Date().toISOString().slice(0, 16);
