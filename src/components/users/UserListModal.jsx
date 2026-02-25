@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Edit, Trash2, GraduationCap, Search, Save, ChevronDown, ChevronUp, Calendar, User, Copy, Tag } from 'lucide-react';
 import CollegesListModal from './CollegesListModal';
 import axiosInstance from '../../utils/axios';
@@ -10,6 +10,7 @@ const UserListModal = ({
   loading, 
   userLists, 
   userName, 
+  userId,
   onEditList, 
   onRemoveList, 
   createdLists,
@@ -25,32 +26,108 @@ const UserListModal = ({
   });
   const [expandedListId, setExpandedListId] = useState(null);
   const [copiedCodes, setCopiedCodes] = useState({});
+  const [freshUserData, setFreshUserData] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
+
+  // Fetch fresh user data when modal opens
+  useEffect(() => {
+    if (showModal && userId && !freshUserData) {
+      const fetchUserData = async () => {
+        try {
+          setIsFetching(true);
+          console.log(`[UserListModal] Fetching fresh data for user ${userId}`);
+          const response = await axiosInstance.get(`/api/admin/user/${userId}`);
+          const userData = response.data;
+          
+          // Normalize lists
+          const normalizedLists = (userData.lists || []).map(list => ({
+            ...list,
+            id: list.id || list._id,
+            colleges: Array.isArray(list.colleges) ? list.colleges : []
+          }));
+          
+          const normalizedCreatedLists = (userData.createdList || []).map(list => ({
+            ...list,
+            id: list.id || list._id,
+            colleges: Array.isArray(list.colleges) ? list.colleges : []
+          }));
+          
+          console.log(`[UserListModal] Fetched fresh data: ${normalizedLists.length} assigned lists, ${normalizedCreatedLists.length} created lists`);
+          normalizedLists.forEach((list, idx) => {
+            console.log(`  List ${idx}: "${list.title}", id="${list.id}", colleges=${list.colleges?.length || 0}`);
+          });
+          
+          setFreshUserData({
+            lists: normalizedLists,
+            createdList: normalizedCreatedLists
+          });
+        } catch (err) {
+          console.error(`[UserListModal] Error fetching user data:`, err);
+        } finally {
+          setIsFetching(false);
+        }
+      };
+      
+      fetchUserData();
+    }
+  }, [showModal, userId, freshUserData]);
 
   if (!showModal) return null;
 
+  // Use fresh data if available, otherwise use props
+  const listsToUse = freshUserData ? freshUserData.lists : userLists;
+  const createdListsToUse = freshUserData ? freshUserData.createdList : createdLists;
+
+  // Normalize lists to ensure id and colleges are always present
+  const normalizedUserLists = listsToUse.map(list => ({
+    ...list,
+    id: list.id || list._id,
+    colleges: Array.isArray(list.colleges) ? list.colleges : []
+  }));
+
   // Simplified filter to only search by title
-  const filteredLists = userLists.filter(list => 
+  const filteredLists = normalizedUserLists.filter(list => 
     !searchQuery || list.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Filter created lists with the same search criteria
-  const filteredCreatedLists = createdLists ? createdLists.filter(list => 
+  // Normalize and filter created lists with the same search criteria
+  const normalizedCreatedLists = createdListsToUse ? createdListsToUse.map(list => ({
+    ...list,
+    id: list.id || list._id,
+    colleges: Array.isArray(list.colleges) ? list.colleges : []
+  })) : [];
+  
+  const filteredCreatedLists = normalizedCreatedLists.filter(list => 
     !searchQuery || list.title.toLowerCase().includes(searchQuery.toLowerCase())
-  ) : [];
+  );
+  
+  // Log for debugging
+  console.log(`[UserListModal] Rendering with ${normalizedUserLists.length} lists, ${filteredLists.length} filtered`);
+  filteredLists.forEach((list, idx) => {
+    console.log(`  List ${idx}: "${list.title}", id="${list.id}", colleges=${list.colleges?.length || 0}`);
+  });
 
   const handleListClick = (listId) => {
     setExpandedListId(expandedListId === listId ? null : listId);
   };
 
   const handleListTitleClick = (list) => {
+    // Ensure colleges is an array before mapping
+    const collegesArray = Array.isArray(list.colleges) ? list.colleges : [];
+    const listId = list.id || list._id;
+    
+    console.log(`Viewing list "${list.title}" with ${collegesArray.length} colleges, ID: ${listId}`);
+    
     // Create a copy of the list with indexed colleges
     const indexedList = {
       ...list,
-      colleges: list.colleges?.map((college, index) => ({
+      id: listId,
+      colleges: collegesArray.map((college, index) => ({
         ...college,
         index: index + 1
       }))
     };
+    
     setSelectedList(indexedList);
   };
 
@@ -65,9 +142,10 @@ const UserListModal = ({
 
   const handleSaveAsTemplate = async () => {
     try {
+      const collegesArray = Array.isArray(saveAsTemplateModal.list.colleges) ? saveAsTemplateModal.list.colleges : [];
       const submitData = {
         title: saveAsTemplateModal.title,
-        colleges: saveAsTemplateModal.list.colleges.map(college => ({
+        colleges: collegesArray.map(college => ({
           ...college,
           branches: undefined,
           searchIndex: undefined,
@@ -119,7 +197,7 @@ const UserListModal = ({
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white flex items-center">
           <GraduationCap size={26} className="mr-3" />
-          Lists for {userName}
+          Lists for {userName} 
         </h2>
         <button
           onClick={onClose}
@@ -165,33 +243,36 @@ const UserListModal = ({
           </h3>
 
           {/* Assigned Lists Grid */}
-          {loading ? (
+          {loading || isFetching ? (
             <div className="flex justify-center items-center h-32">
               <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
             </div>
           ) : filteredLists.length > 0 ? (
             <div className="space-y-4 mb-8">
-              {filteredLists.map(list => (
+              {filteredLists.map((list, idx) => {
+                const listId = list.id; // Already normalized above
+                console.log(`  Rendering List ${idx}: id="${listId}", colleges=${list.colleges?.length || 0}`);
+                return (
                 <div 
-                  key={list.id} 
+                  key={listId || idx} 
                   className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all ${
                     list.colorLabel ? `border-l-4 border-l-${list.colorLabel}-300` : ''
                   }`}
                 >
                   {/* Card Header */}
                   <div className={`relative transition-colors duration-200 ${
-                    expandedListId === list.id 
+                    expandedListId === listId 
                       ? 'bg-blue-50 border-b border-gray-200' 
                       : ''
                   }`}>
                     {/* Main clickable area */}
                     <div 
                       className="flex items-center cursor-pointer p-3 pr-24 sm:pr-32" 
-                      onClick={() => handleListClick(list.id)}
+                      onClick={() => handleListClick(listId)}
                     >
                       {/* Expand/Collapse icon */}
                       <div className="mr-3">
-                        {expandedListId === list.id ? (
+                        {expandedListId === listId ? (
                           <ChevronUp size={18} className="text-blue-600" />
                         ) : (
                           <ChevronDown size={18} className="text-gray-400" />
@@ -240,7 +321,7 @@ const UserListModal = ({
                     <div className="absolute top-0 right-0 h-full flex items-center pr-2">
                       <div className="flex space-x-1">
                         <button
-                          onClick={() => onEditList(list)}
+                          onClick={() => onEditList({...list, id: listId})}
                           className="p-2 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
                           title="Customize"
                         >
@@ -249,7 +330,7 @@ const UserListModal = ({
                         <button
                           onClick={() => setSaveAsTemplateModal({ 
                             isOpen: true, 
-                            list: list,
+                            list: {...list, id: listId},
                             title: `${list.title} - Template` 
                           })}
                           className="p-2 text-purple-600 hover:bg-purple-100 rounded-md transition-colors"
@@ -258,7 +339,7 @@ const UserListModal = ({
                           <Save size={16} />
                         </button>
                         <button
-                          onClick={() => onRemoveList(list, false)}
+                          onClick={() => onRemoveList({...list, id: listId}, false)}
                           className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
                           title="Remove"
                         >
@@ -269,7 +350,7 @@ const UserListModal = ({
                   </div>
 
                   {/* Expanded Content */}
-                  {expandedListId === list.id && (
+                  {expandedListId === listId && (
                     <div className="bg-gray-50">
                       <ListDetails 
                         list={list} 
@@ -280,7 +361,8 @@ const UserListModal = ({
                     </div>
                   )}
                 </div>
-              ))}
+              );
+              })}
             </div>
           ) : (
             <div className="text-center py-12 bg-white rounded-lg border border-gray-200 mb-8">
@@ -419,7 +501,7 @@ const UserListModal = ({
           )}
 
           {/* No Lists Found Message - Modified to only show when both lists are empty */}
-          {!loading && filteredLists.length === 0 && (!filteredCreatedLists || filteredCreatedLists.length === 0) && (
+          {!loading && !isFetching && filteredLists.length === 0 && (!filteredCreatedLists || filteredCreatedLists.length === 0) && (
             <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
               <div className="flex flex-col items-center justify-center">
                 <div className="bg-gray-100 p-6 rounded-full mb-4">

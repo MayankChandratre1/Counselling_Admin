@@ -18,10 +18,16 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      const requestUrl = error.config?.url || '';
+      const isLoginRequest = requestUrl.includes('/api/admin/login');
+
       sessionStorage.removeItem('adminToken');
       sessionStorage.removeItem('adminInfo');
       sessionStorage.removeItem('adminPages');
-      window.location.href = '/';
+
+      if (!isLoginRequest && window.location.pathname !== '/') {
+        window.location.replace('/');
+      }
     }
     return Promise.reject(error);
   }

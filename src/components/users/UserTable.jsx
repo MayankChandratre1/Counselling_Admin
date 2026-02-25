@@ -23,6 +23,23 @@ const UsersTable = ({
     listName: '',
     onConfirm: null
   });
+  const [notesModal, setNotesModal] = useState({
+    isOpen: false,
+    userName: '',
+    notes: null
+  });
+
+  const openNotesModal = (user) => {
+    setNotesModal({
+      isOpen: true,
+      userName: user.name || 'User',
+      notes: user.notes || null
+    });
+  };
+
+  const noteEntries = notesModal.notes && typeof notesModal.notes === 'object'
+    ? Object.entries(notesModal.notes).filter(([key]) => key.startsWith('note-'))
+    : [];
 
   // Handler for initial add to list click
   const handleAddToList = (userId, userName) => {
@@ -166,6 +183,12 @@ const UsersTable = ({
                   >
                     View Lists
                   </button>
+                  <button
+                    onClick={() => openNotesModal(user)}
+                    className="text-purple-600 hover:text-purple-900 mr-4 transition-colors duration-200"
+                  >
+                    Notes
+                  </button>
                   <button 
                     onClick={() => onEdit(user)}
                     className="text-blue-600 hover:text-blue-900 mr-4 transition-colors duration-200"
@@ -261,6 +284,37 @@ const UsersTable = ({
                 Confirm
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {notesModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Notes - {notesModal.userName}</h3>
+              <button
+                onClick={() => setNotesModal({ isOpen: false, userName: '', notes: null })}
+                className="text-gray-400 hover:text-gray-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {noteEntries.length === 0 ? (
+              <p className="text-gray-600">No notes found for this user.</p>
+            ) : (
+              <div className="space-y-3">
+                {noteEntries.map(([noteKey, noteData]) => (
+                  <div key={noteKey} className="border border-gray-200 rounded-md p-3">
+                    <p className="text-sm text-gray-800 mb-1">{noteData?.note || '—'}</p>
+                    <p className="text-xs text-gray-500">
+                      {noteData?.createdAt ? new Date(noteData.createdAt).toLocaleString('en-IN') : 'Unknown time'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

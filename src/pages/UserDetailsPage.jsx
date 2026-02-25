@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit, Eye, ListIcon } from 'lucide-react';
-import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useUsers } from '../contexts/UsersContext';
 import VerdictModal from '../components/users/VerdictModal';
@@ -38,10 +37,7 @@ const UserDetailsPage = () => {
 
   const fetchUserDetails = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await axios.get(`${API_URL}/api/admin/user/${id}`, {
-        headers: { token }
-      });
+      const response = await axiosInstance.get(`/api/admin/user/${id}`);
 
       setUser(response.data);
       if (notes) {
@@ -64,10 +60,7 @@ const UserDetailsPage = () => {
 
     setLoadingPayments(true);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await axios.get(`${API_URL}/api/admin/payments/phone/+91${user.phone}`, {
-        headers: { token }
-      });
+      const response = await axiosInstance.get(`/api/admin/payments/phone/+91${user.phone}`);
       setPaymentHistory(response.data || []);
     } catch (paymentError) {
       console.error("Error fetching payment history:", paymentError);
@@ -169,10 +162,7 @@ const UserDetailsPage = () => {
       };
 
       // Update user in backend
-      const response = await axiosInstance.put(`${API_URL}/api/admin/update-user-step-data/${id}`,
-        updatedStepsData,
-        { headers: { token: localStorage.getItem('adminToken') } }
-      );
+      const response = await axiosInstance.put(`/api/admin/update-user-step-data/${id}`, updatedStepsData);
 
       if (response.data.error) {
         console.error("Error updating step:", response.data.error);
@@ -206,10 +196,10 @@ const UserDetailsPage = () => {
       const updatedUserSteps = user.stepsData.steps.map(step =>
         step.number === stepNumber ? updatedStep : step)
       // TODO: Implement backend call
-      const response = await axiosInstance.put(`${API_URL}/api/admin/update-user-step-data/${id}`, {
+      const response = await axiosInstance.put(`/api/admin/update-user-step-data/${id}`, {
         ...user.stepsData,
         steps: updatedUserSteps,
-      }, { headers: { token: localStorage.getItem('adminToken') } });
+      });
 
       console.log("Response from backend:", response.data);
       if (response.data.error) {

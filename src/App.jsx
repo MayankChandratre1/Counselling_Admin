@@ -58,7 +58,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/home" element={
+          <ProtectedRoute>
             <Analytics />
+          </ProtectedRoute>
         } />
         <Route path="/form-progress" element={
             <FormProgressTracking />

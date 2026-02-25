@@ -157,6 +157,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
 
     const handleEditUserList = async (listId, userId) => {
       // Find the user data
+      setSelectedUserListsId(userId);
       const userData = await axiosInstance.get(`/api/admin/user/${userId}`);
       if(!userData.data) return
       let list = null
@@ -167,7 +168,10 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
           if(userData.data.createdList)
           list = userData.data.createdList.find(l => l.id === listId || l.listId === listId);
       }
-      if(!list) return
+      if(!list) {
+        setError('List not found for this user. Please refresh and try again.');
+        return;
+      }
       setEditingUserList({
         ...list,
         userData: userData.data // Add user data to the list object
@@ -353,11 +357,25 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
       setSelectedUserName(userName);
       setSelectedUserListsId(userId);
       
-      const user = users.find(u => u.id === userId);
-      if (user) {
-        setSelectedUserLists(user.lists || []);
-        setShowUserListModal(true);
-      }
+      // Fetch fresh user data from backend to ensure lists are properly populated
+      const response = await axiosInstance.get(`/api/admin/user/${userId}`);
+      const userData = response.data;
+      
+      // Normalize lists to ensure id and colleges are present
+      const userLists = (userData.lists || []).map(list => ({
+        ...list,
+        id: list.id || list._id,
+        colleges: Array.isArray(list.colleges) ? list.colleges : []
+      }));
+      
+      console.log(`[UsersListManagement] Fetched user ${userId}:`, {
+        name: userData.name,
+        totalLists: userLists.length,
+        lists: userLists.map(l => ({ title: l.title, id: l.id, colleges: l.colleges?.length || 0 }))
+      });
+      
+      setSelectedUserLists(userLists);
+      setShowUserListModal(true);
       setError(null);
     } catch (err) {
       console.error('Error fetching user lists:', err);
@@ -1041,6 +1059,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
             userLists={selectedUserLists}
             createdLists={selectedUsersCreatedLists}
             userName={selectedUserName}
+            userId={selectedUserListsId}
             onEditList={handleEditUserList}
             onRemoveList={handleRemoveUserList}
             onSetEditingOrderList={setEditingOrderList}
