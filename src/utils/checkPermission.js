@@ -1,6 +1,6 @@
 /**
  * Check if the currently logged-in admin has a given permission page.
- * Pages are stored in sessionStorage under 'adminPages' (a JSON array).
+ * Pages are stored in sessionStorage under adminInfo.permissions.pages.
  * Super-admins always have access.
  */
 export const checkPermission = (requiredPermission) => {
@@ -10,6 +10,6 @@ export const checkPermission = (requiredPermission) => {
     // Super-admins bypass all permission checks
     if (adminInfo.role === 'super-admin') return true;
 
-    const pages = JSON.parse(sessionStorage.getItem('adminPages') || '[]');
+    const pages = adminInfo?.permissions?.pages || [];
     return pages.includes(requiredPermission);
 };

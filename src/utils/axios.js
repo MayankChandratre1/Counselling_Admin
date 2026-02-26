@@ -23,7 +23,7 @@ axiosInstance.interceptors.response.use(
 
       sessionStorage.removeItem('adminToken');
       sessionStorage.removeItem('adminInfo');
-      sessionStorage.removeItem('adminPages');
+      // adminPages removed - now using adminInfo.permissions
 
       if (!isLoginRequest && window.location.pathname !== '/') {
         window.location.replace('/');

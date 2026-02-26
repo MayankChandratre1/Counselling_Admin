@@ -5,6 +5,7 @@ import axiosInstance from '../utils/axios';
 import Navbar from '../components/Navbar';
 import AdminList from '../components/admin-settings/AdminList';
 import EditAdminModal from '../components/admin-settings/EditAdminModal';
+import EditPermissionsModal from '../components/admin-settings/EditPermissionsModal';
 import Permissions from '../components/admin-settings/Permissions';
 import AddAdminForm from '../components/admin-settings/AddAdminForm';
 
@@ -14,6 +15,10 @@ const AdminSettings = () => {
   const [admins, setAdmins] = useState([]);
   const [permissions, setPermissions] = useState(null);
   const [editModal, setEditModal] = useState({
+    isOpen: false,
+    admin: null
+  });
+  const [permissionsModal, setPermissionsModal] = useState({
     isOpen: false,
     admin: null
   });
@@ -47,8 +52,26 @@ const AdminSettings = () => {
   };
 
   const handleEditAdmin = async (adminId, updatedData) => {
+    const email = (updatedData.email || '').trim().toLowerCase();
+    const password = typeof updatedData.password === 'string' ? updatedData.password.trim() : '';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    if (password && password.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+
     try {
-      await axiosInstance.put(`/api/admin/update-admin/${adminId}`, updatedData);
+      await axiosInstance.put(`/api/admin/update-admin/${adminId}`, {
+        ...updatedData,
+        email,
+        password: password || undefined
+      });
       // Refresh admin list
       const response = await axiosInstance.get('/api/admin/all-admins');
       setAdmins(response.data);
@@ -68,6 +91,18 @@ const AdminSettings = () => {
     } catch (error) {
       console.error('Error deleting admin:', error);
       alert('Failed to delete admin');
+    }
+  };
+
+  const handleEditPermissions = async (adminId, permissionsData) => {
+    try {
+      await axiosInstance.put(`/api/admin/update-admin/${adminId}`, permissionsData);
+      // Refresh admin list
+      const response = await axiosInstance.get('/api/admin/all-admins');
+      setAdmins(response.data);
+    } catch (error) {
+      console.error('Error updating permissions:', error);
+      throw error;
     }
   };
 
@@ -117,6 +152,7 @@ const AdminSettings = () => {
               admins={admins} 
               onEdit={(admin) => setEditModal({ isOpen: true, admin })}
               onDelete={handleDeleteAdmin}
+              onEditPermissions={(admin) => setPermissionsModal({ isOpen: true, admin })}
             />
             <Permissions permissions={permissions} />
           </div>
@@ -133,6 +169,14 @@ const AdminSettings = () => {
                   password: formData.get('password') || undefined
                 });
               }}
+            />
+          )}
+
+          {permissionsModal.isOpen && (
+            <EditPermissionsModal
+              admin={permissionsModal.admin}
+              onClose={() => setPermissionsModal({ isOpen: false, admin: null })}
+              onSave={handleEditPermissions}
             />
           )}
         </div>

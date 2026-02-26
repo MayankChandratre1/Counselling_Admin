@@ -21,8 +21,8 @@ const ProtectedRoute = ({ children, requiredPermission }) => {
     return children;
   }
 
-  // Check the pages array stored at login
-  const pages = JSON.parse(sessionStorage.getItem('adminPages') || '[]');
+  // Check the pages array from adminInfo.permissions
+  const pages = adminInfo?.permissions?.pages || [];
   if (!requiredPermission || pages.includes(requiredPermission)) {
     return children;
   }

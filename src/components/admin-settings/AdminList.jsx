@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Pencil, Trash2, Activity, Download, Loader2 } from 'lucide-react';
+import { Pencil, Trash2, Activity, Download, Loader2, Shield } from 'lucide-react';
 import ActivityModal from './ActivityModal';
 import axiosInstance from '../../utils/axios';
 
-const AdminList = ({ admins, onEdit, onDelete }) => {
+const AdminList = ({ admins, onEdit, onDelete, onEditPermissions }) => {
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [downloadingCSV, setDownloadingCSV] = useState(null); // Store admin ID that's being downloaded
@@ -81,6 +81,13 @@ const AdminList = ({ admins, onEdit, onDelete }) => {
                 <td className="px-6 py-4 whitespace-nowrap">{admin.email}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{admin.role}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right space-x-3">
+                  <button 
+                    onClick={() => onEditPermissions(admin)} 
+                    className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                    title="Edit Permissions"
+                  >
+                    <Shield className="w-4 h-4 inline" />
+                  </button>
                   <button 
                     onClick={() => {
                       setSelectedAdmin(admin);

@@ -20,15 +20,13 @@ const AdminLogin = () => {
 
     try {
       const response = await axiosInstance.post('/api/admin/login', credentials);
-      const { token, admin, pages } = response.data;
+      const { token, admin } = response.data;
 
-      // Store auth data — new contract:
-      //   adminToken  → JWT string
-      //   adminInfo   → { id, email, name, role }
-      //   adminPages  → string[] of allowed page keys
+      // Store auth data:
+      //   adminToken       → JWT string
+      //   adminInfo        → { id, email, name, role, permissions: { pages, components } }
       sessionStorage.setItem('adminToken', token);
       sessionStorage.setItem('adminInfo', JSON.stringify(admin));
-      sessionStorage.setItem('adminPages', JSON.stringify(pages || []));
 
       navigate('/home');
     } catch (err) {

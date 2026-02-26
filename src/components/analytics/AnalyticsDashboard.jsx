@@ -27,6 +27,31 @@ const AnalyticsDashboard = () => {
     isDataStale
   } = useAnalytics();
 
+  // Get admin permissions
+  const [allowedComponents, setAllowedComponents] = useState([]);
+
+  useEffect(() => {
+    const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo') || '{}');
+    const components = adminInfo?.permissions?.components || [];
+    console.log('🔍 Admin Info:', adminInfo);
+    console.log('🔍 Allowed Components:', components);
+    setAllowedComponents(components);
+  }, []);
+
+  const canShow = (component) => {
+    // Super-admin can see everything
+    const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo') || '{}');
+    if (adminInfo?.role === 'super-admin') {
+      console.log(`✅ Super-admin sees: ${component}`);
+      return true;
+    }
+    
+    const hasPermission = allowedComponents.includes(component);
+    console.log(`🔍 Checking ${component}: ${hasPermission ? '✅ ALLOWED' : '❌ BLOCKED'}`);
+    console.log(`🔍 Current allowedComponents:`, allowedComponents);
+    return hasPermission;
+  };
+
   const [filterPlan, setFilterPlan] = useState('all');
   const [filterList, setFilterList] = useState('all');
   const [filterBatch, setFilterBatch] = useState('all');
@@ -379,42 +404,50 @@ const AnalyticsDashboard = () => {
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <MetricCard
-            title="Installs"
-            value={analyticsData.metrics.installs}
-            icon="📱"
-            color="bg-blue-500"
-          />
-          <MetricCard
-            title="Enrolled"
-            value={analyticsData.metrics.enrolled.total}
-            icon="✅"
-            color="bg-purple-500"
-            onClick={() => {
-              setSelectedMetric('enrolled');
-              setShowMetricUsers(true);
-            }}
-          />
-          <MetricCard
-            title="Today Enrolled"
-            value={analyticsData.metrics.todayEnrolled.total}
-            icon="🎯"
-            color="bg-green-500"
-            onClick={() => {
-              setSelectedMetric('todayEnrolled');
-              setShowMetricUsers(true);
-            }}
-          />
-          <MetricCard
-            title="Payment Pending"
-            value={analyticsData.metrics.paymentPending.total}
-            icon="💰"
-            color="bg-yellow-500"
-            onClick={() => {
-              setSelectedMetric('paymentPending');
-              setShowMetricUsers(true);
-            }}
-          />
+          {canShow('installs-card') && (
+            <MetricCard
+              title="Installs"
+              value={analyticsData.metrics.installs}
+              icon="📱"
+              color="bg-blue-500"
+            />
+          )}
+          {canShow('enrolled-card') && (
+            <MetricCard
+              title="Enrolled"
+              value={analyticsData.metrics.enrolled.total}
+              icon="✅"
+              color="bg-purple-500"
+              onClick={() => {
+                setSelectedMetric('enrolled');
+                setShowMetricUsers(true);
+              }}
+            />
+          )}
+          {canShow('today-enrolled-card') && (
+            <MetricCard
+              title="Today Enrolled"
+              value={analyticsData.metrics.todayEnrolled.total}
+              icon="🎯"
+              color="bg-green-500"
+              onClick={() => {
+                setSelectedMetric('todayEnrolled');
+                setShowMetricUsers(true);
+              }}
+            />
+          )}
+          {canShow('payment-pending-card') && (
+            <MetricCard
+              title="Payment Pending"
+              value={analyticsData.metrics.paymentPending.total}
+              icon="💰"
+              color="bg-yellow-500"
+              onClick={() => {
+                setSelectedMetric('paymentPending');
+                setShowMetricUsers(true);
+              }}
+            />
+          )}
         </div>
 
         
@@ -705,28 +738,36 @@ const AnalyticsDashboard = () => {
         </div> */}
 
         {/* Form Progress Tracking Section */}
-        <div className="bg-white p-6 rounded-lg shadow mt-8">
-          <h2 className="text-xl font-semibold mb-6">Track Progress</h2>
-          <FormProgressProvider>
-            <FormProgressTracker />
-          </FormProgressProvider>
-        </div>
+        {canShow('form-progress-tracker') && (
+          <div className="bg-white p-6 rounded-lg shadow mt-8">
+            <h2 className="text-xl font-semibold mb-6">Track Progress</h2>
+            <FormProgressProvider>
+              <FormProgressTracker />
+            </FormProgressProvider>
+          </div>
+        )}
 
-        {/* User List Section */}
-        <div className="bg-white p-6 rounded-lg shadow mt-8">
-          <h2 className="text-xl font-semibold mb-6">Lists Tracking</h2>
-          <ListTracking listData={analyticsData} />
-        </div>
+        {/* Lists Tracking Section */}
+        {canShow('lists-tracking') && (
+          <div className="bg-white p-6 rounded-lg shadow mt-8">
+            <h2 className="text-xl font-semibold mb-6">Lists Tracking</h2>
+            <ListTracking listData={analyticsData} />
+          </div>
+        )}
 
-        <div className="bg-white p-6 rounded-lg shadow mt-8">
-          <h2 className="text-xl font-semibold mb-6">CAP Progress</h2>
-          <FormProgressProvider>
-            <CapProgressTracker />
-          </FormProgressProvider>
-        </div>
+        {/* CAP Progress Section */}
+        {canShow('cap-progress-tracker') && (
+          <div className="bg-white p-6 rounded-lg shadow mt-8">
+            <h2 className="text-xl font-semibold mb-6">CAP Progress</h2>
+            <FormProgressProvider>
+              <CapProgressTracker />
+            </FormProgressProvider>
+          </div>
+        )}
 
         {/* Collapsible User List Section */}
-        <div className="bg-white p-6 rounded-lg shadow mt-8">
+        {canShow('user-list') && (
+          <div className="bg-white p-6 rounded-lg shadow mt-8">
           <div className="flex justify-between items-center mb-6 cursor-pointer"
                onClick={() => setIsUserListCollapsed(!isUserListCollapsed)}>
             <h2 className="text-xl font-semibold">User List</h2>
@@ -859,6 +900,7 @@ const AnalyticsDashboard = () => {
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   );

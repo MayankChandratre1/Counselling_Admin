@@ -90,7 +90,7 @@ const ChangePassword = () => {
       setTimeout(() => {
         sessionStorage.removeItem('adminToken');
         sessionStorage.removeItem('adminInfo');
-        sessionStorage.removeItem('adminPages');
+        // adminPages removed - now using adminInfo.permissions
         navigate('/');
       }, 2000);
     } catch (error) {
