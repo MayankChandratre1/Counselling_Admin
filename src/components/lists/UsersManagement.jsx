@@ -164,6 +164,11 @@ const UsersManagement = () => {
     }
   };
 
+  const assignListPayloadToUser = async (targetUserId, payload) => {
+    const response = await axiosInstance.post(`/api/admin/user/${targetUserId}/assign-list`, payload);
+    return response.data?.userList || response.data;
+  };
+
   const handleAddToList = async (userId) => {
     setSelectedUserId(userId);
     setShowListsModal(true);
@@ -187,14 +192,15 @@ const UsersManagement = () => {
     try {
       setLoading(true);
       const authAxios = getAuthAxios();
+      const targetUserId = typeof selectedUserId === 'object' ? selectedUserId?.id : selectedUserId;
       
       const listResponse = await axiosInstance.get(`/api/admin/list/${listId}`);
       const selectedList = listResponse.data;
       const timestamp = new Date().toISOString();
-      console.log(`Assigning list ${listId} to user ${selectedUserId}`);
+      console.log(`Assigning list ${listId} to user ${targetUserId}`);
       
       const listAssignment = {
-        id: `${listId}_${selectedUserId}_${timestamp}`,
+        id: `${listId}_${targetUserId}_${timestamp}`,
         originalListId: listId,
         title: selectedList.title,
         colleges: selectedList.colleges || [],
@@ -204,13 +210,13 @@ const UsersManagement = () => {
         isCustomized: false
       };
       
-      await axiosInstance.post(`/api/admin/user/${selectedUserId}/assign-list`, listAssignment);
+      const assignedList = await assignListPayloadToUser(targetUserId, listAssignment);
       
       setUsers(users.map(user => {
-        if (user.id === selectedUserId) {
+        if (user.id === targetUserId) {
           return {
             ...user,
-            createdList: [...(user.createdList || []), listAssignment]
+            createdList: [...(user.createdList || []), assignedList]
           };
         }
         return user;
@@ -223,6 +229,48 @@ const UsersManagement = () => {
     } catch (err) {
       setError('Failed to add list to user');
       console.error('Error adding list to user:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopyListFromUser = async (sourceList) => {
+    try {
+      setLoading(true);
+      const targetUserId = typeof selectedUserId === 'object' ? selectedUserId?.id : selectedUserId;
+      if (!targetUserId) {
+        setError('No target user selected');
+        return;
+      }
+
+      const payload = {
+        listId: sourceList?.originalListId || sourceList?.id,
+        originalListId: sourceList?.originalListId || null,
+        title: sourceList?.title || 'Copied List',
+        colleges: Array.isArray(sourceList?.colleges) ? sourceList.colleges : [],
+        isCustomized: !!(sourceList?.isCustomized ?? sourceList?.customized),
+        customized: !!(sourceList?.customized ?? sourceList?.isCustomized)
+      };
+
+      const assignedList = await assignListPayloadToUser(targetUserId, payload);
+
+      setUsers(users.map(user => {
+        if (user.id === targetUserId) {
+          return {
+            ...user,
+            createdList: [...(user.createdList || []), assignedList]
+          };
+        }
+        return user;
+      }));
+
+      setShowListsModal(false);
+      setSelectedUserId(null);
+      setError(null);
+      alert('Copied list assigned successfully');
+    } catch (err) {
+      console.error('Error copying list from user:', err);
+      setError(err?.response?.data?.error || 'Failed to copy list from user');
     } finally {
       setLoading(false);
     }
@@ -509,6 +557,7 @@ const UsersManagement = () => {
           availableLists={availableLists}
           selectedUserId={selectedUserId}
           onSelectList={handleListSelection}
+          onSelectUserListCopy={handleCopyListFromUser}
         />
 
         {/* User List Modal */}

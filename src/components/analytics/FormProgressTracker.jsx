@@ -151,35 +151,27 @@ const FormProgressTracker = () => {
 
   // Helper function to get filtered user counts for display
   const getFilteredUserCounts = useCallback(() => {
-    if (!enrolledUsers || enrolledUsers.length === 0 || !selectedForm) {
-      console.log("No enrolled users or no form selected", {
-        enrolledUsersExists: !!enrolledUsers,
-        enrolledUsersLength: enrolledUsers?.length,
-        selectedForm
-      });
-
+    if (!selectedForm) {
       return { online: 0, offline: 0, total: 0 };
     }
 
     const currentPlan = getCurrentFormPlan();
-    if (!currentPlan) {
-      console.log("No current plan found");
-      return { online: 0, offline: 0, total: 0 };
+    if (!enrolledUsers || enrolledUsers.length === 0) {
+      return { online: 0, offline: 0, total: totalUsers || 0 };
     }
 
-    const filteredUsers = enrolledUsers.filter(user =>
-      user.planTitle === currentPlan.title
-    );
+    const filteredUsers = currentPlan
+      ? enrolledUsers.filter(user => user.planTitle === currentPlan.title)
+      : enrolledUsers;
 
-
-
+    const resolvedTotal = totalUsers > 0 ? totalUsers : filteredUsers.length;
 
     return {
       online: filteredUsers.filter(u => u.batch === 'online').length,
       offline: filteredUsers.filter(u => u.batch === 'offline').length,
-      total: filteredUsers.length
+      total: resolvedTotal
     };
-  }, [enrolledUsers, selectedForm, getCurrentFormPlan]);
+  }, [enrolledUsers, selectedForm, getCurrentFormPlan, totalUsers]);
 
 
   const PaginationControls = () => {
@@ -418,10 +410,15 @@ const FormProgressTracker = () => {
                     const stepUsers = getStepUsers(step.number, null, analyticsData);
                     const completedCount = analyticsData?.formStepsAnalysis?.[selectedForm]?.steps?.[step.number]?.completedCount || stepUsers.complete?.length || 0;
                     const rejectedCount = analyticsData?.formStepsAnalysis?.[selectedForm]?.steps?.[step.number]?.rejectedCount || stepUsers.rejected?.length || 0;
-                    const unattendedCount = (filteredCounts.total - completedCount - rejectedCount) || stepUsers.unattended?.length || 0;
+                    const resolvedStepCompleted = stepData[step.number]?.completedCount ?? completedCount;
+                    const resolvedStepRejected = stepData[step.number]?.rejectedCount ?? rejectedCount;
+                    const unattendedFromTotal = Math.max(0, filteredCounts.total - resolvedStepCompleted - resolvedStepRejected);
+                    const unattendedCount = filteredCounts.total > 0
+                      ? unattendedFromTotal
+                      : (stepUsers.unattended?.length || 0);
 
                     const completionRate = filteredCounts.total > 0
-                      ? Math.round(((completedCount || 0) / filteredCounts.total) * 100)
+                      ? Math.round(((resolvedStepCompleted || 0) / filteredCounts.total) * 100)
                       : 0;
 
                     return (
@@ -441,7 +438,7 @@ const FormProgressTracker = () => {
                                   Completion Rate: <span className="font-medium text-green-600">{completionRate}%</span>
                                 </span>
                                 <span className="text-sm text-gray-600">
-                                  {stepData[step.number]?.completedCount || 0} of {filteredCounts.total} users
+                                  {resolvedStepCompleted || 0} of {filteredCounts.total} users
                                 </span>
                               </div>
                             </div>
@@ -454,12 +451,12 @@ const FormProgressTracker = () => {
                             >
                               <div className="text-center">
                                 <div className="text-sm font-bold space-y-1">
-                                  <div className="text-green-600">Completed: {stepData[step.number]?.completedCount}</div>
-                                  <div className="text-red-600">Rejected: {stepData[step.number]?.rejectedCount}</div>
-                                  <div className="text-gray-600">Unattended: {filteredCounts.total - stepData[step.number]?.rejectedCount - stepData[step.number]?.completedCount}</div>
+                                  <div className="text-green-600">Completed: {resolvedStepCompleted || 0}</div>
+                                  <div className="text-red-600">Rejected: {resolvedStepRejected || 0}</div>
+                                  <div className="text-gray-600">Unattended: {unattendedCount}</div>
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1 border-t pt-1">
-                                  Total: {completedCount + rejectedCount + unattendedCount}
+                                  Total: {filteredCounts.total > 0 ? filteredCounts.total : (resolvedStepCompleted + resolvedStepRejected + unattendedCount)}
                                 </div>
                               </div>
                             </button>

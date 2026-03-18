@@ -267,6 +267,11 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     }
   };
 
+  const assignListPayloadToUser = async (targetUserId, payload) => {
+    const response = await axiosInstance.post(`/api/admin/user/${targetUserId}/assign-list`, payload);
+    return response.data?.userList || response.data;
+  };
+
   const handleAddToList = async (userId, userName) => {
     setSelectedUserId(userId);
     setSelectedUserName(userName); // Store userName for confirmation
@@ -352,6 +357,48 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     } catch (err) {
       console.error('Error getting list details:', err);
       setError('Failed to get list details');
+    }
+  };
+
+  const handleCopyListFromUser = async (sourceList) => {
+    try {
+      if (!selectedUserId?.isPremium) {
+        setError('User is not a premium user. Please upgrade to assign lists.');
+        return;
+      }
+
+      setLoadingLists(true);
+
+      const payload = {
+        listId: sourceList?.originalListId || sourceList?.id,
+        originalListId: sourceList?.originalListId || null,
+        title: sourceList?.title || 'Copied List',
+        colleges: Array.isArray(sourceList?.colleges) ? sourceList.colleges : [],
+        isCustomized: !!(sourceList?.isCustomized ?? sourceList?.customized),
+        customized: !!(sourceList?.customized ?? sourceList?.isCustomized)
+      };
+
+      const assignedList = await assignListPayloadToUser(selectedUserId.id, payload);
+
+      setUsers(users.map(user => {
+        if (user.id === selectedUserId.id) {
+          return {
+            ...user,
+            lists: [...(user.lists || []), assignedList]
+          };
+        }
+        return user;
+      }));
+
+      setShowListsModal(false);
+      setSelectedUserId(null);
+      setError(null);
+      alert('Copied list assigned successfully');
+    } catch (err) {
+      console.error('Error copying list from user:', err);
+      setError(err?.response?.data?.error || 'Failed to copy list from user');
+    } finally {
+      setLoadingLists(false);
     }
   };
 
@@ -951,6 +998,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
             availableLists={availableLists}
             selectedUserId={selectedUserId}
             onSelectList={handleListSelection}
+            onSelectUserListCopy={handleCopyListFromUser}
           />
 
           {/* User List Modal */}

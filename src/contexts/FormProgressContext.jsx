@@ -37,6 +37,14 @@ export const FormProgressProvider = ({ children }) => {
   // Get premium plans from context
   const { premiumPlans } = usePremiumPage();
 
+  const normalizeStatus = (status) => {
+    if (typeof status !== 'string') return null;
+    const normalized = status.trim().toLowerCase();
+    if (normalized === 'yes') return 'yes';
+    if (normalized === 'no') return 'no';
+    return null;
+  };
+
   const fetchForms = useCallback(async () => {
     try {
       setLoading(true);
@@ -87,8 +95,7 @@ export const FormProgressProvider = ({ children }) => {
           planTitle: planWithForm.title
         });
       } else {
-        console.warn(`No plan found with form ${selectedForm}`);
-        filteredUsers = []; // No users if no matching plan found
+        console.warn(`No plan found with form ${selectedForm}. Falling back to enrolled users.`);
       }
     }
     
@@ -106,7 +113,7 @@ export const FormProgressProvider = ({ children }) => {
   }, [itemsPerPage, selectedForm, premiumPlans]);
 
   const fetchStepDataForPage = useCallback(async (page, userIds, formId) => {
-    if (!formId || !userIds.length) return [];
+    if (!formId) return [];
 
     const cacheKey = `${formId}-${page}`;
     
@@ -123,30 +130,43 @@ export const FormProgressProvider = ({ children }) => {
       // Calculate pagination
       const startIndex = (page - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage;
-      const pageUserIds = userIds;
+      const hasUserIds = Array.isArray(userIds) && userIds.length > 0;
+      const pageUserIds = hasUserIds ? userIds.slice(startIndex, endIndex) : [];
       const response = await axiosInstance.post(`/api/admin/users/form/${formId}`, {
         userIds: pageUserIds
       });
 
-      const backendUserData = response.data || [];
+      const backendUserData = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.users || []);
+
+      const backendTotalUsers = Number(response.data?.totalUsers);
+      const resolvedTotalUsers = Number.isFinite(backendTotalUsers)
+        ? backendTotalUsers
+        : (hasUserIds ? userIds.length : backendUserData.length);
+
+      setTotalUsers(resolvedTotalUsers);
+      setTotalPages(Math.max(1, Math.ceil(resolvedTotalUsers / itemsPerPage)));
       
       // Create a complete user data array for all requested IDs
-      const completeUserData = pageUserIds.map(userId => {
-        const existingData = backendUserData.find(userData => userData.id === userId);
-        
-        if (existingData) {
-          return existingData;
-        } else {
-          // For users without data, create a placeholder with empty steps
-          return {
-            id: userId,
-            stepsData: {
-              id: formId,
-              steps: []
+      const completeUserData = hasUserIds
+        ? pageUserIds.map(userId => {
+            const existingData = backendUserData.find(userData => userData.id === userId);
+            
+            if (existingData) {
+              return existingData;
+            } else {
+              // For users without data, create a placeholder with empty steps
+              return {
+                id: userId,
+                stepsData: {
+                  id: formId,
+                  steps: []
+                }
+              };
             }
-          };
-        }
-      });
+          })
+        : backendUserData;
       
       // Cache the complete result (including users without data)
       setPageCache(prev => new Map(prev.set(cacheKey, completeUserData)));
@@ -166,21 +186,7 @@ export const FormProgressProvider = ({ children }) => {
   const processStepData = useCallback((allUserData, analyticsData) => {
     const stepsProgress = {};
     const enrolledUsers = analyticsData?.metrics?.enrolled?.users || [];
-    
-    // Filter enrolled users based on selected form and premium plans
-    let filteredEnrolledUsers = enrolledUsers;
-    
-    if (selectedForm && premiumPlans && premiumPlans.length > 0) {
-      const planWithForm = premiumPlans.find(plan => plan.form === selectedForm);
-      
-      if (planWithForm) {
-        filteredEnrolledUsers = enrolledUsers.filter(user => 
-          user.planTitle === planWithForm.title
-        );
-      } else {
-        filteredEnrolledUsers = [];
-      }
-    }
+    const enrolledUsersMap = new Map(enrolledUsers.map(user => [user.id, user]));
     
     // Process all cached data to get complete step statistics
     const allCachedData = Array.from(pageCache.values()).flat();
@@ -197,8 +203,7 @@ export const FormProgressProvider = ({ children }) => {
 
     uniqueUserData.forEach(userData => {
       if (userData.stepsData?.steps) {
-        const user = filteredEnrolledUsers.find(u => u.id === userData.id);
-        if (!user) return; // Skip if user doesn't match the plan filter
+        const user = enrolledUsersMap.get(userData.id);
         
         const userBatch = user?.batch || 'unknown';
         
@@ -210,31 +215,32 @@ export const FormProgressProvider = ({ children }) => {
               rejectedCount: 0,
               online: 0,
               offline: 0,
-              totalCount: enrolledUserIds.length
+              totalCount: uniqueUserData.length
             };
           }
           
-          if (step.status === 'Yes') {
+          const normalizedStatus = normalizeStatus(step.status);
+
+          if (normalizedStatus === 'yes') {
             stepsProgress[step.number].completedCount++;
             if (userBatch === 'online') {
               stepsProgress[step.number].online++;
             } else if (userBatch === 'offline') {
               stepsProgress[step.number].offline++;
             }
-          }else if (step.status === 'No') {
+          } else if (normalizedStatus === 'no') {
             stepsProgress[step.number].rejectedCount++;
           }
         });
-        console.log(stepData);
-        
       }
     });
 
     setStepData(stepsProgress);
-  }, [pageCache, enrolledUserIds.length, selectedForm, premiumPlans]);
+  }, [pageCache]);
 
   const goToPage = useCallback(async (page, analyticsData) => {
-    if (page < 1 || page > totalPages || !selectedForm) return;
+    if (page < 1 || !selectedForm) return;
+    if (totalPages > 0 && page > totalPages) return;
     
     const userData = await fetchStepDataForPage(page, enrolledUserIds, selectedForm);
     
@@ -243,7 +249,7 @@ export const FormProgressProvider = ({ children }) => {
       // Only set current page after successful fetch
       setCurrentPage(page);
     }
-  }, [totalPages, selectedForm, enrolledUserIds, itemsPerPage]); // Remove processStepData and fetchStepDataForPage from dependencies
+  }, [totalPages, selectedForm, enrolledUserIds, fetchStepDataForPage, processStepData]); // Remove processStepData and fetchStepDataForPage from dependencies
 
   // Add a new function specifically for form initialization
   const initializeFormData = useCallback(async (analyticsData) => {
@@ -255,7 +261,7 @@ export const FormProgressProvider = ({ children }) => {
     if (userData) {
       processStepData(userData, analyticsData);
     }
-  }, [selectedForm, enrolledUserIds, itemsPerPage]); // Stable dependencies
+  }, [selectedForm, enrolledUserIds, fetchStepDataForPage, processStepData]); // Stable dependencies
 
   // Add the missing refreshCurrentPage function
   const refreshCurrentPage = useCallback(async (analyticsData) => {
@@ -282,21 +288,7 @@ export const FormProgressProvider = ({ children }) => {
     const rejected = [];
     const unattended = [];
     const enrolledUsers = analyticsData?.metrics?.enrolled?.users || [];
-
-    // Filter enrolled users based on selected form and premium plans
-    let filteredEnrolledUsers = enrolledUsers;
-    
-    if (selectedForm && premiumPlans && premiumPlans.length > 0) {
-      const planWithForm = premiumPlans.find(plan => plan.form === selectedForm);
-      
-      if (planWithForm) {
-        filteredEnrolledUsers = enrolledUsers.filter(user => 
-          user.planTitle === planWithForm.title
-        );
-      } else {
-        filteredEnrolledUsers = [];
-      }
-    }
+    const enrolledUsersMap = new Map(enrolledUsers.map(user => [user.id, user]));
 
     // Get all cached user progress data
     const allCachedData = Array.from(pageCache.values()).flat();
@@ -306,54 +298,37 @@ export const FormProgressProvider = ({ children }) => {
     
     // Process users with cached data
     allCachedData.forEach(userData => {
-      const user = filteredEnrolledUsers.find(u => u.id === userData.id);
-      if (!user) return; // Skip if user doesn't match the plan filter
+      const user = enrolledUsersMap.get(userData.id);
       
       processedUserIds.add(userData.id);
       
-      if (batch && user.batch !== batch) return;
+      if (batch && user?.batch !== batch) return;
       
       const userWithProgress = {
-        id: user.id,
-        name: user.name,
-        phone: user.phone,
-        batch: user.batch,
+        id: userData.id,
+        name: userData.name || user?.name || '-',
+        phone: user?.phone || '-',
+        batch: user?.batch || 'unknown',
         steps: userData.stepsData?.steps || []
       };
       
       const step = userData.stepsData?.steps?.find(s => s.number === stepNumber);
+      const normalizedStatus = normalizeStatus(step?.status);
       
       if (!step  || userData.stepsData?.steps?.length === 0) {
         // If no step data exists or steps array is empty, user is unattended
         unattended.push(userWithProgress);
-      } else if (step.status === 'Yes') {
+      } else if (normalizedStatus === 'yes') {
         complete.push(userWithProgress);
-      } else if (step.status === 'No') {
+      } else if (normalizedStatus === 'no') {
         rejected.push(userWithProgress);
       } else{
         unattended.push(userWithProgress);
       }
     });
 
-    // Add users that haven't been processed (not in cache) as unattended
-    // filteredEnrolledUsers.forEach(user => {
-    //   if (!processedUserIds.has(user.id) ) {
-    //     if (batch && user.batch !== batch) return;
-        
-    //     const userWithProgress = {
-    //       id: user.id,
-    //       name: user.name,
-    //       phone: user.phone,
-    //       batch: user.batch,
-    //       steps: [] // Empty steps for users not in cache
-    //     };
-        
-    //     unattended.push(userWithProgress);
-    //   }
-    // });
-
     return { complete, rejected, unattended };
-  }, [pageCache, selectedForm, premiumPlans]);
+  }, [pageCache]);
 
   const getCurrentFormPlan = useCallback(() => {
     return premiumPlans.find(plan => plan.form === selectedForm);

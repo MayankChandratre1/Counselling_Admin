@@ -120,7 +120,10 @@ const PremiumUsersManagement = () => {
 
   useEffect(() => {
     setPremiumUsersOnly(true);
-  },[])
+    return () => {
+      setPremiumUsersOnly(false);
+    };
+  }, [setPremiumUsersOnly])
 
   // Sync local filters with context filters when they change
   useEffect(() => {
@@ -187,8 +190,15 @@ const PremiumUsersManagement = () => {
 
     try {
       setSearchLoading(true);
-      const results = await searchUsers(searchParams);
-      setSearchResults(results);
+      const response = await axiosInstance.post('/api/admin/user/search', searchParams);
+      const allResults = Array.isArray(response.data)
+        ? response.data
+        : (Array.isArray(response.data?.users) ? response.data.users : []);
+      const premiumResults = allResults.filter(user =>
+        user?.isPremium || !!user?.premiumPlan || !!user?.planTitle
+      );
+
+      setSearchResults(premiumResults);
       setIsSearchMode(true);
     } catch (error) {
       console.error('Search failed:', error);
@@ -202,6 +212,7 @@ const PremiumUsersManagement = () => {
     setSearchParams({ name: '', phone: '' });
     setSearchResults([]);
     setIsSearchMode(false);
+    fetchUsers(1, true, true);
   };
 
   const handleKeyPress = (e) => {
@@ -275,6 +286,11 @@ const PremiumUsersManagement = () => {
     } finally {
       setLoadingLists(false);
     }
+  };
+
+  const assignListPayloadToUser = async (targetUserId, payload) => {
+    const response = await axiosInstance.post(`/api/admin/user/${targetUserId}/assign-list`, payload);
+    return response.data?.userList || response.data;
   };
 
   const handleAddToList = async (userId, userName) => {
@@ -363,6 +379,48 @@ const PremiumUsersManagement = () => {
     } catch (err) {
       console.error('Error getting list details:', err);
       setError('Failed to get list details');
+    }
+  };
+
+  const handleCopyListFromUser = async (sourceList) => {
+    try {
+      if (!selectedUserId?.isPremium) {
+        setError('User is not a premium user. Please upgrade to assign lists.');
+        return;
+      }
+
+      setLoadingLists(true);
+
+      const payload = {
+        listId: sourceList?.originalListId || sourceList?.id,
+        originalListId: sourceList?.originalListId || null,
+        title: sourceList?.title || 'Copied List',
+        colleges: Array.isArray(sourceList?.colleges) ? sourceList.colleges : [],
+        isCustomized: !!(sourceList?.isCustomized ?? sourceList?.customized),
+        customized: !!(sourceList?.customized ?? sourceList?.isCustomized)
+      };
+
+      const assignedList = await assignListPayloadToUser(selectedUserId.id, payload);
+
+      setUsers(users.map(user => {
+        if (user.id === selectedUserId.id) {
+          return {
+            ...user,
+            lists: [...(user.lists || []), assignedList]
+          };
+        }
+        return user;
+      }));
+
+      setShowListsModal(false);
+      setSelectedUserId(null);
+      setError(null);
+      alert('Copied list assigned successfully');
+    } catch (err) {
+      console.error('Error copying list from user:', err);
+      setError(err?.response?.data?.error || 'Failed to copy list from user');
+    } finally {
+      setLoadingLists(false);
     }
   };
 
@@ -595,13 +653,7 @@ const PremiumUsersManagement = () => {
   const handleRefresh = () => {
     if (isSearchMode) {
       // If in search mode, re-run the current search
-      const filteredParams = Object.entries(searchParams)
-        .filter(([_, value]) => value !== '')
-        .reduce((obj, [key, value]) => {
-          obj[key] = value;
-          return obj;
-        }, {});
-      searchUsers(filteredParams);
+      handleSearch();
     } else {
       // Otherwise, force refresh the user data
       refreshUsers(currentPage, true);
@@ -614,7 +666,7 @@ const PremiumUsersManagement = () => {
   };
   
   const handlePageSizeChange = (newSize) => {
-    changePageSize(newSize);
+    changePageSize(newSize, true);
   };
 
   const handleOpenListReleaseModal = (user) => {
@@ -986,6 +1038,7 @@ const PremiumUsersManagement = () => {
             availableLists={availableLists}
             selectedUserId={selectedUserId}
             onSelectList={handleListSelection}
+            onSelectUserListCopy={handleCopyListFromUser}
           />
 
           {/* User List Modal */}

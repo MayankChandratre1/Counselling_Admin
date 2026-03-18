@@ -81,7 +81,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
   const [showListsModal, setShowListsModal] = useState(false);
   const [availableLists, setAvailableLists] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
-  const [showUserListModal, setShowUserListModal] = useState(true);
+  const [showUserListModal, setShowUserListModal] = useState(false);
   const [selectedUserLists, setSelectedUserLists] = useState([]);
   const [selectedUsersCreatedLists, setSelectedUsersCreatedLists] = useState([]);
   const [selectedUserListsId, setSelectedUserListsId] = useState(null);
@@ -344,9 +344,19 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
     }
   };
 
-  const handleAddToList = async (userId, userName) => {
-    setSelectedUserId(userId);
-    setSelectedUserName(userName); // Store userName for confirmation
+  const assignListPayloadToUser = async (targetUserId, payload) => {
+    const response = await axiosInstance.post(`/api/admin/user/${targetUserId}/assign-list`, payload);
+    return response.data?.userList || response.data;
+  };
+
+  const handleAddToList = async (userOrId, userName) => {
+    const selectedUser = typeof userOrId === 'object'
+      ? userOrId
+      : users.find(user => user.id === userOrId);
+
+    const resolvedUserName = selectedUser?.name || userName || 'User';
+    setSelectedUserId(selectedUser || { id: userOrId, name: resolvedUserName, isPremium: false });
+    setSelectedUserName(resolvedUserName);
     setShowListsModal(true);
     await fetchLists();
   };
@@ -387,7 +397,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
 
   const handleListSelection = async (listId) => {
     try {
-      if(!selectedUserId.isPremium){
+      if(!selectedUserId?.isPremium){
         setError('User is not a premium user. Please upgrade to assign lists.');
         return;
       }
@@ -405,6 +415,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
             const timestamp = new Date().toISOString();
             const listAssignment = {
               id: `${listId}_${selectedUserId.id}_${timestamp}`,
+              listId,
               originalListId: listId,
               title: selectedList.title,
               colleges: selectedList.colleges || [],
@@ -414,13 +425,13 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
               isCustomized: false
             };
 
-            await axiosInstance.post(`/api/admin/user/${selectedUserId.id}/assign-list`, listAssignment);
+            const assignedList = await assignListPayloadToUser(selectedUserId.id, listAssignment);
             
             setUsers(users.map(user => {
               if (user.id === selectedUserId.id) {
                 return {
                   ...user,
-                  lists: [...(user.lists || []), listAssignment]
+                  lists: [...(user.lists || []), assignedList]
                 };
               }
               return user;
@@ -442,6 +453,100 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
     } catch (err) {
       console.error('Error getting list details:', err);
       setError('Failed to get list details');
+    }
+  };
+
+  const handleCopyListFromUser = async (sourceList) => {
+    try {
+      if (!selectedUserId?.isPremium) {
+        setError('User is not a premium user. Please upgrade to assign lists.');
+        return;
+      }
+
+      const copyPayload = {
+        listId: sourceList?.originalListId || sourceList?.id,
+        originalListId: sourceList?.originalListId || null,
+        title: sourceList?.title || 'Copied List',
+        colleges: Array.isArray(sourceList?.colleges) ? sourceList.colleges : [],
+        isCustomized: !!(sourceList?.isCustomized ?? sourceList?.customized),
+        customized: !!(sourceList?.customized ?? sourceList?.isCustomized)
+      };
+
+      setLoadingLists(true);
+      const assignedList = await assignListPayloadToUser(selectedUserId.id, copyPayload);
+
+      setUsers(users.map(user => {
+        if (user.id === selectedUserId.id) {
+          return {
+            ...user,
+            lists: [...(user.lists || []), assignedList]
+          };
+        }
+        return user;
+      }));
+
+      setShowListsModal(false);
+      setSelectedUserId(null);
+      setError(null);
+      alert('Copied list assigned successfully');
+    } catch (err) {
+      console.error('Error preparing copy list assignment:', err);
+      setError(err?.response?.data?.error || 'Failed to copy list from user');
+    } finally {
+      setLoadingLists(false);
+    }
+  };
+
+  const handleAssignListToUsers = async (sourceList, targetUsers) => {
+    try {
+      const targetUserIds = Array.isArray(targetUsers)
+        ? targetUsers.map(user => user.id).filter(Boolean)
+        : [];
+
+      if (!sourceList || targetUserIds.length === 0) {
+        return { successCount: 0, failed: [] };
+      }
+
+      const payload = {
+        listId: sourceList?.originalListId || sourceList?.id,
+        originalListId: sourceList?.originalListId || null,
+        title: sourceList?.title || 'Copied List',
+        colleges: Array.isArray(sourceList?.colleges) ? sourceList.colleges : [],
+        isCustomized: !!(sourceList?.isCustomized ?? sourceList?.customized),
+        customized: !!(sourceList?.customized ?? sourceList?.isCustomized)
+      };
+
+      const results = await Promise.allSettled(
+        targetUserIds.map(async (targetId) => {
+          const assignedList = await assignListPayloadToUser(targetId, payload);
+          return { targetId, assignedList };
+        })
+      );
+
+      const successful = results
+        .filter(result => result.status === 'fulfilled')
+        .map(result => result.value);
+
+      const failed = results
+        .filter(result => result.status === 'rejected')
+        .map(result => result.reason?.response?.data?.error || result.reason?.message || 'Failed');
+
+      if (successful.length > 0) {
+        const assignedByUser = new Map(successful.map(item => [item.targetId, item.assignedList]));
+        setUsers(prevUsers => prevUsers.map(user => {
+          const assignedList = assignedByUser.get(user.id);
+          if (!assignedList) return user;
+          return {
+            ...user,
+            lists: [...(user.lists || []), assignedList]
+          };
+        }));
+      }
+
+      return { successCount: successful.length, failed };
+    } catch (err) {
+      console.error('Error assigning list to multiple users:', err);
+      return { successCount: 0, failed: [err?.response?.data?.error || err.message || 'Failed'] };
     }
   };
 
@@ -1049,12 +1154,13 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
             availableLists={availableLists}
             selectedUserId={selectedUserId}
             onSelectList={handleListSelection}
+            onSelectUserListCopy={handleCopyListFromUser}
           />
 
           {/* User List Modal */}
           <UserListModal 
             showModal={showUserListModal}
-            onClose={() => navigation(`/users/${id}`)}
+            onClose={() => (window.history.length > 1 ? navigation(-1) : navigation('/users'))}
             loading={loadingLists}
             userLists={selectedUserLists}
             createdLists={selectedUsersCreatedLists}
@@ -1063,6 +1169,8 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
             onEditList={handleEditUserList}
             onRemoveList={handleRemoveUserList}
             onSetEditingOrderList={setEditingOrderList}
+            users={users}
+            onAssignListToUsers={handleAssignListToUsers}
           />
 
           {/* Edit List Modal */}

@@ -42,8 +42,7 @@ const CapProgressTracker = () => {
 
   // Initialize form progress when analytics data is loaded
   useEffect(() => {
-    if (analyticsData?.metrics?.enrolled?.users && analyticsData.metrics.enrolled.users.length > 0) {
-      console.log('Initializing CAP progress with enrolled users:', analyticsData.metrics.enrolled.users);
+    if (analyticsData) {
       initializeFormProgress(analyticsData);
     }
   }, [analyticsData, initializeFormProgress]);
@@ -55,7 +54,7 @@ const CapProgressTracker = () => {
 
   // Initialize form data when form is selected (separate from pagination changes)
   useEffect(() => {
-    if (selectedForm && analyticsData?.metrics?.enrolled?.users && analyticsData.metrics.enrolled.users.length > 0) {
+    if (selectedForm && analyticsData) {
       // Use timeout to ensure state updates are complete
       const timer = setTimeout(() => {
         initializeFormData(analyticsData);
@@ -67,7 +66,7 @@ const CapProgressTracker = () => {
 
   // Load first page when form is selected
   useEffect(() => {
-    if (selectedForm && analyticsData?.metrics?.enrolled?.users && analyticsData.metrics.enrolled.users.length > 0) {
+    if (selectedForm && analyticsData) {
       goToPage(1, analyticsData);
     }
   }, [selectedForm, analyticsData, goToPage]);
@@ -163,25 +162,24 @@ const CapProgressTracker = () => {
 
   // Helper function to get filtered user counts for display
   const getFilteredUserCounts = useCallback(() => {
-    if (!analyticsData?.metrics?.enrolled?.users || !selectedForm) {
+    if (!selectedForm) {
       return { online: 0, offline: 0, total: 0 };
     }
 
+    const enrolledUsers = analyticsData?.metrics?.enrolled?.users || [];
     const currentPlan = getCurrentFormPlan();
-    if (!currentPlan) {
-      return { online: 0, offline: 0, total: 0 };
-    }
+    const filteredUsers = currentPlan
+      ? enrolledUsers.filter(user => user.planTitle === currentPlan.title)
+      : enrolledUsers;
 
-    const filteredUsers = analyticsData.metrics.enrolled.users.filter(user => 
-      user.planTitle === currentPlan.title
-    );
+    const resolvedTotal = totalUsers > 0 ? totalUsers : filteredUsers.length;
 
     return {
       online: filteredUsers.filter(u => u.batch === 'online').length,
       offline: filteredUsers.filter(u => u.batch === 'offline').length,
-      total: filteredUsers.length
+      total: resolvedTotal
     };
-  }, [analyticsData, selectedForm, getCurrentFormPlan]);
+  }, [analyticsData, selectedForm, getCurrentFormPlan, totalUsers]);
 
   // When exporting to CSV, include these additional fields from counsellingData
   const exportToCSV = (data) => {
@@ -520,15 +518,18 @@ const CapProgressTracker = () => {
                 <div className="space-y-4">
                   {capRoundSteps[activeCapRound]?.map((step) => {
                     const filteredCounts = getFilteredUserCounts();
-                    const completionRate = filteredCounts.total > 0 
-                      ? Math.round(((stepData[step.number]?.completedCount || 0) / filteredCounts.total) * 100)
-                      : 0;
 
                     // Calculate status breakdown from cached data
                     const stepUsers = getStepUsersLocal(step.number, null);
-                    const completedCount = stepUsers.complete?.length || 0;
-                    const rejectedCount = stepUsers.rejected?.length || 0;
-                    const unattendedCount = stepUsers.unattended?.length || 0;
+                    const completedCount = stepData[step.number]?.completedCount ?? (stepUsers.complete?.length || 0);
+                    const rejectedCount = stepData[step.number]?.rejectedCount ?? (stepUsers.rejected?.length || 0);
+                    const unattendedFromTotal = Math.max(0, filteredCounts.total - completedCount - rejectedCount);
+                    const unattendedCount = filteredCounts.total > 0
+                      ? unattendedFromTotal
+                      : (stepUsers.unattended?.length || 0);
+                    const completionRate = filteredCounts.total > 0 
+                      ? Math.round(((completedCount || 0) / filteredCounts.total) * 100)
+                      : 0;
                     
                     return (
                       <div 
@@ -554,7 +555,7 @@ const CapProgressTracker = () => {
                                   Completion Rate: <span className="font-medium text-green-600">{completionRate}%</span>
                                 </span>
                                 <span className="text-sm text-gray-600">
-                                  {stepData[step.number]?.completedCount || 0} of {filteredCounts.total} users
+                                  {completedCount || 0} of {filteredCounts.total} users
                                 </span>
                               </div>
                             </div>
@@ -586,7 +587,7 @@ const CapProgressTracker = () => {
                                   <div className="text-gray-600">Unattended: {unattendedCount}</div>
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1 border-t pt-1">
-                                  Total: {totalUsers}
+                                  Total: {filteredCounts.total > 0 ? filteredCounts.total : (completedCount + rejectedCount + unattendedCount)}
                                 </div>
                               </div>
                             </button>

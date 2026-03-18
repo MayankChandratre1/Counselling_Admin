@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit, Trash2, GraduationCap, Search, Save, ChevronDown, ChevronUp, Calendar, User, Copy, Tag } from 'lucide-react';
+import { X, Edit, Trash2, GraduationCap, Search, Save, ChevronDown, ChevronUp, Calendar, User, Copy, Tag, Users, Check, ArrowLeft } from 'lucide-react';
 import CollegesListModal from './CollegesListModal';
 import axiosInstance from '../../utils/axios';
 import ListDetails from '../lists/ListDetails';
@@ -14,7 +14,9 @@ const UserListModal = ({
   onEditList, 
   onRemoveList, 
   createdLists,
-  onSetEditingOrderList 
+  onSetEditingOrderList,
+  users = [],
+  onAssignListToUsers
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedList, setSelectedList] = useState(null);
@@ -28,6 +30,15 @@ const UserListModal = ({
   const [copiedCodes, setCopiedCodes] = useState({});
   const [freshUserData, setFreshUserData] = useState(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [assignModal, setAssignModal] = useState({
+    isOpen: false,
+    list: null,
+    selectedUserIds: [],
+    searchQuery: '',
+    assigning: false
+  });
+  const [assignSearchResults, setAssignSearchResults] = useState([]);
+  const [assignSearchLoading, setAssignSearchLoading] = useState(false);
 
   // Fetch fresh user data when modal opens
   useEffect(() => {
@@ -72,11 +83,9 @@ const UserListModal = ({
     }
   }, [showModal, userId, freshUserData]);
 
-  if (!showModal) return null;
-
   // Use fresh data if available, otherwise use props
-  const listsToUse = freshUserData ? freshUserData.lists : userLists;
-  const createdListsToUse = freshUserData ? freshUserData.createdList : createdLists;
+  const listsToUse = freshUserData ? freshUserData.lists : (userLists || []);
+  const createdListsToUse = freshUserData ? freshUserData.createdList : (createdLists || []);
 
   // Normalize lists to ensure id and colleges are always present
   const normalizedUserLists = listsToUse.map(list => ({
@@ -191,14 +200,149 @@ const UserListModal = ({
     setCopiedCodes({});
   };
 
+  const openAssignModal = (list) => {
+    setAssignModal({
+      isOpen: true,
+      list,
+      selectedUserIds: [],
+      searchQuery: '',
+      assigning: false
+    });
+  };
+
+  const closeAssignModal = () => {
+    setAssignModal({
+      isOpen: false,
+      list: null,
+      selectedUserIds: [],
+      searchQuery: '',
+      assigning: false
+    });
+    setAssignSearchResults([]);
+    setAssignSearchLoading(false);
+  };
+
+  useEffect(() => {
+    if (!assignModal.isOpen) return;
+
+    const query = assignModal.searchQuery.trim();
+    if (!query) {
+      const localUsers = users.filter(user => user?.id && user.id !== userId);
+      setAssignSearchResults(localUsers);
+      setAssignSearchLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    const timer = setTimeout(async () => {
+      try {
+        setAssignSearchLoading(true);
+        const payload = /^\d+$/.test(query) ? { phone: query } : { name: query };
+        const response = await axiosInstance.post('/api/admin/user/search', payload);
+        const normalized = Array.isArray(response.data)
+          ? response.data
+          : (Array.isArray(response.data?.users) ? response.data.users : []);
+
+        if (!isActive) return;
+        setAssignSearchResults(normalized.filter(user => user?.id && user.id !== userId));
+      } catch (error) {
+        if (!isActive) return;
+        console.error('Error searching users for assignment:', error);
+        setAssignSearchResults([]);
+      } finally {
+        if (isActive) {
+          setAssignSearchLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [assignModal.isOpen, assignModal.searchQuery, users, userId]);
+
+  const toggleAssignUser = (targetUserId) => {
+    setAssignModal(prev => ({
+      ...prev,
+      selectedUserIds: prev.selectedUserIds.includes(targetUserId)
+        ? prev.selectedUserIds.filter(id => id !== targetUserId)
+        : [...prev.selectedUserIds, targetUserId]
+    }));
+  };
+
+  const handleAssignToSelectedUsers = async () => {
+    if (!assignModal.list || !onAssignListToUsers || assignModal.selectedUserIds.length === 0) return;
+
+    try {
+      setAssignModal(prev => ({ ...prev, assigning: true }));
+
+      const mergedCandidates = [...assignSearchResults, ...users];
+      const uniqueById = mergedCandidates.reduce((acc, user) => {
+        if (user?.id && !acc.some(item => item.id === user.id)) {
+          acc.push(user);
+        }
+        return acc;
+      }, []);
+
+      const targetUsers = uniqueById.filter(user => assignModal.selectedUserIds.includes(user.id));
+      const result = await onAssignListToUsers(assignModal.list, targetUsers);
+
+      if (result?.successCount > 0) {
+        alert(`Assigned list to ${result.successCount} user(s) successfully${result.failed?.length ? `, ${result.failed.length} failed` : ''}`);
+      } else {
+        alert('No users were assigned.');
+      }
+
+      closeAssignModal();
+    } catch (error) {
+      console.error('Error assigning list to selected users:', error);
+      alert('Failed to assign list to selected users');
+      setAssignModal(prev => ({ ...prev, assigning: false }));
+    }
+  };
+
+  const assignedListItems = filteredLists.map(list => ({
+    ...list,
+    panelKey: list.id,
+    isCreatedList: false
+  }));
+
+  const createdListItems = filteredCreatedLists.map(list => ({
+    ...list,
+    panelKey: `created-${list.id}`,
+    isCreatedList: true
+  }));
+
+  const allVisibleListItems = [...assignedListItems, ...createdListItems];
+  const expandedList = allVisibleListItems.find(list => list.panelKey === expandedListId) || null;
+
+  useEffect(() => {
+    if (expandedListId && !allVisibleListItems.some(list => list.panelKey === expandedListId)) {
+      setExpandedListId(null);
+    }
+  }, [expandedListId, allVisibleListItems]);
+
+  if (!showModal) return null;
+
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col h-screen w-screen">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-white flex items-center">
-          <GraduationCap size={26} className="mr-3" />
-          Lists for {userName} 
-        </h2>
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={onClose}
+            className="text-white hover:bg-white/20 transition-all rounded-lg p-2 flex items-center"
+            aria-label="Back"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <h2 className="text-2xl font-bold text-white flex items-center truncate">
+            <GraduationCap size={26} className="mr-3 flex-shrink-0" />
+            <span className="truncate">Lists for {userName}</span>
+          </h2>
+        </div>
+
         <button
           onClick={onClose}
           className="text-white hover:bg-white/20 transition-all rounded-full p-2"
@@ -209,129 +353,157 @@ const UserListModal = ({
       </div>
 
       {/* Main Content */}
-      <div className="flex-grow overflow-y-auto bg-gray-100">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          {/* Simplified Search */}
-          <div className="bg-white rounded-lg shadow-sm mb-6">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 border-0 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg"
-                placeholder="Search lists by title..."
-              />
-              <Search 
-                size={20} 
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" 
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={20} />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Assigned Lists Header */}
-          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-            <Tag size={20} className="mr-2 text-blue-500" />
-            Assigned Lists
-          </h3>
-
-          {/* Assigned Lists Grid */}
-          {loading || isFetching ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : filteredLists.length > 0 ? (
-            <div className="space-y-4 mb-8">
-              {filteredLists.map((list, idx) => {
-                const listId = list.id; // Already normalized above
-                console.log(`  Rendering List ${idx}: id="${listId}", colleges=${list.colleges?.length || 0}`);
-                return (
-                <div 
-                  key={listId || idx} 
-                  className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all ${
-                    list.colorLabel ? `border-l-4 border-l-${list.colorLabel}-300` : ''
-                  }`}
-                >
-                  {/* Card Header */}
-                  <div className={`relative transition-colors duration-200 ${
-                    expandedListId === listId 
-                      ? 'bg-blue-50 border-b border-gray-200' 
-                      : ''
-                  }`}>
-                    {/* Main clickable area */}
-                    <div 
-                      className="flex items-center cursor-pointer p-3 pr-24 sm:pr-32" 
-                      onClick={() => handleListClick(listId)}
+      <div className="flex-grow bg-gray-100 min-h-0">
+        <div className="h-full px-6 py-6">
+          <div className="h-full grid grid-cols-12 gap-6">
+            <div className="col-span-12 lg:col-span-4 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0">
+              <div className="p-4 border-b border-gray-200">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Search lists by title..."
+                  />
+                  <Search
+                    size={18}
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {/* Expand/Collapse icon */}
-                      <div className="mr-3">
-                        {expandedListId === listId ? (
-                          <ChevronUp size={18} className="text-blue-600" />
-                        ) : (
-                          <ChevronDown size={18} className="text-gray-400" />
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {(loading || isFetching) ? (
+                  <div className="flex justify-center items-center h-32">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <h3 className="text-sm font-semibold text-blue-700 mb-2 flex items-center">
+                        <Tag size={14} className="mr-2" /> Assigned Lists ({assignedListItems.length})
+                      </h3>
+                      <div className="space-y-2">
+                        {assignedListItems.length > 0 ? assignedListItems.map(list => (
+                          <button
+                            key={list.panelKey}
+                            onClick={() => handleListClick(list.panelKey)}
+                            className={`w-full text-left p-3 border rounded-lg transition-colors ${
+                              expandedListId === list.panelKey
+                                ? 'border-blue-300 bg-blue-50'
+                                : 'border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="min-w-0">
+                                <div className="font-medium text-gray-800 truncate">{list.title}</div>
+                                <div className="text-xs text-gray-500 mt-1">{list.colleges?.length || 0} colleges</div>
+                              </div>
+                              {expandedListId === list.panelKey ? (
+                                <ChevronUp size={16} className="text-blue-600 ml-2" />
+                              ) : (
+                                <ChevronDown size={16} className="text-gray-400 ml-2" />
+                              )}
+                            </div>
+                          </button>
+                        )) : (
+                          <div className="text-sm text-gray-500 px-1">No assigned lists.</div>
                         )}
                       </div>
-                      
-                      {/* List title and metadata */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center">
-                          <h3 className="font-semibold truncate text-gray-800">
-                            {list.title}
-                          </h3>
-                          {/* Color label indicator */}
-                          {list.colorLabel && (
-                            <span className={`ml-2 w-3 h-3 rounded-full bg-${list.colorLabel}-500`}></span>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-200">
+                      <h3 className="text-sm font-semibold text-green-700 mb-2">Created Lists ({createdListItems.length})</h3>
+                      <div className="space-y-2">
+                        {createdListItems.length > 0 ? createdListItems.map(list => (
+                          <button
+                            key={list.panelKey}
+                            onClick={() => handleListClick(list.panelKey)}
+                            className={`w-full text-left p-3 border rounded-lg transition-colors ${
+                              expandedListId === list.panelKey
+                                ? 'border-green-300 bg-green-50'
+                                : 'border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="min-w-0">
+                                <div className="font-medium text-gray-800 truncate">{list.title}</div>
+                                <div className="text-xs text-gray-500 mt-1">{list.colleges?.length || 0} colleges</div>
+                              </div>
+                              {expandedListId === list.panelKey ? (
+                                <ChevronUp size={16} className="text-green-600 ml-2" />
+                              ) : (
+                                <ChevronDown size={16} className="text-gray-400 ml-2" />
+                              )}
+                            </div>
+                          </button>
+                        )) : (
+                          <div className="text-sm text-gray-500 px-1">No created lists.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {!loading && !isFetching && allVisibleListItems.length === 0 && (
+                      <div className="text-center py-10 text-gray-500 text-sm">
+                        {searchQuery ? 'No lists match your search.' : 'No lists found for this user.'}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="col-span-12 lg:col-span-8 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0">
+              {expandedList ? (
+                <>
+                  <div className={`p-4 border-b border-gray-200 ${expandedList.isCreatedList ? 'bg-green-50' : 'bg-blue-50'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-semibold text-gray-900 truncate">{expandedList.title}</h3>
+                          {expandedList.isCreatedList && (
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Created</span>
                           )}
                         </div>
-                        
-                        {/* List stats */}
-                        <div className="flex items-center space-x-4 mt-1 text-sm">
-                          <div className="flex items-center text-gray-600">
-                            <GraduationCap size={14} className="mr-1" />
-                            <span>
-                              <span className="font-semibold">{list.colleges?.length || 0}</span> 
-                              {(list.colleges?.length || 0) === 1 ? ' college' : ' colleges'}
-                            </span>
-                          </div>
-                          
-                          {list.createdAt && (
-                            <div className="hidden sm:flex items-center text-gray-500">
+                        <div className="flex items-center flex-wrap gap-3 mt-1 text-sm text-gray-600">
+                          <span>{expandedList.colleges?.length || 0} colleges</span>
+                          {expandedList.createdAt && (
+                            <span className="inline-flex items-center">
                               <Calendar size={14} className="mr-1" />
-                              <span>{new Date(list.createdAt).toLocaleDateString()}</span>
-                            </div>
+                              {new Date(expandedList.createdAt).toLocaleDateString()}
+                            </span>
                           )}
-                          {list.createdBy && (
-                            <div className="hidden sm:flex items-center text-gray-500">
+                          {expandedList.createdBy && (
+                            <span className="inline-flex items-center">
                               <User size={14} className="mr-1" />
-                              <span>{list.createdBy}</span>
-                            </div>
+                              {expandedList.createdBy}
+                            </span>
                           )}
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* Action Buttons (absolute positioned to stay in place) */}
-                    <div className="absolute top-0 right-0 h-full flex items-center pr-2">
-                      <div className="flex space-x-1">
+
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => onEditList({...list, id: listId})}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
+                          onClick={() => onEditList(expandedList.isCreatedList ? expandedList : { ...expandedList, id: expandedList.id })}
+                          className={`p-2 rounded-md transition-colors ${expandedList.isCreatedList ? 'text-green-600 hover:bg-green-100' : 'text-blue-600 hover:bg-blue-100'}`}
                           title="Customize"
                         >
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => setSaveAsTemplateModal({ 
-                            isOpen: true, 
-                            list: {...list, id: listId},
-                            title: `${list.title} - Template` 
+                          onClick={() => setSaveAsTemplateModal({
+                            isOpen: true,
+                            list: expandedList,
+                            title: `${expandedList.title} - Template`
                           })}
                           className="p-2 text-purple-600 hover:bg-purple-100 rounded-md transition-colors"
                           title="Save as template"
@@ -339,7 +511,14 @@ const UserListModal = ({
                           <Save size={16} />
                         </button>
                         <button
-                          onClick={() => onRemoveList({...list, id: listId}, false)}
+                          onClick={() => openAssignModal(expandedList)}
+                          className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-md transition-colors"
+                          title="Assign to other users"
+                        >
+                          <Users size={16} />
+                        </button>
+                        <button
+                          onClick={() => onRemoveList(expandedList, expandedList.isCreatedList)}
                           className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
                           title="Remove"
                         >
@@ -349,173 +528,24 @@ const UserListModal = ({
                     </div>
                   </div>
 
-                  {/* Expanded Content */}
-                  {expandedListId === listId && (
-                    <div className="bg-gray-50">
-                      <ListDetails 
-                        list={list} 
-                        handleCopyBranchCode={handleCopyBranchCode}
-                        isCodeCopied={isCodeCopied}
-                        resetCopiedStatus={resetCopiedStatus}
-                      />
-                    </div>
-                  )}
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    <ListDetails
+                      list={expandedList}
+                      handleCopyBranchCode={handleCopyBranchCode}
+                      isCodeCopied={isCodeCopied}
+                      resetCopiedStatus={resetCopiedStatus}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-gray-500">
+                  <GraduationCap size={36} className="mb-3 text-gray-300" />
+                  <div className="text-lg font-medium text-gray-700">Select a list from the left panel</div>
+                  <div className="text-sm mt-1">Details and colleges will appear here.</div>
                 </div>
-              );
-              })}
+              )}
             </div>
-          ) : (
-            <div className="text-center py-12 bg-white rounded-lg border border-gray-200 mb-8">
-              <div className="flex flex-col items-center justify-center">
-                <div className="bg-gray-100 p-6 rounded-full mb-4">
-                  <GraduationCap size={32} className="text-gray-400" />
-                </div>
-                <h3 className="text-xl font-medium text-gray-700 mb-2">No Assigned Lists Found</h3>
-                <p className="text-gray-500 max-w-md">
-                  {searchQuery 
-                    ? "No assigned lists match your search. Try a different search term."
-                    : "This user doesn't have any lists assigned yet."}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Created Lists Section - Only show if we have createdLists */}
-          {createdLists && createdLists.length > 0 && (
-            <>
-
-              {filteredCreatedLists.length > 0 ? (
-                <div className="space-y-4">
-                  {filteredCreatedLists.map(list => (
-                    <div 
-                      key={`created-${list.id}`} 
-                      className={`bg-white border border-green-200 rounded-lg shadow-sm hover:shadow-md transition-all ${
-                        list.colorLabel ? `border-l-4 border-l-${list.colorLabel}-300` : 'border-l-4 border-l-green-300'
-                      }`}
-                    >
-                      {/* Card Header - Same structure as assigned lists */}
-                      <div className={`relative transition-colors duration-200 ${
-                        expandedListId === `created-${list.id}` 
-                          ? 'bg-green-50 border-b border-gray-200' 
-                          : ''
-                      }`}>
-                        {/* Main clickable area */}
-                        <div 
-                          className="flex items-center cursor-pointer p-3 pr-24 sm:pr-32" 
-                          onClick={() => handleListClick(`created-${list.id}`)}
-                        >
-                          {/* Expand/Collapse icon */}
-                          <div className="mr-3">
-                            {expandedListId === `created-${list.id}` ? (
-                              <ChevronUp size={18} className="text-green-600" />
-                            ) : (
-                              <ChevronDown size={18} className="text-gray-400" />
-                            )}
-                          </div>
-                          
-                          {/* List title and metadata */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center">
-                              <h3 className="font-semibold truncate text-gray-800">
-                                {list.title}
-                              </h3>
-                              <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Created</span>
-                              {/* Color label indicator */}
-                              {list.colorLabel && (
-                                <span className={`ml-2 w-3 h-3 rounded-full bg-${list.colorLabel}-500`}></span>
-                              )}
-                            </div>
-                            
-                            {/* List stats */}
-                            <div className="flex items-center space-x-4 mt-1 text-sm">
-                              <div className="flex items-center text-gray-600">
-                                <GraduationCap size={14} className="mr-1" />
-                                <span>
-                                  <span className="font-semibold">{list.colleges?.length || 0}</span> 
-                                  {(list.colleges?.length || 0) === 1 ? ' college' : ' colleges'}
-                                </span>
-                              </div>
-                              
-                              {list.createdAt && (
-                                <div className="hidden sm:flex items-center text-gray-500">
-                                  <Calendar size={14} className="mr-1" />
-                                  <span>{new Date(list.createdAt).toLocaleDateString()}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Action Buttons - Same as assigned lists */}
-                        <div className="absolute top-0 right-0 h-full flex items-center pr-2">
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => onEditList(list)}
-                              className="p-2 text-green-600 hover:bg-green-100 rounded-md transition-colors"
-                              title="Customize"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => setSaveAsTemplateModal({ 
-                                isOpen: true, 
-                                list: list,
-                                title: `${list.title} - Template` 
-                              })}
-                              className="p-2 text-purple-600 hover:bg-purple-100 rounded-md transition-colors"
-                              title="Save as template"
-                            >
-                              <Save size={16} />
-                            </button>
-                            <button
-                              onClick={() => onRemoveList(list, true)}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                              title="Remove"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Expanded Content - Same as assigned lists */}
-                      {expandedListId === `created-${list.id}` && (
-                        <div className="bg-green-50">
-                          <ListDetails 
-                            list={list} 
-                            handleCopyBranchCode={handleCopyBranchCode}
-                            isCodeCopied={isCodeCopied}
-                            resetCopiedStatus={resetCopiedStatus}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : searchQuery ? (
-                <div className="text-center py-8 bg-white rounded-lg border border-gray-200">
-                  <p className="text-gray-500">No created lists match your search.</p>
-                </div>
-              ) : null}
-            </>
-          )}
-
-          {/* No Lists Found Message - Modified to only show when both lists are empty */}
-          {!loading && !isFetching && filteredLists.length === 0 && (!filteredCreatedLists || filteredCreatedLists.length === 0) && (
-            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-              <div className="flex flex-col items-center justify-center">
-                <div className="bg-gray-100 p-6 rounded-full mb-4">
-                  <GraduationCap size={32} className="text-gray-400" />
-                </div>
-                <h3 className="text-xl font-medium text-gray-700 mb-2">No Lists Found</h3>
-                <p className="text-gray-500 max-w-md">
-                  {searchQuery 
-                    ? "No lists match your search. Try a different search term."
-                    : "This user doesn't have any lists assigned or created yet."}
-                </p>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -575,6 +605,85 @@ const UserListModal = ({
         list={selectedList}
         onAddToList={handleAddSelectedColleges}
       />
+
+      {assignModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[70]">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                Assign "{assignModal.list?.title}" to other users
+              </h3>
+              <button onClick={closeAssignModal} className="text-gray-400 hover:text-gray-500">
+                <X size={20} />
+              </button>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Search users by name or phone..."
+              value={assignModal.searchQuery}
+              onChange={(e) => setAssignModal(prev => ({ ...prev, searchQuery: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+            />
+
+            <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md">
+              {assignSearchLoading ? (
+                <div className="p-6 text-center text-sm text-gray-500">Searching users...</div>
+              ) : assignSearchResults.length > 0 ? (
+                assignSearchResults.map(user => {
+                  const isSelected = assignModal.selectedUserIds.includes(user.id);
+                  return (
+                    <button
+                      key={user.id}
+                      onClick={() => toggleAssignUser(user.id)}
+                      className={`w-full text-left px-4 py-3 border-b border-gray-100 flex items-center justify-between ${
+                        isSelected ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-medium text-gray-800">{user.name || '-'}</div>
+                        <div className="text-xs text-gray-500">{user.phone || '-'}</div>
+                      </div>
+                      {isSelected && (
+                        <span className="inline-flex items-center text-indigo-700 text-sm font-medium">
+                          <Check size={14} className="mr-1" /> Selected
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="p-6 text-center text-sm text-gray-500">No users found.</div>
+              )}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                {assignModal.selectedUserIds.length} user(s) selected
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={closeAssignModal}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAssignToSelectedUsers}
+                  disabled={assignModal.selectedUserIds.length === 0 || assignModal.assigning}
+                  className={`px-4 py-2 rounded-md text-white ${
+                    assignModal.selectedUserIds.length === 0 || assignModal.assigning
+                      ? 'bg-indigo-300 cursor-not-allowed'
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+                >
+                  {assignModal.assigning ? 'Assigning...' : 'Assign to Selected Users'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

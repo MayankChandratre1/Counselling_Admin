@@ -430,7 +430,7 @@ const UserDetailsPage = () => {
           {/* Back Button and Header */}
           <div className="flex items-center mb-8 gap-4">
             <button
-              onClick={() => navigate("/users")}
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/users'))}
               className="flex items-center text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft size={20} className="mr-2" />
