@@ -3,6 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
 import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
+const getAdminDeviceId = () => {
+  const storageKey = 'adminDeviceId';
+  let deviceId = localStorage.getItem(storageKey);
+  if (deviceId) {
+    return deviceId;
+  }
+
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    deviceId = crypto.randomUUID();
+  } else {
+    deviceId = `adm_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  localStorage.setItem(storageKey, deviceId);
+  return deviceId;
+};
+
 const AdminLogin = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
@@ -21,7 +38,11 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const response = await axiosInstance.post('/api/admin/login', credentials);
+      const response = await axiosInstance.post('/api/admin/login', {
+        ...credentials,
+        deviceId: getAdminDeviceId(),
+        deviceName: navigator.platform ? `Web-${navigator.platform}` : 'Admin Web'
+      });
       const { token, admin } = response.data;
 
       // Store auth data:

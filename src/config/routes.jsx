@@ -1,6 +1,6 @@
 import { 
   Home, User, Building, FormInput, List, Lock, FileLineChart, 
-  CheckCheck, Settings2, Globe2, Crown, Banknote, Clock10, Bell, PieChart, RefreshCcwDot
+  CheckCheck, Settings2, Globe2, Crown, Banknote, Clock10, Bell, PieChart, RefreshCcwDot, ShieldCheck
 } from 'lucide-react';
 
 /**
@@ -236,9 +236,18 @@ export const ROUTES = [
     path: '/admin-settings',
     label: 'Admin Settings',
     icon: <Settings2 className="mr-3 text-yellow-400" />,
-    description: 'Manage admins and their permissions (super-admin only)',
+    description: 'Manage admins and role permissions',
     showInNav: true,
     permission: 'admin-settings'
+  },
+  {
+    key: 'security-operations',
+    path: '/security-operations',
+    label: 'Security Operations',
+    icon: <ShieldCheck className="mr-3 text-yellow-400" />,
+    description: 'Review device approvals and user sessions',
+    showInNav: true,
+    permission: 'security-operations'
   }
 ];
 

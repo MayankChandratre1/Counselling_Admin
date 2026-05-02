@@ -14,6 +14,7 @@ import CutOff from "./pages/CutOff";
 import UserDetailsPage from "./pages/UserDetailsPage";
 import AddUsers from "./pages/AddUsers";
 import AdminSettings from "./pages/AdminSettings";
+import SecurityOperations from "./pages/SecurityOperations";
 import ProtectedRoute from './components/ProtectedRoute';
 import Unauthorized from './pages/Unauthorized';
 import LandingPage from "./pages/LandingPage";
@@ -161,6 +162,11 @@ function App() {
         <Route path="/admin-settings" element={
           <ProtectedRoute requiredPermission="admin-settings">
             <AdminSettings />
+          </ProtectedRoute>
+        } />
+        <Route path="/security-operations" element={
+          <ProtectedRoute requiredPermission="security-operations">
+            <SecurityOperations />
           </ProtectedRoute>
         } />
         <Route path="/landing-page" element={

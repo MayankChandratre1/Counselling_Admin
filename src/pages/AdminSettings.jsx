@@ -53,6 +53,8 @@ const AdminSettings = () => {
 
   const handleEditAdmin = async (adminId, updatedData) => {
     const email = (updatedData.email || '').trim().toLowerCase();
+    const role = updatedData.role;
+    const isSecurityMod = updatedData.isSecurityMod === true || updatedData.isSecurityMod === 'true';
     const password = typeof updatedData.password === 'string' ? updatedData.password.trim() : '';
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -70,6 +72,8 @@ const AdminSettings = () => {
       await axiosInstance.put(`/api/admin/update-admin/${adminId}`, {
         ...updatedData,
         email,
+        role,
+        isSecurityMod,
         password: password || undefined
       });
       // Refresh admin list
@@ -166,6 +170,8 @@ const AdminSettings = () => {
                 const formData = new FormData(e.target);
                 handleEditAdmin(editModal.admin.id, {
                   email: formData.get('email'),
+                  role: formData.get('role'),
+                  isSecurityMod: formData.get('isSecurityMod') === 'on',
                   password: formData.get('password') || undefined
                 });
               }}

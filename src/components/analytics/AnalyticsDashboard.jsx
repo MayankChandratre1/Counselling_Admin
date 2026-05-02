@@ -9,6 +9,7 @@ import { FormProgressProvider } from '../../contexts/FormProgressContext';
 import ListTracking from './ListTracking';
 import CapProgressTracker from './CapProgressTracker';
 import { useNavigate } from 'react-router-dom';
+import { buildPurchaseYearOptions } from '../../utils/analyticsYearFilter';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -24,7 +25,9 @@ const AnalyticsDashboard = () => {
     getMetricUsers,
     getUniquePlans,
     getDerivedMetrics,
-    isDataStale
+    isDataStale,
+    purchaseYearFilter,
+    setPurchaseYearFilter,
   } = useAnalytics();
 
   // Get admin permissions
@@ -375,7 +378,25 @@ const AnalyticsDashboard = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-end">
+            <div className="flex items-center gap-2">
+              <label htmlFor="analytics-purchase-year" className="text-sm text-gray-600 whitespace-nowrap">
+                Purchase year
+              </label>
+              <select
+                id="analytics-purchase-year"
+                value={purchaseYearFilter}
+                onChange={(e) => setPurchaseYearFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="ALL">All years</option>
+                {buildPurchaseYearOptions().map((y) => (
+                  <option key={y} value={String(y)}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
             {isDataStale && (
               <span className="text-amber-600 text-sm bg-amber-50 px-3 py-1 rounded-full">
                 Data may be outdated

@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import axiosInstance from '../../utils/axios';
 
-const ROLES = ['admin', 'super-admin'];
+const ROLES = ['admin', 'super-admin', 'security-admin'];
 
 const AddAdminForm = ({ onAdminAdded }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: 'admin123',
-    role: 'admin'
+    role: 'admin',
+    isSecurityMod: false
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await axiosInstance.post('/api/admin/add-admin', formData);
-      setFormData({ email: '', password: 'admin123', role: 'admin' });
+      setFormData({ email: '', password: 'admin123', role: 'admin', isSecurityMod: false });
       onAdminAdded();
     } catch (error) {
       console.error('Error adding admin:', error);
@@ -56,6 +57,15 @@ const AddAdminForm = ({ onAdminAdded }) => {
               <option key={role} value={role}>{role}</option>
             ))}
           </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            id="isSecurityMod"
+            type="checkbox"
+            checked={formData.isSecurityMod}
+            onChange={(e) => setFormData(prev => ({ ...prev, isSecurityMod: e.target.checked }))}
+          />
+          <label htmlFor="isSecurityMod" className="text-sm font-medium">Enable Security Mode</label>
         </div>
         <button
           type="submit"

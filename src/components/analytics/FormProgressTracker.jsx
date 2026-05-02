@@ -39,21 +39,12 @@ const FormProgressTracker = () => {
   const [enrolledUsers, setEnrolledUsers] = useState([])
   const navigate = useNavigate();
 
-  // Initialize form progress when analytics data is loaded
+  // Initialize form progress when analytics data is loaded (including after purchase-year filter changes)
   useEffect(() => {
-    if (analyticsData?.metrics?.enrolled?.users && analyticsData.metrics.enrolled.users.length > 0) {
-      console.log('Initializing form progress with enrolled users:', analyticsData.metrics.enrolled.users);
-      initializeFormProgress(analyticsData);
-      setEnrolledUsers(analyticsData.metrics.enrolled.users);
-    }
+    if (!analyticsData?.metrics?.enrolled) return;
+    initializeFormProgress(analyticsData);
+    setEnrolledUsers(analyticsData.metrics.enrolled.users || []);
   }, [analyticsData, initializeFormProgress]);
-
-  useEffect(() => {
-    if (analyticsData?.metrics?.enrolled?.users && analyticsData.metrics.enrolled.users.length > 0) {
-      console.log('Initializing EnrilledUsers progress with enrolled users:', analyticsData.metrics.enrolled.users);
-      setEnrolledUsers(analyticsData.metrics.enrolled.users);
-    }
-  }, [analyticsData])
 
   // Load forms on component mount
   useEffect(() => {

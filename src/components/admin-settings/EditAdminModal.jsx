@@ -17,6 +17,30 @@ const EditAdminModal = ({ admin, onClose, onSubmit }) => {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700">Role</label>
+              <select
+                name="role"
+                defaultValue={admin.role || 'admin'}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="admin">admin</option>
+                <option value="security-admin">security-admin</option>
+                <option value="super-admin">super-admin</option>
+                <option value="editor">editor</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="isSecurityMod"
+                name="isSecurityMod"
+                type="checkbox"
+                defaultChecked={Boolean(admin.isSecurityMod)}
+              />
+              <label htmlFor="isSecurityMod" className="text-sm font-medium text-gray-700">
+                Enable Security Mode
+              </label>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700">
                 New Password (leave empty to keep unchanged)
               </label>

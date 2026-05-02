@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { GraduationCap, X, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getNavRoutes } from '../config/routes';
+import { hasSecurityPrivileges } from '../utils/securityRole';
 
 const VerticalNavbar = ({ onClose }) => {
   const navigate = useNavigate();
@@ -9,23 +10,40 @@ const VerticalNavbar = ({ onClose }) => {
 
   useEffect(() => {
     const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo') || 'null');
-    const isSuperAdmin = adminInfo?.role === 'super-admin';
-
-    console.log('🔍 Navbar - Admin Info:', adminInfo);
-    console.log('🔍 Navbar - Is Super Admin:', isSuperAdmin);
+    const hasSecurityAccess = hasSecurityPrivileges(adminInfo);
 
     const allNavRoutes = getNavRoutes();
+    const securityOnlyPermissions = ['admin-settings', 'security-operations'];
 
-    if (isSuperAdmin) {
-      console.log('✅ Super-admin - showing all nav items');
-      setMenuItems(allNavRoutes);
-    } else {
-      const pages = adminInfo?.permissions?.pages || [];
-      console.log('🔍 Navbar - Pages from permissions:', pages);
-      const filteredItems = allNavRoutes.filter((route) => pages.includes(route.permission));
-      console.log('🔍 Navbar - Filtered menu items:', filteredItems);
-      setMenuItems(filteredItems);
+    if (!adminInfo) {
+      setMenuItems([]);
+      return;
     }
+
+    if (hasSecurityAccess) {
+      setMenuItems(allNavRoutes);
+      return;
+    }
+
+    // Super-admin (without isSecurityMod) should still see full app navigation,
+    // except security-only sections.
+    if (adminInfo.role === 'super-admin') {
+      const nonSecurityItems = allNavRoutes.filter(
+        (route) => !securityOnlyPermissions.includes(route.permission)
+      );
+      setMenuItems(nonSecurityItems);
+      return;
+    }
+
+    // All other roles follow explicit page permissions, with security pages always hidden.
+    const pages = adminInfo?.permissions?.pages || [];
+    const filteredItems = allNavRoutes.filter((route) => {
+      if (securityOnlyPermissions.includes(route.permission)) {
+        return false;
+      }
+      return pages.includes(route.permission);
+    });
+    setMenuItems(filteredItems);
   }, []);
 
   const handleLogout = () => {

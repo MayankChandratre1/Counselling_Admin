@@ -1,5 +1,10 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import axiosInstance from '../utils/axios';
+import {
+  applyPurchaseYearToAnalyticsData,
+  readStoredPurchaseYear,
+  writeStoredPurchaseYear,
+} from '../utils/analyticsYearFilter';
 
 const AnalyticsContext = createContext();
 
@@ -11,21 +16,36 @@ export const useAnalytics = () => {
   return context;
 };
 
+const initialAnalyticsState = {
+  totalUsers: 0,
+  metrics: {
+    installs: 0,
+    enrolled: { total: 0, users: [] },
+    todayEnrolled: { total: 0, users: [] },
+    paymentPending: { total: 0, users: [] }
+  },
+  premiumPlanDistribution: {},
+  usersWithLists: 0,
+  usersWithoutLists: 0,
+  listData: null
+};
+
 export const AnalyticsProvider = ({ children }) => {
-  const [analyticsData, setAnalyticsData] = useState({
-    totalUsers: 0,
-    metrics: {
-      installs: 0,
-      enrolled: { total: 0, users: [] },
-      todayEnrolled: { total: 0, users: [] },
-      paymentPending: { total: 0, users: [] }
-    },
-    premiumPlanDistribution: {},
-    usersWithLists: 0,
-    usersWithoutLists: 0,
-    listData: null
-  });
-  
+  const [rawAnalyticsData, setRawAnalyticsData] = useState(initialAnalyticsState);
+  const [purchaseYearFilter, setPurchaseYearFilterState] = useState(() =>
+    readStoredPurchaseYear()
+  );
+
+  const analyticsData = useMemo(
+    () => applyPurchaseYearToAnalyticsData(rawAnalyticsData, purchaseYearFilter),
+    [rawAnalyticsData, purchaseYearFilter]
+  );
+
+  const setPurchaseYearFilter = useCallback((value) => {
+    setPurchaseYearFilterState(value);
+    writeStoredPurchaseYear(value);
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
@@ -33,7 +53,7 @@ export const AnalyticsProvider = ({ children }) => {
   const fetchAnalyticsData = useCallback(async (forceRefresh = false) => {
     // Don't fetch if data is fresh (less than 5 minutes old) unless forced
     if (!forceRefresh && lastFetched && Date.now() - lastFetched < 5 * 60 * 1000) {
-      return analyticsData;
+      return rawAnalyticsData;
     }
 
     setLoading(true);
@@ -43,7 +63,7 @@ export const AnalyticsProvider = ({ children }) => {
       const response = await axiosInstance('/api/admin/get-analytics');
       const data = response.data;
       
-      setAnalyticsData(data);
+      setRawAnalyticsData(data);
       setLastFetched(Date.now());
       return data;
     } catch (error) {
@@ -53,7 +73,7 @@ export const AnalyticsProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [analyticsData, lastFetched]);
+  }, [rawAnalyticsData, lastFetched]);
 
   const refreshAnalytics = useCallback(() => {
     return fetchAnalyticsData(true);
@@ -177,8 +197,11 @@ export const AnalyticsProvider = ({ children }) => {
   }, [analyticsData, lastFetched]);
 
   const value = {
-    // Data
+    // Data (scoped by purchaseYearFilter when not ALL)
     analyticsData,
+    rawAnalyticsData,
+    purchaseYearFilter,
+    setPurchaseYearFilter,
     loading,
     error,
     lastFetched,
@@ -195,7 +218,7 @@ export const AnalyticsProvider = ({ children }) => {
     
     // Computed values
     isDataAvailable: Object.keys(analyticsData.metrics).length > 0,
-    isDataStale: lastFetched && Date.now() - lastFetched > 5 * 60 * 1000
+    isDataStale: lastFetched && Date.now() - lastFetched > 5 * 60 * 1000,
   };
 
   return (
