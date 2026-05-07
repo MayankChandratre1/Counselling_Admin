@@ -29,6 +29,30 @@ const statusClass = (status) => {
   }
 };
 
+const formatLocationCell = (row) => {
+  const placeParts = [row.city, row.region, row.country].filter(Boolean);
+  const place = placeParts.join(', ');
+  const hasIp = Boolean(row.ip);
+  const hasPtr = Boolean(row.reverseDns);
+
+  if (!place && !hasIp && !hasPtr) {
+    return (
+      <>
+        <div className="text-gray-400">—</div>
+        <div className="text-xs text-gray-500 mt-0.5">No IP / geo on record (retry login after deploy)</div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {place ? <div className="font-medium text-gray-900">{place}</div> : null}
+      {hasIp ? <div className="text-gray-600">{row.ip}</div> : null}
+      {hasPtr ? <div className="text-xs text-gray-500 break-all" title="Reverse DNS">{row.reverseDns}</div> : null}
+    </>
+  );
+};
+
 const SecurityAccessPanel = () => {
   const [approvals, setApprovals] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -108,7 +132,7 @@ const SecurityAccessPanel = () => {
                 <tr>
                   <th className="px-4 py-3 text-left">User</th>
                   <th className="px-4 py-3 text-left">Device</th>
-                  <th className="px-4 py-3 text-left">Location</th>
+                  <th className="px-4 py-3 text-left">Location / IP</th>
                   <th className="px-4 py-3 text-left">Requested</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -125,8 +149,7 @@ const SecurityAccessPanel = () => {
                       <div className="text-gray-500">{approval.deviceName || 'Unknown device'}</div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
-                      <div>{approval.city || '—'}</div>
-                      <div className="text-gray-500">{approval.region || '—'}</div>
+                      {formatLocationCell(approval)}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">{formatDate(approval.requestedAt)}</td>
                     <td className="px-4 py-3 text-right space-x-2">
@@ -183,7 +206,13 @@ const SecurityAccessPanel = () => {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
                       <div className="font-medium">{session.deviceId}</div>
-                      <div className="text-gray-500">{session.city || '—'} {session.region ? `• ${session.region}` : ''}</div>
+                      <div className="text-gray-500">
+                        {[session.city, session.region, session.country].filter(Boolean).join(', ') || '—'}
+                        {session.ip ? ` · ${session.ip}` : ''}
+                      </div>
+                      {session.reverseDns ? (
+                        <div className="text-xs text-gray-500 break-all mt-0.5" title="Reverse DNS">{session.reverseDns}</div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">{formatDate(session.loginTime)}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">{formatDate(session.logoutTime)}</td>
