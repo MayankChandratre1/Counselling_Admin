@@ -3,10 +3,11 @@ import { Menu } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import PremiumPlanManager from '../components/premiumplan/PremiumPlanManager';
 import DynamicPageManager from '../components/premiumplan/DynamicPageManager';
+import FeatureFlagsPanel from '../components/premiumplan/FeatureFlagsPanel';
 
 const PremiumPageManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('plans'); // 'plans' or 'pages'
+  const [activeTab, setActiveTab] = useState('plans'); // 'plans' | 'pages' | 'flags'
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -55,6 +56,16 @@ const PremiumPageManagement = () => {
               >
                 Dynamic Pages
               </button>
+              <button
+                onClick={() => setActiveTab('flags')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'flags'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Feature Flags
+              </button>
             </nav>
           </div>
 
@@ -62,6 +73,7 @@ const PremiumPageManagement = () => {
           <div>
             {activeTab === 'plans' && <PremiumPlanManager />}
             {activeTab === 'pages' && <DynamicPageManager />}
+            {activeTab === 'flags' && <FeatureFlagsPanel />}
           </div>
         </div>
       </div>
