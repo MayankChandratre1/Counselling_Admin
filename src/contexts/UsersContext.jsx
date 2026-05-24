@@ -22,7 +22,9 @@ export const UsersProvider = ({ children }) => {
   // Add filter states - updated to remove batch and status, add listAssigned
   const [filters, setFilters] = useState({
     plan: 'all',
-    listAssigned: 'all' // 'all', 'true', 'false'
+    listAssigned: 'all', // 'all', 'true', 'false'
+    fromDate: '',
+    toDate: ''
   });
   const [isFilterActive, setIsFilterActive] = useState(false);
   const [premiumUsersOnly, setPremiumUsersOnly] = useState(false);
@@ -33,13 +35,14 @@ export const UsersProvider = ({ children }) => {
   };
 
   // Separate the initial fetch from explicit refresh operations
-  const fetchUsers = useCallback(async (page = currentPage, resetPagination = false, premiumOnly = false) => {
+  const fetchUsers = useCallback(async (page = currentPage, resetPagination = false, premiumOnly = false, filtersOverride = null) => {
+    const effectiveFilters = filtersOverride || filters;
     // Check if filters are active
-    const activeFilters = Object.values(filters).some(filter => filter !== 'all');
+    const activeFilters = Object.values(effectiveFilters).some(filter => filter !== 'all' && filter !== '');
     setIsFilterActive(activeFilters);
 
     // Create cache key for this request
-    const cacheKey = getCacheKey(page, filters, pageSize);
+    const cacheKey = getCacheKey(page, effectiveFilters, pageSize);
     
     // Check if we have this page cached (unless it's a reset)
     if (!resetPagination && paginationCache.has(cacheKey)) {
@@ -57,15 +60,21 @@ export const UsersProvider = ({ children }) => {
 
     try {
       setLoading(true);
-      console.log(`Fetching users - page ${page}, size ${pageSize}, filters:`, filters, `premiumOnly: ${premiumOnly}`);
+      console.log(`Fetching users - page ${page}, size ${pageSize}, filters:`, effectiveFilters, `premiumOnly: ${premiumOnly}`);
       
       // Prepare filter parameters
       const filterParams = {};
-      if (filters.plan !== 'all') {
-        filterParams.plan = filters.plan;
+      if (effectiveFilters.plan !== 'all') {
+        filterParams.plan = effectiveFilters.plan;
       }
-      if (filters.listAssigned !== 'all') {
-        filterParams.listAssigned = filters.listAssigned;
+      if (effectiveFilters.listAssigned !== 'all') {
+        filterParams.listAssigned = effectiveFilters.listAssigned;
+      }
+      if (effectiveFilters.fromDate) {
+        filterParams.fromDate = effectiveFilters.fromDate;
+      }
+      if (effectiveFilters.toDate) {
+        filterParams.toDate = effectiveFilters.toDate;
       }
 
       // Build request parameters
@@ -82,7 +91,7 @@ export const UsersProvider = ({ children }) => {
 
       // For pagination beyond page 1, include lastDoc from previous page
       if (page > 1 && !resetPagination) {
-        const prevPageCacheKey = getCacheKey(page - 1, filters, pageSize);
+        const prevPageCacheKey = getCacheKey(page - 1, effectiveFilters, pageSize);
         if (lastDocCache.has(prevPageCacheKey)) {
           requestParams.lastDoc = lastDocCache.get(prevPageCacheKey);
         }
@@ -149,13 +158,15 @@ export const UsersProvider = ({ children }) => {
     setDataLoaded(false);
     
     // Fetch with new filters from page 1
-    fetchUsers(1, true, premiumOnly);
+    fetchUsers(1, true, premiumOnly, newFilters);
   }, [fetchUsers]);
 
   const clearFilters = useCallback((premiumOnly = false) => {
     const clearedFilters = {
       plan: 'all',
-      listAssigned: 'all'
+      listAssigned: 'all',
+      fromDate: '',
+      toDate: ''
     };
     setFilters(clearedFilters);
     
@@ -168,7 +179,7 @@ export const UsersProvider = ({ children }) => {
     setLastDoc(null);
     setDataLoaded(false);
     
-    fetchUsers(1, true, premiumOnly);
+    fetchUsers(1, true, premiumOnly, clearedFilters);
   }, [fetchUsers]);
 
   // Modified goToPage to work with caching

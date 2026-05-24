@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Menu, Send, Bell, AlertCircle, CheckCircle, Users, MessageSquare, Filter, X } from 'lucide-react';
 import axiosInstance from '../utils/axios';
 import Navbar from '../components/Navbar';
@@ -8,8 +8,15 @@ const SendPushNotification = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
-    message: ''
+    message: '',
+    url: ''
   });
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [targetMode, setTargetMode] = useState('all');
+  const [specificUserIds, setSpecificUserIds] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -27,6 +34,28 @@ const SendPushNotification = () => {
 
   // Get premium plans from context
   const { premiumPlans, plansLoading } = usePremiumPage();
+
+  const fetchHistory = useCallback(async (page = 1) => {
+    try {
+      setHistoryLoading(true);
+      const response = await axiosInstance.get('/api/admin/notifications', {
+        params: { page, limit: 10 }
+      });
+      if (response.data?.success) {
+        setHistory(response.data.notifications || []);
+        setHistoryPage(response.data.page || 1);
+        setHistoryTotalPages(response.data.totalPages || 1);
+      }
+    } catch (err) {
+      console.error('Failed to load notification history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHistory(1);
+  }, [fetchHistory]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -78,7 +107,20 @@ const SendPushNotification = () => {
     );
   };
 
+  const getSpecificUserIds = () => {
+    return specificUserIds
+      .split(/[\s,]+/)
+      .map(id => id.trim())
+      .filter(Boolean);
+  };
+
   const getFilterDescription = () => {
+    if (targetMode === 'specific') {
+      const count = getSpecificUserIds().length;
+      const userText = count > 0 ? `${count} specific user${count === 1 ? '' : 's'}` : 'Specific users';
+      return filters.plan ? `${userText} (${filters.plan} plan)` : userText;
+    }
+
     const activeFilters = [];
     
     if (filters.isPremium) activeFilters.push('Premium users');
@@ -114,6 +156,11 @@ const SendPushNotification = () => {
       setError('Message must be 500 characters or less');
       return false;
     }
+
+    if (targetMode === 'specific' && getSpecificUserIds().length === 0) {
+      setError('Enter at least one user ID for specific-user testing');
+      return false;
+    }
     
     return true;
   };
@@ -138,11 +185,15 @@ const SendPushNotification = () => {
       // Prepare request data
       const requestData = {
         title: formData.title.trim(),
-        message: formData.message.trim()
+        message: formData.message.trim(),
+        url: formData.url.trim() || undefined,
+        plan: filters.plan || undefined,
       };
 
-      // Add filters if any are active
-      if (hasActiveFilters()) {
+      if (targetMode === 'specific') {
+        requestData.toAll = false;
+        requestData.userIds = getSpecificUserIds();
+      } else if (hasActiveFilters()) {
         requestData.toAll = false;
         requestData.filters = filters;
       } else {
@@ -152,10 +203,13 @@ const SendPushNotification = () => {
       const response = await axiosInstance.post('/api/admin/send-notification', requestData);
       
       if (response.data.success) {
-        const targetText = hasActiveFilters() ? getFilterDescription() : 'all users';
+        const targetText = getFilterDescription();
         setSuccess(`Push notification sent successfully to ${targetText}!`);
-        setFormData({ title: '', message: '' }); // Reset form
-        clearFilters(); // Reset filters
+        setFormData({ title: '', message: '', url: '' });
+        setTargetMode('all');
+        setSpecificUserIds('');
+        clearFilters();
+        fetchHistory(1);
       } else {
         setError(response.data.message || 'Failed to send notification');
       }
@@ -400,6 +454,86 @@ const SendPushNotification = () => {
                 </div>
               </div>
 
+              {/* Optional URL */}
+              <div>
+                <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-2">
+                  Link URL (optional)
+                </label>
+                <input
+                  type="url"
+                  id="url"
+                  name="url"
+                  value={formData.url}
+                  onChange={handleInputChange}
+                  placeholder="https://example.com or WhatsApp group link"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Users can open this link from the notification detail screen in the app.
+                </p>
+              </div>
+
+              {/* Specific user test target */}
+              <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-blue-900">Test specific users</h3>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Enter user IDs to send only to those users. Separate IDs with commas, spaces, or new lines.
+                    </p>
+                  </div>
+                  <label className="flex items-center text-sm text-blue-900 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={targetMode === 'specific'}
+                      onChange={(e) => {
+                        setTargetMode(e.target.checked ? 'specific' : 'all');
+                        if (error) setError(null);
+                        if (success) setSuccess(null);
+                      }}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                    />
+                    Send to specific user IDs
+                  </label>
+                </div>
+                {targetMode === 'specific' && (
+                  <div className="space-y-3">
+                    <textarea
+                      value={specificUserIds}
+                      onChange={(e) => {
+                        setSpecificUserIds(e.target.value);
+                        if (error) setError(null);
+                        if (success) setSuccess(null);
+                      }}
+                      rows="3"
+                      placeholder="Example: userId1, userId2"
+                      className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-vertical bg-white"
+                    />
+                    <div>
+                      <label className="block text-sm font-medium text-blue-900 mb-2">
+                        Save as plan-specific update (optional)
+                      </label>
+                      <select
+                        value={filters.plan}
+                        onChange={(e) => handleFilterChange('plan', e.target.value)}
+                        className="w-full px-3 py-2 border border-blue-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        disabled={plansLoading}
+                      >
+                        <option value="">No plan tag</option>
+                        {premiumPlans?.map(plan => (
+                          <option key={plan.title} value={plan.title}>
+                            {plan.title}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-blue-700 mt-1">
+                        If selected, this notification will also appear in that plan's Updates page for the targeted users.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Message Field */}
               <div>
                 <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
@@ -481,6 +615,76 @@ const SendPushNotification = () => {
                 </button>
               </div>
             </form>
+          </div>
+
+          {/* Sent notifications history */}
+          <div className="bg-white rounded-lg shadow-md p-6 mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">Sent Notifications</h2>
+              <button
+                type="button"
+                onClick={() => fetchHistory(historyPage)}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Refresh
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+              </div>
+            ) : history.length === 0 ? (
+              <p className="text-gray-500 text-sm py-4">No notifications sent yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {history.map((item) => (
+                  <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex flex-wrap justify-between gap-2 mb-2">
+                      <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                      <span className="text-xs text-gray-500">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 line-clamp-2 mb-2">{item.message}</p>
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                      <span>Audience: {item.targetAudience || 'all'}</span>
+                      <span>Recipients: {item.recipientCount ?? 0}</span>
+                      <span>Push delivered: {item.sentCount ?? 0}</span>
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate max-w-xs">
+                          {item.url}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {historyTotalPages > 1 && (
+              <div className="flex justify-center gap-3 mt-4">
+                <button
+                  type="button"
+                  disabled={historyPage <= 1 || historyLoading}
+                  onClick={() => fetchHistory(historyPage - 1)}
+                  className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600 self-center">
+                  Page {historyPage} of {historyTotalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={historyPage >= historyTotalPages || historyLoading}
+                  onClick={() => fetchHistory(historyPage + 1)}
+                  className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Confirmation Modal - Updated */}

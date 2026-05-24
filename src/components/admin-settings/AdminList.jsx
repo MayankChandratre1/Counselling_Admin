@@ -8,13 +8,9 @@ const AdminList = ({ admins, onEdit, onDelete, onEditPermissions }) => {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [downloadingCSV, setDownloadingCSV] = useState(null); // Store admin ID that's being downloaded
 
-  const formatFieldForCSV = (field, maxLength = 500) => {
+  const formatFieldForCSV = (field) => {
     if (!field) return '';
-    const stringified = JSON.stringify(field).replaceAll(',', ';').replaceAll('"', '');
-    if (stringified.length > maxLength) {
-      return stringified.substring(0, maxLength) + '... [truncated]';
-    }
-    return stringified.replace(/,/g, ';');
+    return String(field).replaceAll(',', ';').replaceAll('"', '');
   };
 
   const handleExportCSV = async (adminId) => {
@@ -24,27 +20,16 @@ const AdminList = ({ admins, onEdit, onDelete, onEditPermissions }) => {
       const data = await response.data;
       
       const csvContent = [
-        ['Timestamp', 'Method', 'Path', 'Status', 'Body', 'Response'],
+        ['Timestamp', 'Admin', 'Method', 'Path'],
         ...data.activities.map(activity => {
-          // Skip body and response if they're too large (over 1MB)
-          const body = activity.body && JSON.stringify(activity.body).length > 1000000 
-            ? '[Content too large]' 
-            : formatFieldForCSV(activity.body);
-          
-          const response = activity.response && JSON.stringify(activity.response).length > 1000000
-            ? '[Content too large]'
-            : formatFieldForCSV(activity.response);
-
           return [
             activity.timestamp,
+            activity.adminEmail || activity.adminId,
             activity.method,
             activity.path,
-            activity.status,
-            body,
-            response,
           ];
         })
-      ].map(row => row.join(',')).join('\n');
+      ].map(row => row.map(formatFieldForCSV).join(',')).join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);

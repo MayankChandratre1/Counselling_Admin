@@ -1,7 +1,55 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../utils/axios";
-import { X, Plus, Check, AlertCircle, Trash, ArrowUp, ArrowDown, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Trash,
+  ArrowUp,
+  ArrowDown,
+  List,
+  Lock,
+  Star,
+  Target,
+  HelpCircle,
+  CheckCircle2,
+  FileText,
+  ChevronDown,
+} from "lucide-react";
 import { toast } from "react-toastify";
+
+const StepBadges = ({ step }) => (
+  <div className="flex flex-wrap gap-2">
+    {step.showListButton && (
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+        <List size={12} /> List button
+      </span>
+    )}
+    {step.isLocked && (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+        <Lock size={12} /> Locked
+      </span>
+    )}
+    {step.premiumOnly && (
+      <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700">
+        <Star size={12} /> Premium
+      </span>
+    )}
+    {(step.isCapSpecific || step.isVerdict || step.isCapQuery) && (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+        <Target size={12} /> CAP {step.cap || 1}
+      </span>
+    )}
+    {step.isVerdict && (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
+        <CheckCircle2 size={12} /> Verdict
+      </span>
+    )}
+    {step.isCapQuery && (
+      <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700">
+        <HelpCircle size={12} /> CAP query
+      </span>
+    )}
+  </div>
+);
 
 const FormStepsManagement = () => {
   const [forms, setForms] = useState([]);
@@ -33,9 +81,11 @@ const FormStepsManagement = () => {
       const res = await axiosInstance.get("/api/admin/formsteps");
       if (res.data.length > 0) {
         setForms(res.data);
-        setExpandedForm(-1); // Expand the first form by default
+        setExpandedForm(0);
+      } else {
+        setForms([]);
+        setExpandedForm(null);
       }
-      toast.success("Forms loaded successfully");
     } catch (error) {
       console.error("Error fetching form steps", error);
       toast.error("Failed to load forms");
@@ -144,7 +194,7 @@ const FormStepsManagement = () => {
     }
   };
 
-  const confirmDeleteForm = (formId, index) => {
+  const confirmDeleteForm = (formId) => {
     setDeletingFormId(formId);
     setIsDeleting(true);
   };
@@ -302,54 +352,85 @@ const FormStepsManagement = () => {
     setShowInsertModal(true);
   };
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex min-h-[320px] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
       </div>
     );
+  }
+
+  const totalSteps = forms.reduce((sum, form) => sum + (form.steps?.length || 0), 0);
 
   return (
-    <div className="p-5 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-center text-blue-700">
-        Form Steps Management
-      </h1>
-
-      {/* Create Form Button */}
-      <div className="mb-8 flex justify-center">
+    <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+      <div className="mb-8 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+            <FileText size={16} />
+            Counselling forms
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">Form steps</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Manage counselling progress steps, CAP rounds, and premium-only gates.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-500">
+            <span className="rounded-lg bg-slate-100 px-3 py-1">{forms.length} forms</span>
+            <span className="rounded-lg bg-slate-100 px-3 py-1">{totalSteps} total steps</span>
+          </div>
+        </div>
         <button
           onClick={() => setIsNewFormModalOpen(true)}
-          className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg shadow hover:bg-blue-700 transition-all"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
         >
-          <Plus className="mr-2" size={20} />
-          <span>Create New Form</span>
+          <Plus size={18} />
+          Create form
         </button>
       </div>
 
       {forms.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <p className="text-gray-600 mb-4">No forms found.</p>
-          <p className="text-gray-500">
-            Click the button above to create your first form.
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
+          <FileText className="mx-auto mb-4 text-slate-300" size={48} />
+          <p className="text-lg font-medium text-slate-700">No forms yet</p>
+          <p className="mt-2 text-sm text-slate-500">
+            Create your first counselling form to start adding steps.
           </p>
+          <button
+            onClick={() => setIsNewFormModalOpen(true)}
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            <Plus size={16} />
+            Create form
+          </button>
         </div>
       ) : (
         forms.map((form, formIndex) => (
           <div
-            key={formIndex}
-            className="mb-6 border rounded-lg shadow-md overflow-hidden bg-white"
+            key={form.id}
+            className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
           >
-            {/* Form Header */}
-            <div className="flex justify-between items-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <div
-                className="flex items-center gap-3 flex-1 cursor-pointer"
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 md:px-5">
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
                 onClick={() => toggleFormExpand(formIndex)}
               >
-                <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                  Form {formIndex + 1}
+                <span className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
+                  #{formIndex + 1}
                 </span>
-                <h2 className="text-xl font-semibold">{form.id}</h2>
-              </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-lg font-semibold text-slate-900">{form.id}</h2>
+                  <p className="text-sm text-slate-500">
+                    {form.steps?.length || 0} step{(form.steps?.length || 0) === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <ChevronDown
+                  size={20}
+                  className={`ml-auto shrink-0 text-slate-400 transition-transform ${
+                    expandedForm === formIndex ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
               <div className="flex items-center gap-2">
                 {/* Delete Form Button */}
                 <button
@@ -369,43 +450,20 @@ const FormStepsManagement = () => {
                   )}
                 </button>
 
-                {/* Toggle Expand Button */}
-                <button
-                  onClick={() => toggleFormExpand(formIndex)}
-                  className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={`transition-transform ${
-                      expandedForm === formIndex ? "rotate-180" : ""
-                    }`}
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
               </div>
             </div>
 
-            {/* Form Content - Steps */}
             {expandedForm === formIndex && (
-              <div className="p-4">
+              <div className="space-y-4 p-4 md:p-5">
                 {form.steps.length > 0 ? (
                   <div className="space-y-3">
                     {form.steps.map((step, stepIndex) => (
                       <div
-                        key={stepIndex}
-                        className={`border rounded p-4 transition-all ${
+                        key={`${form.id}-step-${step.number}-${stepIndex}`}
+                        className={`rounded-xl border p-4 transition-all ${
                           editIndex === stepIndex && activeFormIndex === formIndex
-                            ? "bg-blue-50 shadow-md"
-                            : "bg-white hover:shadow-sm"
+                            ? "border-blue-200 bg-blue-50/60 shadow-sm"
+                            : "border-slate-200 bg-white hover:border-slate-300"
                         }`}
                       >
                         <div className="flex flex-col gap-4">
@@ -671,6 +729,8 @@ const FormStepsManagement = () => {
                                           <option value={1}>Round 1</option>
                                           <option value={2}>Round 2</option>
                                           <option value={3}>Round 3</option>
+                                          <option value={4}>Round 4</option>
+                                          <option value={5}>Round 5</option>
                                         </select>
                                       </div>
                                     )}
@@ -682,128 +742,12 @@ const FormStepsManagement = () => {
                               </>
                             ) : (
                               <>
-                                <h3 className="font-medium">{step.title}</h3>
+                                <h3 className="text-base font-semibold text-slate-900">{step.title}</h3>
                                 {step.description && (
-                                  <p className="text-gray-600 text-sm">{step.description}</p>
+                                  <p className="mt-1 text-sm leading-relaxed text-slate-600">{step.description}</p>
                                 )}
-                                <div className="flex gap-4 text-sm">
-                                  {step.showListButton && (
-                                    <span className="text-blue-600 flex items-center gap-1">
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <line x1="8" y1="6" x2="21" y2="6"></line>
-                                        <line x1="8" y1="12" x2="21" y2="12"></line>
-                                        <line x1="8" y1="18" x2="21" y2="18"></line>
-                                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                                      </svg>
-                                      Has List
-                                    </span>
-                                  )}
-                                  {step.isLocked && (
-                                    <span className="text-yellow-600 flex items-center gap-1">
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <rect x="3" y="11" width="18" height="11" rx="2"></rect>
-                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                      </svg>
-                                      Locked
-                                    </span>
-                                  )}
-                                  {/* Display tags for new properties */}
-                                  {step.premiumOnly && (
-                                    <span className="text-purple-600 flex items-center gap-1">
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                                      </svg>
-                                      Premium
-                                    </span>
-                                  )}
-                                  {step.isCapSpecific && (
-                                    <span className="text-green-600 flex items-center gap-1">
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <path d="M12 8V4H8"></path>
-                                        <rect width="16" height="12" x="4" y="8" rx="2"></rect>
-                                      </svg>
-                                      CAP {step.cap || 1}
-                                    </span>
-                                  )}
-                                  {step.isVerdict && (
-                                    <span className="text-red-600 flex items-center gap-1">
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <path d="m9 12 2 2 4-4"></path>
-                                      </svg>
-                                      Verdict
-                                    </span>
-                                  )}
-                                  {step.isCapQuery && (
-                                    <span className="text-amber-600 flex items-center gap-1">
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.5 3 3 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"></path>
-                                      </svg>
-                                      CAP Query
-                                    </span>
-                                  )}
+                                <div className="mt-3">
+                                  <StepBadges step={step} />
                                 </div>
                               </>
                             )}
@@ -819,25 +763,13 @@ const FormStepsManagement = () => {
                 )}
 
                 {/* Add New Step Button */}
-                <div className="mt-5 flex justify-center">
+                <div className="flex justify-center border-t border-slate-100 pt-4">
                   <button
                     onClick={() => addNewStep(formIndex)}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-md transition-colors shadow-sm"
+                    className="inline-flex items-center gap-2 rounded-xl border border-dashed border-indigo-300 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M12 5v14M5 12h14"></path>
-                    </svg>
-                    Add New Step
+                    <Plus size={18} />
+                    Add step
                   </button>
                 </div>
               </div>
@@ -848,9 +780,10 @@ const FormStepsManagement = () => {
 
       {/* New Form Modal */}
       {isNewFormModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Create New Form</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-xl font-bold text-slate-900">Create new form</h3>
+            <p className="mt-1 text-sm text-slate-500">Use a stable ID, for example Saarthi or SaarthiPlus.</p>
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -896,9 +829,9 @@ const FormStepsManagement = () => {
 
       {/* Delete Form Confirmation Modal */}
       {isDeleting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-2">Delete Form</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-xl font-bold text-slate-900">Delete form</h3>
             <p className="mb-6 text-gray-600">
               Are you sure you want to delete this form? This action cannot be
               undone.
@@ -933,8 +866,8 @@ const FormStepsManagement = () => {
 
       {/* Insert New Step Modal */}
       {showInsertModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="text-xl font-bold mb-4">
               {insertType === 'before' ? 'Insert Step Before' : 'Insert Step After'} 
               Step {forms[activeFormIndex]?.steps[insertPosition]?.number}

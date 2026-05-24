@@ -26,7 +26,7 @@ const Forms = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-auto w-full ">
+      <div className="flex-1 overflow-auto w-full bg-slate-50">
         <FormStepsManagement />
       </div>
     </div>

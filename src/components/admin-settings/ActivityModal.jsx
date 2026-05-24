@@ -84,25 +84,18 @@ const ActivityModal = ({ adminId, onClose }) => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-2 text-left">Timestamp</th>
+                    <th className="px-4 py-2 text-left">Admin</th>
                     <th className="px-4 py-2 text-left">Method</th>
                     <th className="px-4 py-2 text-left">Path</th>
-                    <th className="px-4 py-2 text-left">Status</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentActivities.map((activity) => (
                     <tr key={activity.id} className="hover:bg-gray-50">
                       <td className="px-4 py-2">{new Date(activity.timestamp).toLocaleString()}</td>
+                      <td className="px-4 py-2">{activity.adminEmail || activity.adminId}</td>
                       <td className="px-4 py-2">{activity.method}</td>
                       <td className="px-4 py-2 ">{activity.path}</td>
-                      <td className="px-4 py-2">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          activity.status >= 200 && activity.status < 300 ? 'bg-green-100 text-green-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {activity.status}
-                        </span>
-                      </td>
                     </tr>
                   ))}
                 </tbody>

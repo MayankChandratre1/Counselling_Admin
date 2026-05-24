@@ -58,7 +58,9 @@ const PremiumUsersManagement = () => {
   // Local filter state (not applied until user clicks Apply)
   const [localFilters, setLocalFilters] = useState({
     plan: 'all',
-    listAssigned: 'all'
+    listAssigned: 'all',
+    fromDate: '',
+    toDate: ''
   });
   
   const [showFilters, setShowFilters] = useState(false);
@@ -167,13 +169,15 @@ const PremiumUsersManagement = () => {
   const clearAllFilters = () => {
     setLocalFilters({
       plan: 'all',
-      listAssigned: 'all'
+      listAssigned: 'all',
+      fromDate: '',
+      toDate: ''
     });
     clearFilters(true);
   };
 
   const getActiveFilterCount = () => {
-    return Object.values(filters).filter(value => value !== 'all').length;
+    return Object.values(filters).filter(value => value !== 'all' && value !== '').length;
   };
 
   const hasUnappliedChanges = () => {
@@ -876,7 +880,7 @@ const PremiumUsersManagement = () => {
                 )}
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {/* Plan Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -913,6 +917,34 @@ const PremiumUsersManagement = () => {
                     <option value="true">Users with Lists</option>
                     <option value="false">Users without Lists</option>
                   </select>
+                </div>
+
+                {/* From Date Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    From Date
+                  </label>
+                  <input
+                    type="date"
+                    value={localFilters.fromDate || ''}
+                    max={localFilters.toDate || undefined}
+                    onChange={(e) => handleLocalFilterChange('fromDate', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* To Date Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    To Date
+                  </label>
+                  <input
+                    type="date"
+                    value={localFilters.toDate || ''}
+                    min={localFilters.fromDate || undefined}
+                    onChange={(e) => handleLocalFilterChange('toDate', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
                 </div>
               </div>
 
@@ -951,6 +983,16 @@ const PremiumUsersManagement = () => {
                       {filters.listAssigned !== 'all' && (
                         <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
                           Lists: {filters.listAssigned === 'true' ? 'Assigned' : 'Not Assigned'}
+                        </span>
+                      )}
+                      {filters.fromDate && (
+                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                          From: {new Date(filters.fromDate).toLocaleDateString()}
+                        </span>
+                      )}
+                      {filters.toDate && (
+                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                          To: {new Date(filters.toDate).toLocaleDateString()}
                         </span>
                       )}
                     </div>
