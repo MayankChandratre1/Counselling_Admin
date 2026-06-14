@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 const StepUsersModal = ({ 
   isOpen, 
@@ -73,7 +74,7 @@ const StepUsersModal = ({
       Name: user.name,
       Phone: user.phone,
       Email: user.email,
-      CreatedAt: user.createdAt ? new Date((user.createdAt && user.createdAt._seconds ? user.createdAt._seconds * 1000 : new Date(user.createdAt).getTime())).toLocaleDateString() : '-',
+      CreatedAt: formatDisplayDate(user.createdAt),
       IsPremium: user.isPremium ? 'Yes' : 'No',
       HasLoggedIn: user.hasLoggedIn ? 'Yes' : 'No',
       FullName: user.counsellingData?.fullName || '-',
@@ -90,10 +91,8 @@ const StepUsersModal = ({
       PreferredLocations: user.counsellingData?.preferredLocations || '-',
       Budget: user.counsellingData?.budget || '-',
       PremiumPlanTitle: user?.planTitle || '-',
-      PlanPurchaseDate: user.premiumPlan?.purchasedDate ? 
-        new Date((user.premiumPlan.purchasedDate && user.premiumPlan.purchasedDate._seconds ? user.premiumPlan.purchasedDate._seconds * 1000 : new Date(user.premiumPlan.purchasedDate).getTime())).toLocaleDateString() : '-',
-      PlanExpiryDate: user.premiumPlan?.expiryDate ?
-        new Date((user.premiumPlan.expiryDate && user.premiumPlan.expiryDate._seconds ? user.premiumPlan.expiryDate._seconds * 1000 : new Date(user.premiumPlan.expiryDate).getTime())).toLocaleDateString() : '-',
+      PlanPurchaseDate: formatDisplayDate(user.premiumPlan?.purchasedDate),
+      PlanExpiryDate: formatDisplayDate(user.premiumPlan?.expiryDate),
       AssignedLists: user.lists?.map(list => list.title).join('; ') || '-'
     }));
 

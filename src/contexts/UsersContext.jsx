@@ -87,6 +87,7 @@ export const UsersProvider = ({ children }) => {
       // Add premiumOnly parameter if true
       if (premiumOnly) {
         requestParams.isPremium = true;
+        requestParams.dateFilterBy = 'purchasedDate';
       }
 
       // For pagination beyond page 1, include lastDoc from previous page

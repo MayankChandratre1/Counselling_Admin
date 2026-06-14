@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
-import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 const getAdminDeviceId = () => {
   const storageKey = 'adminDeviceId';
@@ -65,10 +65,12 @@ const AdminLogin = () => {
       <div className="w-full max-w-md">
         <div className="bg-white border border-gray-200 rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-100 flex items-center justify-center mb-4">
-              <ShieldCheck className="h-7 w-7 text-blue-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">Counselling Admin Panel</h1>
+            <img
+              src="/saarthi-logo.png"
+              alt="Saarthi Admin Portal"
+              className="w-16 h-16 mx-auto rounded-full object-cover mb-4"
+            />
+            <h1 className="text-2xl font-bold text-gray-900">Saarthi Admin Portal</h1>
             <p className="text-gray-600 mt-2 text-sm">Sign in to continue to the dashboard</p>
           </div>
 

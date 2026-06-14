@@ -18,7 +18,7 @@ import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
 import ListReleaseModal from './ListReleaseModal';
 import { set } from 'lodash';
-import axiosInstance from '../../utils/axios';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -919,10 +919,10 @@ const PremiumUsersManagement = () => {
                   </select>
                 </div>
 
-                {/* From Date Filter */}
+                {/* Purchase From Date Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    From Date
+                    Purchase From Date
                   </label>
                   <input
                     type="date"
@@ -933,10 +933,10 @@ const PremiumUsersManagement = () => {
                   />
                 </div>
 
-                {/* To Date Filter */}
+                {/* Purchase To Date Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    To Date
+                    Purchase To Date
                   </label>
                   <input
                     type="date"
@@ -987,12 +987,12 @@ const PremiumUsersManagement = () => {
                       )}
                       {filters.fromDate && (
                         <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                          From: {new Date(filters.fromDate).toLocaleDateString()}
+                          Purchase from: {formatDisplayDate(filters.fromDate, { withTime: false })}
                         </span>
                       )}
                       {filters.toDate && (
                         <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                          To: {new Date(filters.toDate).toLocaleDateString()}
+                          Purchase to: {formatDisplayDate(filters.toDate, { withTime: false })}
                         </span>
                       )}
                     </div>
@@ -1050,6 +1050,7 @@ const PremiumUsersManagement = () => {
             </h2>
             
             <UsersTable 
+              usePurchaseDate
               users={(isSearchMode ? searchResults : users).filter(user => {
                 if (selectedPlan === 'all') return true;
                 const userPlan = user.premiumPlan?.planTitle || user.planTitle || 'No Plan';

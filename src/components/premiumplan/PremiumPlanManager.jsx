@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Check, X, Clock, DollarSign, FileLock2 } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 import PlanFormModal from './PlanFormModal';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 const PremiumPlanManager = () => {
   const [plans, setPlans] = useState([]);
@@ -79,10 +80,7 @@ const PremiumPlanManager = () => {
     }
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleString();
-  };
+  const formatDate = (timestamp) => formatDisplayDate(timestamp);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-IN', {

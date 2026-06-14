@@ -1,12 +1,10 @@
 import React from 'react';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 const UserDetailsModal = ({ user, showModal, onClose }) => {
   if (!showModal || !user) return null;
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleDateString();
-  };
+  const formatDate = (timestamp) => formatDisplayDate(timestamp);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">

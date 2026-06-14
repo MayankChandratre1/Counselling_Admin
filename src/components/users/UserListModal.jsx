@@ -3,6 +3,7 @@ import { X, Edit, Trash2, GraduationCap, Search, Save, ChevronDown, ChevronUp, C
 import CollegesListModal from './CollegesListModal';
 import axiosInstance from '../../utils/axios';
 import ListDetails from '../lists/ListDetails';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 const UserListModal = ({ 
   showModal, 
@@ -479,7 +480,7 @@ const UserListModal = ({
                           {expandedList.createdAt && (
                             <span className="inline-flex items-center">
                               <Calendar size={14} className="mr-1" />
-                              {new Date(expandedList.createdAt).toLocaleDateString()}
+                              {formatDisplayDate(expandedList.createdAt)}
                             </span>
                           )}
                           {expandedList.createdBy && (

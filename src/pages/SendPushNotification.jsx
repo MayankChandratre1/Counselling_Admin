@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Menu, Send, Bell, AlertCircle, CheckCircle, Users, MessageSquare, Filter, X } from 'lucide-react';
 import axiosInstance from '../utils/axios';
 import Navbar from '../components/Navbar';
+import { formatDisplayDate } from '../utils/formatDate';
 import { usePremiumPage } from '../contexts/PremiumPageContext';
 
 const SendPushNotification = () => {
@@ -643,7 +644,7 @@ const SendPushNotification = () => {
                     <div className="flex flex-wrap justify-between gap-2 mb-2">
                       <h3 className="font-semibold text-gray-900">{item.title}</h3>
                       <span className="text-xs text-gray-500">
-                        {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
+                        {formatDisplayDate(item.createdAt)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 line-clamp-2 mb-2">{item.message}</p>

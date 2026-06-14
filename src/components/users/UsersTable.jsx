@@ -24,6 +24,7 @@ import axiosInstance from '../../utils/axios';
 import { useUsers } from '../../contexts/UsersContext';
 import ListReleaseModal from './ListReleaseModal';
 import { toast } from 'react-toastify';
+import { formatDisplayDate, getDateMillis } from '../../utils/formatDate';
 
 const NotesModal = ({ isOpen, onClose, userNotes, userName, onEditNote }) => {
   if (!isOpen) return null;
@@ -52,7 +53,7 @@ const NotesModal = ({ isOpen, onClose, userNotes, userName, onEditNote }) => {
 
   // Group notes by date
   const groupedNotes = filteredNotes.reduce((groups, note) => {
-    const date = new Date(note.createdAt).toLocaleDateString();
+    const date = formatDisplayDate(note.createdAt, { withTime: false });
     if (!groups[date]) {
       groups[date] = [];
     }
@@ -110,7 +111,7 @@ const NotesModal = ({ isOpen, onClose, userNotes, userName, onEditNote }) => {
                         {note.adminEmail}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {new Date(note.createdAt).toLocaleTimeString()}
+                        {formatDisplayDate(note.createdAt)}
                       </span>
                     </div>
                     <p className="text-gray-700 whitespace-pre-wrap">{note.note}</p>
@@ -234,7 +235,8 @@ const UsersTable = ({
   onViewLists, 
   onEdit, 
   onDelete,
-  onViewDetails
+  onViewDetails,
+  usePurchaseDate = false,
 }) => {
   const navigate = useNavigate();
   const { notes, updateUserNotes, totalUsersNumber, isFilterActive, filters } = useUsers();
@@ -255,40 +257,33 @@ const UsersTable = ({
   const [showListReleaseModal, setShowListReleaseModal] = useState(false);
   const [selectedUserForRelease, setSelectedUserForRelease] = useState(null);
 
-  // Sort users by createdAt
+  // Sort users by date column
   useEffect(() => {
     if (users && users.length > 0) {
       const sorted = [...users].sort((a, b) => {
-        const dateA = a.createdAt || 0;
-        const dateB = b.createdAt || 0;
+        const dateA = usePurchaseDate
+          ? getDateMillis(a.premiumPlan?.purchasedDate)
+          : getDateMillis(a.createdAt);
+        const dateB = usePurchaseDate
+          ? getDateMillis(b.premiumPlan?.purchasedDate)
+          : getDateMillis(b.createdAt);
         
         if (sortOrder === 'desc') {
-          return dateB - dateA; // Newest first
-        } else {
-          return dateA - dateB; // Oldest first
+          return dateB - dateA;
         }
+        return dateA - dateB;
       });
       setSortedUsers(sorted);
     } else {
       setSortedUsers([]);
     }
-  }, [users, sortOrder]);
+  }, [users, sortOrder, usePurchaseDate]);
 
   const toggleSortOrder = () => {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-
-    });
-  };
+  const formatDate = (timestamp) => formatDisplayDate(timestamp);
 
   const handleUserNameClick = (userId) => {
     navigate(`/users/${userId}`);
@@ -363,7 +358,7 @@ const UsersTable = ({
         .map(([key, value]) => ({
           admin: key.replace('note-', ''),
           note: value.note,
-          date: new Date(value.createdAt).toLocaleString()
+          date: formatDisplayDate(value.createdAt)
         }))
         .sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -371,7 +366,8 @@ const UsersTable = ({
         Name: user.name,
         Phone: user.phone,
         Email: user.email || '-',
-        CreatedAt: user.createdAt ? new Date((user.createdAt && user.createdAt._seconds ? user.createdAt._seconds * 1000 : new Date(user.createdAt).getTime())).toLocaleDateString() : '-',
+        CreatedAt: formatDisplayDate(user.createdAt),
+        ...(usePurchaseDate ? { PurchaseDate: formatDisplayDate(user.premiumPlan?.purchasedDate) } : {}),
         Batch: user.batch || 'Unassigned',
         IsPremium: user.isPremium ? 'Yes' : 'No',
         HasLoggedIn: user.hasLoggedIn ? 'Yes' : 'No',
@@ -477,7 +473,7 @@ const UsersTable = ({
                   onClick={toggleSortOrder}
                   className="flex items-center gap-1 hover:text-gray-700 transition-colors"
                 >
-                  Created Date
+                  {usePurchaseDate ? 'Purchase Date' : 'Created Date'}
                   {sortOrder === 'desc' ? (
                     <SortDesc size={14} />
                   ) : (
@@ -521,9 +517,9 @@ const UsersTable = ({
             ) : (
               sortedUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                  {/* Created Date */}
+                  {/* Date */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDate(user.createdAt)}
+                    {formatDate(usePurchaseDate ? user.premiumPlan?.purchasedDate : user.createdAt)}
                   </td>
                   
                   {/* User Info */}

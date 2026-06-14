@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 /**
  * Lightweight feature-flag panel that lists every supported flag with an
@@ -91,7 +92,7 @@ const FeatureFlagsPanel = () => {
                   <p className="text-sm text-gray-500 mt-1">{flag.description}</p>
                   {flag.updatedAt && (
                     <p className="text-xs text-gray-400 mt-1">
-                      Last changed {new Date(flag.updatedAt).toLocaleString()}
+                      Last changed {formatDisplayDate(flag.updatedAt)}
                       {flag.updatedBy ? ` by ${flag.updatedBy}` : ''}
                     </p>
                   )}

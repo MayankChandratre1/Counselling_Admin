@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Edit, Trash2, School, Users, ChevronDown, ChevronUp, Calendar, User, Folder, FolderOpen, Lock, Archive, ArchiveRestore, Copy, MoveVertical } from 'lucide-react';
 import ListDetails from './ListDetails';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 const ListCard = ({ 
   list, 
@@ -167,7 +168,7 @@ const ListCard = ({
               {list.createdAt && (
                 <div className="hidden sm:flex items-center text-gray-500">
                   <Calendar size={14} className="mr-1" />
-                  <span>{new Date(list.createdAt).toLocaleDateString()}</span>
+                  <span>{formatDisplayDate(list.createdAt, { withTime: false })}</span>
                 </div>
               )}
               {list.createdBy && (

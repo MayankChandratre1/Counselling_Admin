@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -92,7 +93,7 @@ const ActivityModal = ({ adminId, onClose }) => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentActivities.map((activity) => (
                     <tr key={activity.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2">{new Date(activity.timestamp).toLocaleString()}</td>
+                      <td className="px-4 py-2">{formatDisplayDate(activity.timestamp)}</td>
                       <td className="px-4 py-2">{activity.adminEmail || activity.adminId}</td>
                       <td className="px-4 py-2">{activity.method}</td>
                       <td className="px-4 py-2 ">{activity.path}</td>

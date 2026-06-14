@@ -3,6 +3,7 @@ import { Maximize, X, Download, ChevronLeft, ChevronRight, Filter, Upload, Trash
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axios';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 const ListTracking = ({listData}) => {
   const [showModal, setShowModal] = useState(false);
@@ -220,13 +221,13 @@ const ListTracking = ({listData}) => {
       Name: user.name,
       Phone: user.phone,
       Email: user.email,
-      CreatedAt: user.createdAt ? new Date((user.createdAt && user.createdAt._seconds ? user.createdAt._seconds * 1000 : new Date(user.createdAt).getTime())).toLocaleDateString() : '-',
+      CreatedAt: formatDisplayDate(user.createdAt),
       Batch: user.batch || 'Unassigned',
       IsPremium: user.isPremium ? 'Yes' : 'No',
       HasLoggedIn: user.hasLoggedIn ? 'Yes' : 'No',
       FormFilled: user.formFilled ? 'Yes' : 'No',
       FormFilledBy: user.formFilledBy || '-',
-      FormFilledAt: user.formFilledAt ? new Date(user.formFilledAt).toLocaleString("en-IN") : '-',
+      FormFilledAt: formatDisplayDate(user.formFilledAt),
       // Add counselling data fields
       FullName: user.counsellingData?.fullName || '-',
       DateOfBirth: user.counsellingData?.dob || '-', 
@@ -243,10 +244,8 @@ const ListTracking = ({listData}) => {
       Budget: user.counsellingData?.budget || '-',
       // Add premium plan info
       PremiumPlanTitle: user.premiumPlan?.planTitle || '-',
-      PlanPurchaseDate: user.premiumPlan?.purchasedDate ? 
-        new Date((user.premiumPlan.purchasedDate && user.premiumPlan.purchasedDate._seconds ? user.premiumPlan.purchasedDate._seconds * 1000 : new Date(user.premiumPlan.purchasedDate).getTime())).toLocaleDateString() : '-',
-      PlanExpiryDate: user.premiumPlan?.expiryDate ?
-        new Date((user.premiumPlan.expiryDate && user.premiumPlan.expiryDate._seconds ? user.premiumPlan.expiryDate._seconds * 1000 : new Date(user.premiumPlan.expiryDate).getTime())).toLocaleDateString() : '-',
+      PlanPurchaseDate: formatDisplayDate(user.premiumPlan?.purchasedDate),
+      PlanExpiryDate: formatDisplayDate(user.premiumPlan?.expiryDate),
       // Add assigned lists info  
       [trackingType === 'assigned' ? 'AssignedLists' : 'CreatedLists']: user.lists?.join('; ') || '-'
     }));
@@ -804,7 +803,7 @@ const ListTracking = ({listData}) => {
                                             {user.formFilled ? (
                                                 <button title='Toggle Form Filled' onClick={() => handleToggleFormFilled(user.id)} className='text-sm text-green-800'>
                                                   {user.formFilledBy ? user.formFilledBy: 'Filled'} 
-                                                  <span title='Toggle Form Filled' className='text-gray-500 block text-xs'>{user.formFilledAt ? new Date(user.formFilledAt).toLocaleString("en-IN") : ''}</span>
+                                                  <span title='Toggle Form Filled' className='text-gray-500 block text-xs'>{user.formFilledAt ? formatDisplayDate(user.formFilledAt) : ''}</span>
                                                 </button>
                                             ) : (
                                                 <button title='Toggle Form Filled' onClick={() => handleToggleFormFilled(user.id)} className='text-gray-500 px-2 text-xs hover:text-gray-700 transition-colors'>

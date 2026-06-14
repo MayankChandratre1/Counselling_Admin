@@ -10,6 +10,7 @@ import ListTracking from './ListTracking';
 import CapProgressTracker from './CapProgressTracker';
 import { useNavigate } from 'react-router-dom';
 import { buildPurchaseYearOptions } from '../../utils/analyticsYearFilter';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -198,28 +199,7 @@ const AnalyticsDashboard = () => {
     return getMetricUsers(metricType, filters);
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp){
-      const date = new Date(timestamp);
-      if (isNaN(date.getTime())) {
-        return 'N/A';
-      }
-      return date.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    };
-    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = (timestamp) => formatDisplayDate(timestamp);
 
   const handleUserClick = (userId) => {
     navigate(`/users/${userId}`);
@@ -683,12 +663,12 @@ const AnalyticsDashboard = () => {
                   <div className="flex items-center gap-4">
                     {dateFilters.fromDate && (
                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                        From: {new Date(dateFilters.fromDate).toLocaleDateString()}
+                        From: {formatDisplayDate(dateFilters.fromDate, { withTime: false })}
                       </span>
                     )}
                     {dateFilters.toDate && (
                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          To: {new Date(dateFilters.toDate).toLocaleDateString()}
+                          To: {formatDisplayDate(dateFilters.toDate, { withTime: false })}
                       </span>
                     )}
                     <span>

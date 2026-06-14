@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import {  ChevronDown, ChevronUp, Plus, Trash2, Youtube, Save, Globe } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
+import { formatDisplayDate } from '../../utils/formatDate';
 import { FaHeartPulse } from 'react-icons/fa6';
 import { set } from 'lodash';
 
@@ -354,7 +355,7 @@ const LandingPageManager = () => {
 
       {landingPageData.updatedAt && (
         <div className="text-sm text-gray-500 mb-4">
-          Last updated: {new Date(landingPageData.updatedAt).toLocaleString()}
+          Last updated: {formatDisplayDate(landingPageData.updatedAt)}
         </div>
       )}
 

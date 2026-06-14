@@ -5,6 +5,7 @@ import {
   readStoredPurchaseYear,
   writeStoredPurchaseYear,
 } from '../utils/analyticsYearFilter';
+import { getDateMillis, parseDate, formatDisplayDate } from '../utils/formatDate';
 
 const AnalyticsContext = createContext();
 
@@ -112,37 +113,37 @@ export const AnalyticsProvider = ({ children }) => {
     if (filters.fromDate || filters.toDate) {
       filteredUsers = filteredUsers.filter(user => {
         if (!user.purchasedDate) return false;
-        
-        const purchaseDate = new Date(user.purchasedDate);
-        const fromDate = filters.fromDate ? new Date(filters.fromDate) : null;
-        const toDate = filters.toDate ? new Date(filters.toDate) : null;
-        
+
+        const purchaseDate = parseDate(user.purchasedDate);
+        if (!purchaseDate) return false;
+
+        const fromDate = filters.fromDate ? parseDate(filters.fromDate) : null;
+        const toDate = filters.toDate ? parseDate(filters.toDate) : null;
+
         if (fromDate) {
           fromDate.setHours(0, 0, 0, 0);
         }
         if (toDate) {
           toDate.setHours(23, 59, 59, 999);
         }
-        
+
         if (fromDate && purchaseDate < fromDate) return false;
         if (toDate && purchaseDate > toDate) return false;
-        
+
         return true;
       });
     }
 
     // Apply sorting
     if (filters.sortOrder) {
-      
       filteredUsers.sort((a, b) => {
-        const dateA = a.purchasedDate || new Date(a.purchasedDate).getTime() || 0;
-        const dateB = b.purchasedDate || new Date(b.purchasedDate).getTime() || 0;
-        
+        const dateA = getDateMillis(a.purchasedDate);
+        const dateB = getDateMillis(b.purchasedDate);
+
         if (filters.sortOrder === 'desc') {
           return dateB - dateA;
-        } else {
-          return dateA - dateB;
         }
+        return dateA - dateB;
       });
     }
 
@@ -192,7 +193,7 @@ export const AnalyticsProvider = ({ children }) => {
       listAssignmentRate: analyticsData.totalUsers > 0 ? 
         (analyticsData.usersWithLists / analyticsData.totalUsers * 100).toFixed(2) : 0,
       isDataStale: lastFetched && Date.now() - lastFetched > 5 * 60 * 1000,
-      lastUpdated: lastFetched ? new Date(lastFetched).toLocaleTimeString() : null
+      lastUpdated: lastFetched ? formatDisplayDate(lastFetched) : null
     };
   }, [analyticsData, lastFetched]);
 

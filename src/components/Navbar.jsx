@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { GraduationCap, X, LogOut } from 'lucide-react';
+import { X, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getNavRoutes } from '../config/routes';
 import { hasSecurityPrivileges } from '../utils/securityRole';
@@ -65,9 +65,13 @@ const VerticalNavbar = ({ onClose }) => {
       </button>
 
       {/* Logo/Header */}
-      <div className="p-4 border-b border-gray-700 flex items-center">
-        <GraduationCap className="mr-2" />
-        <h1 className="text-xl font-bold">Education Portal</h1>
+      <div className="p-4 border-b border-gray-700 flex items-center gap-3">
+        <img
+          src="/saarthi-logo.png"
+          alt="Saarthi Admin Portal"
+          className="h-10 w-10 rounded-full object-cover shrink-0"
+        />
+        <h1 className="text-base font-bold leading-tight">Saarthi Admin Portal</h1>
       </div>
 
       {/* Navigation Items */}

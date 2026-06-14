@@ -8,6 +8,8 @@ import UserEditModal from '../components/users/UserEditModal';
 import ProgressTracker from '../components/users/ProgressTracker';
 import StepEditModal from '../components/users/StepEditModal';
 import axiosInstance from '../utils/axios';
+import { formatDisplayDate } from '../utils/formatDate';
+import { formatCurrency, formatRazorpayAmount } from '../utils/formatCurrency';
 import { checkPermission } from '../utils/checkPermission';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
@@ -81,33 +83,11 @@ const UserDetailsPage = () => {
     });
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    if (timestamp) {
-      return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleString('en-IN');
-    }
-    return new Date(timestamp * 1000).toLocaleString('en-IN');
-  };
+  const formatDate = (timestamp) => formatDisplayDate(timestamp);
+  const formatDateTime = (timestamp) => formatDisplayDate(timestamp);
 
-  const formatDateTime = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    const date = new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime()));
-    return date.toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatAmount = (amount) => {
-    if (!amount && amount !== 0) return 'N/A';
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount); // Converting paise to rupees
-  };
+  const formatOrderAmount = (amount) => formatCurrency(amount);
+  const formatPaymentAmount = (amount) => formatRazorpayAmount(amount);
 
   const copyToClipboard = async (text, field) => {
     try {
@@ -312,7 +292,7 @@ const UserDetailsPage = () => {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Amount:</span>
               <span className="text-sm text-gray-900 font-semibold">
-                {formatAmount(order.amount)}
+                {formatOrderAmount(order.amount)}
               </span>
             </div>
 
@@ -542,13 +522,7 @@ const UserDetailsPage = () => {
                         {noteKey.replace('note-', '')}
                       </span>
                       <span className="text-sm text-gray-500">
-                        {new Date(noteData.createdAt).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {formatDisplayDate(noteData.createdAt)}
                       </span>
                     </div>
                     <p className="text-gray-700 whitespace-pre-wrap break-words">
@@ -582,7 +556,7 @@ const UserDetailsPage = () => {
                           {order.status}
                         </span>
                         <div className="text-right">
-                          <p className="font-semibold text-gray-900">{formatAmount(order.amount)}</p>
+                          <p className="font-semibold text-gray-900">{formatOrderAmount(order.amount)}</p>
                           <p className="text-sm text-gray-500">{formatDate(order.createdAt)}</p>
                         </div>
                       </div>
@@ -678,7 +652,7 @@ const UserDetailsPage = () => {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {formatAmount(amount)}
+                                {formatPaymentAmount(amount)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>

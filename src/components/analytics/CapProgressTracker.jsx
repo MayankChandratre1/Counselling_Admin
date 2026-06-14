@@ -4,6 +4,7 @@ import { useFormProgress } from '../../contexts/FormProgressContext';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { useAnalytics } from '../../contexts/analyticsContext';
+import { formatDisplayDate } from '../../utils/formatDate';
 import StepUsersModal from './StepUsersModal';
 
 const CapProgressTracker = () => {
@@ -193,7 +194,7 @@ const CapProgressTracker = () => {
       Name: user.name,
       Phone: user.phone,
       Email: user.email,
-      CreatedAt: user.createdAt ? new Date((user.createdAt && user.createdAt._seconds ? user.createdAt._seconds * 1000 : new Date(user.createdAt).getTime())).toLocaleDateString() : '-',
+      CreatedAt: formatDisplayDate(user.createdAt),
       Batch: user.batch || 'Unassigned',
       IsPremium: user.isPremium ? 'Yes' : 'No',
       HasLoggedIn: user.hasLoggedIn ? 'Yes' : 'No',
@@ -213,10 +214,8 @@ const CapProgressTracker = () => {
       Budget: user.counsellingData?.budget || '-',
       // Add premium plan info
       PremiumPlanTitle: user.premiumPlan?.planTitle || '-',
-      PlanPurchaseDate: user.premiumPlan?.purchasedDate ? 
-        new Date((user.premiumPlan.purchasedDate && user.premiumPlan.purchasedDate._seconds ? user.premiumPlan.purchasedDate._seconds * 1000 : new Date(user.premiumPlan.purchasedDate).getTime())).toLocaleDateString() : '-',
-      PlanExpiryDate: user.premiumPlan?.expiryDate ?
-        new Date((user.premiumPlan.expiryDate && user.premiumPlan.expiryDate._seconds ? user.premiumPlan.expiryDate._seconds * 1000 : new Date(user.premiumPlan.expiryDate).getTime())).toLocaleDateString() : '-',
+      PlanPurchaseDate: formatDisplayDate(user.premiumPlan?.purchasedDate),
+      PlanExpiryDate: formatDisplayDate(user.premiumPlan?.expiryDate),
       // Add assigned lists info  
       AssignedLists: user.lists?.map(list => list.title).join('; ') || '-'
     }));

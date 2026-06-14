@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 const UsersTable = ({
   users,
@@ -309,7 +310,7 @@ const UsersTable = ({
                   <div key={noteKey} className="border border-gray-200 rounded-md p-3">
                     <p className="text-sm text-gray-800 mb-1">{noteData?.note || '—'}</p>
                     <p className="text-xs text-gray-500">
-                      {noteData?.createdAt ? new Date(noteData.createdAt).toLocaleString('en-IN') : 'Unknown time'}
+                      {noteData?.createdAt ? formatDisplayDate(noteData.createdAt) : 'Unknown time'}
                     </p>
                   </div>
                 ))}

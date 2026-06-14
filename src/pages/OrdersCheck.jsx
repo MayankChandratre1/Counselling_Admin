@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, Search, RefreshCw, Copy, CheckCircle, AlertCircle, XCircle, Clock, DollarSign, Users, Package, Filter } from 'lucide-react';
 import axiosInstance from '../utils/axios';
+import { formatDisplayDate } from '../utils/formatDate';
 import Navbar from '../components/Navbar';
 
 const OrdersCheck = () => {
@@ -63,16 +64,7 @@ const OrdersCheck = () => {
     }
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = (timestamp) => formatDisplayDate(timestamp);
 
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -80,7 +72,7 @@ const OrdersCheck = () => {
       currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(amount); // Convert paise to rupees
+    }).format(amount);
   };
 
   // New function to fetch pending orders

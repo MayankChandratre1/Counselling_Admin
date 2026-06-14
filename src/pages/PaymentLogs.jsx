@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, Search, ChevronLeft, ChevronRight, AlertCircle, Check, X, Clock, Copy, CheckCircle, ChevronDown, ChevronUp, Eye, ExternalLink, EyeClosed, Info } from 'lucide-react';
 import axiosInstance from '../utils/axios';
+import { formatDisplayDate } from '../utils/formatDate';
+import { formatCurrency, formatRazorpayAmount } from '../utils/formatCurrency';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { usePremiumPage } from '../contexts/PremiumPageContext';
@@ -242,25 +244,9 @@ const PaymentLogs = () => {
     fetchPayments();
   };
 
-  const formatAmount = (amount) => {
-    if (!amount && amount !== 0) return 'N/A';
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount); // Converting paise to rupees
-  };
+  const formatAmount = (amount) => formatRazorpayAmount(amount);
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    const date = new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime()));
-    return date.toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = (timestamp) => formatDisplayDate(timestamp);
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return 'N/A';
@@ -425,13 +411,7 @@ const PaymentLogs = () => {
   };
 
   const renderDetailRow = (payment) => {
-    const formatTimestamp = (timestamp) => {
-      if (!timestamp) return 'N/A';
-      if (timestamp) {
-        return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleString('en-IN');
-      }
-      return new Date(timestamp * 1000).toLocaleString('en-IN');
-    };
+    const formatTimestamp = (timestamp) => formatDisplayDate(timestamp);
 
     const renderValue = (value) => {
       if (value === null || value === undefined) return 'null';
@@ -726,7 +706,7 @@ const PaymentLogs = () => {
                           <option value="all">All Plans</option>
                           {premiumPlans.map((plan) => (
                             <option key={plan.id} value={plan.title}>
-                              {plan.title} ({formatAmount(plan.price)})
+                              {plan.title} ({formatCurrency(plan.price)})
                             </option>
                           ))}
                         </select>

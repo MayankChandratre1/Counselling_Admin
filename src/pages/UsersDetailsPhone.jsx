@@ -7,6 +7,8 @@ import VerdictModal from '../components/users/VerdictModal';
 import UserEditModal from '../components/users/UserEditModal';
 import ProgressTracker from '../components/users/ProgressTracker';
 import axiosInstance from '../utils/axios';
+import { formatDisplayDate } from '../utils/formatDate';
+import { formatRazorpayAmount } from '../utils/formatCurrency';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -60,30 +62,10 @@ const UserDetailsByPhone = () => {
     }
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleDateString();
-  };
+  const formatDate = (timestamp) => formatDisplayDate(timestamp);
+  const formatDateTime = (timestamp) => formatDisplayDate(timestamp);
 
-  const formatDateTime = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    const date = new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime()));
-    return date.toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatAmount = (amount) => {
-    if (!amount && amount !== 0) return 'N/A';
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount / 100); // Converting paise to rupees
-  };
+  const formatAmount = (amount) => formatRazorpayAmount(amount);
 
   const copyToClipboard = async (text, field) => {
     try {
@@ -359,13 +341,7 @@ const UserDetailsByPhone = () => {
                         {noteKey.replace('note-', '')}
                       </span>
                       <span className="text-sm text-gray-500">
-                        {new Date(noteData.createdAt).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {formatDisplayDate(noteData.createdAt)}
                       </span>
                     </div>
                     <p className="text-gray-700 whitespace-pre-wrap break-words">

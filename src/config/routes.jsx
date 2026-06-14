@@ -228,7 +228,7 @@ export const ROUTES = [
     label: 'Change Password',
     icon: <Lock className="mr-3 text-yellow-400" />,
     description: 'Change your admin password',
-    showInNav: true,
+    showInNav: false,
     permission: 'change-password'
   },
   {

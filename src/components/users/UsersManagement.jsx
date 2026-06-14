@@ -6,6 +6,7 @@ import UsersTable from './UsersTable';
 import Navbar from '../Navbar';
 import axios from "axios";
 import { Link, useNavigate } from 'react-router-dom';
+import { formatDisplayDate } from '../../utils/formatDate';
 
 // Import all extracted components
 import DraggableCollegeItem from './DraggableCollegeItem';
@@ -950,12 +951,12 @@ const UsersManagement = ({id, listId, isListEdit}) => {
                       )}
                       {filters.fromDate && (
                         <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                          From: {new Date(filters.fromDate).toLocaleDateString()}
+                          From: {formatDisplayDate(filters.fromDate, { withTime: false })}
                         </span>
                       )}
                       {filters.toDate && (
                         <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                          To: {new Date(filters.toDate).toLocaleDateString()}
+                          To: {formatDisplayDate(filters.toDate, { withTime: false })}
                         </span>
                       )}
                     </div>

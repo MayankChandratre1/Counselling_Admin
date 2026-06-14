@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Menu, Calendar, Phone, User, Clock, CheckCircle, AlertCircle, XCircle, Edit2, RotateCcw, Search, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import axiosInstance from '../utils/axios';
+import { formatDisplayDate } from '../utils/formatDate';
 import Navbar from '../components/Navbar';
 
 const Appointments = () => {
@@ -74,17 +75,7 @@ const Appointments = () => {
     }
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date((timestamp && timestamp._seconds ? timestamp._seconds * 1000 : new Date(timestamp).getTime())).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  const formatDate = (timestamp) => formatDisplayDate(timestamp);
 
   const getStatusBadge = (status) => {
     const normalizedStatus = status?.toLowerCase() || 'pending';
@@ -490,12 +481,12 @@ const Appointments = () => {
                     <div className="flex flex-wrap gap-2">
                       {appliedFilters.fromDate && (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                          From: {new Date(appliedFilters.fromDate).toLocaleDateString()}
+                          From: {formatDisplayDate(appliedFilters.fromDate, { withTime: false })}
                         </span>
                       )}
                       {appliedFilters.toDate && (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                          To: {new Date(appliedFilters.toDate).toLocaleDateString()}
+                          To: {formatDisplayDate(appliedFilters.toDate, { withTime: false })}
                         </span>
                       )}
                       {appliedFilters.status && (
