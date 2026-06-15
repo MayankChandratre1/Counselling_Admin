@@ -9,6 +9,9 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
       _seconds: Math.floor(new Date().getTime() / 1000),
       _nanoseconds: 0
     },
+    countdownEndsAt: null,
+    countdownMessage: '',
+    cardColor: '',
     form: '',
     isLocked: false,
     lockedText: '',
@@ -27,6 +30,9 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
           _seconds: Math.floor(new Date().getTime() / 1000),
           _nanoseconds: 0
         },
+        countdownEndsAt: plan.countdownEndsAt || null,
+        countdownMessage: plan.countdownMessage || '',
+        cardColor: plan.cardColor || '',
         form: plan.form || '',
         isLocked: plan.isLocked || false,
         lockedText: plan.lockedText || '',
@@ -49,6 +55,22 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
     setFormData(prev => ({
       ...prev,
       opensAt: {
+        _seconds: Math.floor(dateTime.getTime() / 1000),
+        _nanoseconds: 0
+      }
+    }));
+  };
+
+  const handleCountdownChange = (e) => {
+    const value = e.target.value;
+    if (!value) {
+      setFormData(prev => ({ ...prev, countdownEndsAt: null }));
+      return;
+    }
+    const dateTime = new Date(value);
+    setFormData(prev => ({
+      ...prev,
+      countdownEndsAt: {
         _seconds: Math.floor(dateTime.getTime() / 1000),
         _nanoseconds: 0
       }
@@ -96,6 +118,15 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
       ...formData,
       price: parseFloat(formData.price)
     };
+    if (!planData.countdownEndsAt) {
+      delete planData.countdownEndsAt;
+    }
+    if (!planData.cardColor?.trim()) {
+      delete planData.cardColor;
+    }
+    if (!planData.countdownMessage?.trim()) {
+      delete planData.countdownMessage;
+    }
 
     onSave(planData);
   };
@@ -108,6 +139,18 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
     }
     return new Date().toISOString().slice(0, 16);
   };
+
+  const getCountdownValue = () => {
+    if (formData.countdownEndsAt && formData.countdownEndsAt._seconds) {
+      return new Date(formData.countdownEndsAt._seconds * 1000).toISOString().slice(0, 16);
+    }
+    if (formData.countdownEndsAt && typeof formData.countdownEndsAt === 'string') {
+      return new Date(formData.countdownEndsAt).toISOString().slice(0, 16);
+    }
+    return '';
+  };
+
+  const CARD_COLOR_PRESETS = ['#FF6B6B', '#FFB347', '#6C63FF', '#00C9A7', '#FF3CAC', '#FFC107', '#1E3A8A', '#371981'];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -201,6 +244,79 @@ const PlanFormModal = ({ plan, onClose, onSave }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="e.g., Buy Now, Subscribe"
               />
+            </div>
+          </div>
+
+          {/* Home countdown card (optional) */}
+          <div className="space-y-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div>
+              <h3 className="text-sm font-semibold text-amber-900">Home countdown card (free users)</h3>
+              <p className="text-xs text-amber-800 mt-1">
+                Shown on the app home screen for non-premium users. Locked plans are hidden. Leave countdown empty to show plan info only.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Countdown ends at (optional)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={getCountdownValue()}
+                  onChange={handleCountdownChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {getCountdownValue() && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, countdownEndsAt: null }))}
+                    className="text-xs text-red-600 mt-1 hover:underline"
+                  >
+                    Clear countdown
+                  </button>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Card accent color (optional)
+                </label>
+                <input
+                  type="text"
+                  name="cardColor"
+                  value={formData.cardColor}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="#FF6B6B"
+                />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {CARD_COLOR_PRESETS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, cardColor: color }))}
+                      className="w-8 h-8 rounded-full border-2 border-white shadow"
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Countdown message (optional)
+              </label>
+              <input
+                type="text"
+                name="countdownMessage"
+                value={formData.countdownMessage}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., Early bird pricing ends soon!"
+              />
+              <p className="text-xs text-amber-700 mt-1">
+                Shown on the home countdown banner and plan cards while the countdown is active.
+              </p>
             </div>
           </div>
 

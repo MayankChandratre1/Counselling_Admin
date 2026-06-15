@@ -9,7 +9,7 @@ import { formatDisplayDate } from '../../utils/formatDate';
  * `/api/admin/feature-flags/:key` (write).
  *
  * Lives under premium-plans because every flag we currently surface gates a
- * premium-only screen in the mobile app.
+ * premium-only screens and home marketing sections in the mobile app.
  */
 const FeatureFlagsPanel = () => {
   const [flags, setFlags] = useState([]);

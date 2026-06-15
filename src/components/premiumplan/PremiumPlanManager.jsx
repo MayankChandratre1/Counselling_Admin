@@ -170,6 +170,26 @@ const PremiumPlanManager = () => {
                         Button Text: <span className="font-medium bg-blue-50 px-2 py-1 rounded text-blue-700">{plan.buttonText}</span>
                       </div>
                     )}
+                    {plan.countdownEndsAt && (
+                      <div className="text-sm text-gray-600 flex items-center mb-2">
+                        <Clock size={14} className="mr-1" />
+                        Home countdown ends: {formatDate(plan.countdownEndsAt)}
+                      </div>
+                    )}
+                    {plan.countdownMessage && (
+                      <div className="text-sm text-gray-600 mb-2">
+                        Countdown message: <span className="italic">{plan.countdownMessage}</span>
+                      </div>
+                    )}
+                    {plan.cardColor && (
+                      <div className="text-sm text-gray-600 flex items-center mb-2">
+                        <span
+                          className="inline-block w-4 h-4 rounded-full mr-2 border border-gray-300"
+                          style={{ backgroundColor: plan.cardColor }}
+                        />
+                        Card color: {plan.cardColor}
+                      </div>
+                    )}
                     {plan.isLocked && plan.lockedText && (
                       <div className="text-sm text-amber-700 bg-amber-50 p-2 rounded-md border border-amber-200 mb-2">
                         <strong>Locked Message:</strong> {plan.lockedText}
