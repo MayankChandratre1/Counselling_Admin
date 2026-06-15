@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Check, X, Clock, DollarSign, FileLock2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Check, Clock, DollarSign, FileLock2, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 import PlanFormModal from './PlanFormModal';
 import { formatDisplayDate } from '../../utils/formatDate';
 
 const PremiumPlanManager = () => {
   const [plans, setPlans] = useState([]);
+  const [homeCountdownCardsEnabled, setHomeCountdownCardsEnabled] = useState(true);
+  const [savingCountdownToggle, setSavingCountdownToggle] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -20,12 +22,34 @@ const PremiumPlanManager = () => {
       setLoading(true);
       const response = await axiosInstance.get('/api/admin/get-premium-plans');
       setPlans(response.data.plans || []);
+      setHomeCountdownCardsEnabled(response.data.homeCountdownCardsEnabled !== false);
       setError(null);
     } catch (error) {
       console.error('Error fetching premium plans:', error);
       setError('Failed to load premium plans. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const persistPlans = async (updatedPlans, countdownEnabled = homeCountdownCardsEnabled) => {
+    await axiosInstance.post('/api/admin/update-premium-plans', {
+      plans: updatedPlans,
+      homeCountdownCardsEnabled: countdownEnabled
+    });
+  };
+
+  const handleToggleHomeCountdown = async () => {
+    const next = !homeCountdownCardsEnabled;
+    try {
+      setSavingCountdownToggle(true);
+      await persistPlans(plans, next);
+      setHomeCountdownCardsEnabled(next);
+    } catch (error) {
+      console.error('Error updating home countdown toggle:', error);
+      alert('Failed to update home countdown setting. Please try again.');
+    } finally {
+      setSavingCountdownToggle(false);
     }
   };
 
@@ -48,9 +72,7 @@ const PremiumPlanManager = () => {
       }
 
       // Save to backend
-      await axiosInstance.post('/api/admin/update-premium-plans', {
-        plans: updatedPlans
-      });
+      await persistPlans(updatedPlans);
 
       setPlans(updatedPlans);
       setShowModal(false);
@@ -68,9 +90,7 @@ const PremiumPlanManager = () => {
           !(p.title === plan.title && p.price === plan.price)
         );
         
-        await axiosInstance.post('/api/admin/update-premium-plans', {
-          plans: updatedPlans
-        });
+        await persistPlans(updatedPlans);
         
         setPlans(updatedPlans);
       } catch (error) {
@@ -117,6 +137,35 @@ const PremiumPlanManager = () => {
           <Plus size={18} className="mr-2" />
           Add New Plan
         </button>
+      </div>
+
+      <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-medium text-gray-800">Home Countdown Cards</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Show premium offer countdown banners on the app home screen for non-premium users.
+            </p>
+          </div>
+          <button
+            onClick={handleToggleHomeCountdown}
+            disabled={savingCountdownToggle}
+            className={`inline-flex items-center px-3 py-1.5 rounded-md border transition shrink-0
+              ${homeCountdownCardsEnabled
+                ? 'bg-green-50 border-green-500 text-green-700 hover:bg-green-100'
+                : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'}
+              ${savingCountdownToggle ? 'opacity-60 cursor-not-allowed' : ''}`}
+          >
+            {savingCountdownToggle ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : homeCountdownCardsEnabled ? (
+              <ToggleRight className="w-4 h-4 mr-2" />
+            ) : (
+              <ToggleLeft className="w-4 h-4 mr-2" />
+            )}
+            {homeCountdownCardsEnabled ? 'Enabled' : 'Disabled'}
+          </button>
+        </div>
       </div>
 
       {plans.length === 0 ? (

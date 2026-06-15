@@ -3,14 +3,39 @@ import { Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 import { formatDisplayDate } from '../../utils/formatDate';
 
-/**
- * Lightweight feature-flag panel that lists every supported flag with an
- * inline toggle. Backed by `/api/admin/feature-flags` (read) and
- * `/api/admin/feature-flags/:key` (write).
- *
- * Lives under premium-plans because every flag we currently surface gates a
- * premium-only screens and home marketing sections in the mobile app.
- */
+/** Mirrors backend SUPPORTED_FLAGS so the panel stays complete before API redeploy. */
+const KNOWN_FLAGS = [
+  {
+    key: 'college_range_enabled',
+    label: 'College Range (Premium)',
+    description:
+      'Premium-only screen that lets students filter cutoffs by category, gender and branch and highlights colleges around their percentile.',
+    defaultEnabled: false
+  },
+  {
+    key: 'home_countdown_cards_enabled',
+    label: 'Home Countdown Cards',
+    description:
+      'Premium offer countdown banners on the app home screen for non-premium users. Turn off to hide the entire section.',
+    defaultEnabled: true
+  }
+];
+
+const mergeFlags = (apiFlags = []) => {
+  const byKey = apiFlags.reduce((acc, flag) => ({ ...acc, [flag.key]: flag }), {});
+  return KNOWN_FLAGS.map((meta) => {
+    const fromApi = byKey[meta.key];
+    if (fromApi) return fromApi;
+    return {
+      key: meta.key,
+      label: meta.label,
+      description: meta.description,
+      enabled: meta.defaultEnabled,
+      updatedAt: null,
+      updatedBy: null
+    };
+  });
+};
 const FeatureFlagsPanel = () => {
   const [flags, setFlags] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +46,7 @@ const FeatureFlagsPanel = () => {
     try {
       setLoading(true);
       const res = await axiosInstance.get('/api/admin/feature-flags');
-      setFlags(res.data?.flags || []);
+      setFlags(mergeFlags(res.data?.flags));
       setError('');
     } catch (err) {
       console.error('Failed to load feature flags:', err);
@@ -47,7 +72,10 @@ const FeatureFlagsPanel = () => {
       );
     } catch (err) {
       console.error('Failed to update feature flag:', err);
-      alert('Failed to update feature flag. Try again.');
+      const message = err?.response?.status === 404
+        ? 'This flag is not available on the deployed admin API yet. Redeploy Counselling-admin, or use the Home Countdown toggle on the Premium Plans tab.'
+        : 'Failed to update feature flag. Try again.';
+      alert(message);
     } finally {
       setSavingKey(null);
     }
