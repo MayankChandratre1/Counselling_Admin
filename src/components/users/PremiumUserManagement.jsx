@@ -9,7 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 // Import all extracted components
 import DraggableCollegeItem from './DraggableCollegeItem';
-import UserEditForm from './UserEditForm';
+import UserEditModal from './UserEditModal';
 import UserSearchForm from './UserSearchForm';
 import UserListModal from './UserListModal';
 import ListSelectionModal from './ListSelectionModal';
@@ -72,12 +72,6 @@ const PremiumUsersManagement = () => {
   const [loadingLists, setLoadingLists] = useState(false);
   const [error, setError] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    premium: false
-  });
   const [showListsModal, setShowListsModal] = useState(false);
   const [availableLists, setAvailableLists] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -232,14 +226,19 @@ const PremiumUsersManagement = () => {
     fetchUsers(1, false, true);
   };
 
-  const handleEdit = async (user) => {
+  const handleEdit = (user) => {
     setEditingUser(user);
-    setFormData({
-      name: user.name || '',
-      phone: user.phone || '',
-      email: user.email || '',
-      premium: user.premium || false
-    });
+  };
+
+  const handleSaveUser = async (userData) => {
+    try {
+      await updateUser(editingUser.id, userData);
+      setEditingUser(null);
+      refreshUsers();
+    } catch (err) {
+      console.error('Error saving user:', err);
+      throw err;
+    }
   };
 
   const handleDelete = async (id) => {
@@ -250,25 +249,6 @@ const PremiumUsersManagement = () => {
         console.error('Error deleting user:', err);
       }
     }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await updateUser(editingUser.id, formData);
-      setEditingUser(null);
-      setFormData({ name: '', phone: '', email: '', premium: false });
-    } catch (err) {
-      console.error('Error saving user:', err);
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
   };
 
   const handleSearchParamChange = (e) => {
@@ -766,12 +746,11 @@ const PremiumUsersManagement = () => {
           <ErrorDisplay error={error} />
           
           {/* Edit Form */}
-          <UserEditForm 
-            editingUser={editingUser} 
-            formData={formData} 
-            onSubmit={handleSubmit} 
-            onChange={handleChange} 
-            onCancel={() => setEditingUser(null)} 
+          <UserEditModal
+            isOpen={!!editingUser}
+            user={editingUser}
+            onClose={() => setEditingUser(null)}
+            onSave={handleSaveUser}
           />
 
           {/* Collapsible Search Section */}

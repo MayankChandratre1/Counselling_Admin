@@ -9,6 +9,7 @@ import ProgressTracker from '../components/users/ProgressTracker';
 import axiosInstance from '../utils/axios';
 import { formatDisplayDate } from '../utils/formatDate';
 import { formatRazorpayAmount } from '../utils/formatCurrency';
+import { notesToArray } from '../utils/noteKeys';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -37,10 +38,7 @@ const UserDetailsByPhone = () => {
       const response = await axiosInstance.get(`/api/admin/user/phone/${id}`);
       
       setUser(response.data);
-      if(notes){
-        console.log(notes[`${id}`]);
-        setNotesToShow(notes[`${id}`]?.notes);
-      }
+      setNotesToShow(response.data.notes?.notes || {});
 
       // Fetch payment history if phone number available
       if(response.data?.phone){
@@ -327,18 +325,18 @@ const UserDetailsByPhone = () => {
           
           }
 
-          {notesToShow && Object.keys(notesToShow).length > 0 && (
+          {notesToShow && notesToArray(notesToShow).length > 0 && (
             <div className="bg-white rounded-lg shadow-md p-6  mb-6">
               <h2 className="text-xl font-semibold mb-4">Notes</h2>
               <div className="space-y-4">
-                {Object.entries(notesToShow).map(([noteKey, noteData], index) => (
+                {notesToArray(notesToShow).map((noteData, index) => (
                   <div 
                     key={index} 
                     className="border-l-4 border-blue-500 bg-gray-50 p-4 rounded-r-lg hover:shadow-md transition-shadow"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-medium text-blue-600">
-                        {noteKey.replace('note-', '')}
+                        {noteData.adminEmail}
                       </span>
                       <span className="text-sm text-gray-500">
                         {formatDisplayDate(noteData.createdAt)}

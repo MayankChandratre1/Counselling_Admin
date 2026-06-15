@@ -11,6 +11,7 @@ import CapProgressTracker from './CapProgressTracker';
 import { useNavigate } from 'react-router-dom';
 import { buildPurchaseYearOptions } from '../../utils/analyticsYearFilter';
 import { formatDisplayDate } from '../../utils/formatDate';
+import { getPaymentSourceDisplay } from '../../utils/paymentSource';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -235,31 +236,45 @@ const AnalyticsDashboard = () => {
 
     // Define headers based on metric type
     const getHeaders = () => {
-      const baseHeaders = ['Name', 'Phone', 'Plan', 'Purchase Date'];
-      
+      const baseHeaders = [
+        'Name',
+        'Phone',
+        'Plan',
+        'Purchase Date',
+        'Payment Source',
+        'Payment Pending',
+        'Amount Paid',
+        'Amount Remaining',
+      ];
+
       if (metricType === 'paymentPending') {
-        return [...baseHeaders, 'Amount Due'];
+        return baseHeaders;
       }
-      
+
       return baseHeaders;
     };
 
     const headers = getHeaders();
+
+    const getPaymentSource = (user) =>
+      user.paymentSourceDisplay || getPaymentSourceDisplay(user.premiumPlan || user);
     
     // Convert users data to CSV format
     const csvData = usersToExport.map(user => {
-      const baseRow = [
+      const pending = user.isPaymentPending || user.premiumPlan?.isPaymentPending;
+      const amountPaid = user.amountPaid ?? user.premiumPlan?.amountPaid ?? 0;
+      const amountRemaining = user.amountRemaining ?? user.premiumPlan?.amountRemaining ?? 0;
+
+      return [
         user.name || '',
         user.phone || '',
         user.planTitle || '',
-        formatDate(user.purchasedDate)
+        formatDate(user.purchasedDate),
+        getPaymentSource(user),
+        pending ? 'Yes' : 'No',
+        pending ? `₹${amountPaid}` : '',
+        pending ? `₹${amountRemaining}` : '',
       ];
-      
-      if (metricType === 'paymentPending') {
-        return [...baseRow, `₹${user.amountRemaining || 0}`];
-      }
-      
-      return baseRow;
     });
 
     // Create CSV content
@@ -581,6 +596,9 @@ const AnalyticsDashboard = () => {
                         Plan
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Payment Source
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <div className="flex items-center gap-1">
                           Purchase Date
                           <button onClick={toggleSortOrder} className="text-gray-400 hover:text-gray-600">
@@ -588,9 +606,9 @@ const AnalyticsDashboard = () => {
                           </button>
                         </div>
                       </th>
-                      {selectedMetric === 'paymentPending' && (
+                      {(selectedMetric === 'paymentPending' || selectedMetric === 'enrolled' || selectedMetric === 'todayEnrolled') && (
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Amount Due
+                          Pending Payment
                         </th>
                       )}
                     </tr>
@@ -598,7 +616,7 @@ const AnalyticsDashboard = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {getFilteredMetricUsers(selectedMetric).length === 0 ? (
                       <tr>
-                        <td colSpan={selectedMetric === 'paymentPending' ? 5 : 4} className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                           No users found with the selected filters.
                         </td>
                       </tr>
@@ -625,14 +643,23 @@ const AnalyticsDashboard = () => {
                               {user.planTitle}
                             </span>
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                              {user.paymentSourceDisplay || getPaymentSourceDisplay(user.premiumPlan || user)}
+                            </span>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {formatDate(user.purchasedDate)}
                           </td>
-                          {selectedMetric === 'paymentPending' && (
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                              ₹{user.amountRemaining}
-                            </td>
-                          )}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {(user.isPaymentPending || user.premiumPlan?.isPaymentPending) ? (
+                              <span className="font-medium text-red-600">
+                                ₹{user.amountRemaining ?? user.premiumPlan?.amountRemaining ?? 0}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
                         </tr>
                       ))
                     )}

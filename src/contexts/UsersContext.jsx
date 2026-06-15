@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import axiosInstance from '../utils/axios';
+import { encodeNoteKey } from '../utils/noteKeys';
 
 const UsersContext = createContext();
 
@@ -298,10 +299,10 @@ export const UsersProvider = ({ children }) => {
   const fetchUserNotes = async (userId) => {
     try {
       const response = await axiosInstance.get(`/api/admin/get-notes/${userId}`);
-      return response.data;
+      return response.data || { id: userId, notes: {} };
     } catch (err) {
       console.error(`Error fetching notes for user ${userId}:`, err);
-      return [];
+      return { id: userId, notes: {} };
     }
   };
 
@@ -323,7 +324,7 @@ export const UsersProvider = ({ children }) => {
     };
 
     if (users.length > 0) {
-      // fetchAllNotes();
+      fetchAllNotes();
     }
   }, [users]);
 
@@ -334,7 +335,7 @@ export const UsersProvider = ({ children }) => {
         id: userId,
         notes: {
           ...(prevNotes[userId]?.notes || {}),
-          [`note-${adminEmail}`]: {
+          [encodeNoteKey(adminEmail)]: {
             note,
             createdAt
           }

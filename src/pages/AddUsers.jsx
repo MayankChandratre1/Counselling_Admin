@@ -2,13 +2,18 @@ import React, { useState } from 'react';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
+import { usePremiumPage } from '../contexts/PremiumPageContext';
+import PaymentSourceFields from '../components/users/PaymentSourceFields';
+import { ADMIN_DEFAULT_PAYMENT_SOURCE } from '../utils/paymentSource';
 
 const AddUsers = () => {
   const navigate = useNavigate();
+  const { premiumPlans, plansLoading } = usePremiumPage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPremiumFields, setShowPremiumFields] = useState(false);
   const [isPaymentPending, setIsPaymentPending] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('');
   
   const [formData, setFormData] = useState({
     // Basic Information
@@ -25,7 +30,9 @@ const AddUsers = () => {
       form: '',
       isPaymentPending: false,
       amountPaid: 0,
-      amountRemaining: 0
+      amountRemaining: 0,
+      paymentSource: ADMIN_DEFAULT_PAYMENT_SOURCE,
+      paymentSourceLabel: ''
     },
     
     // Counselling Data
@@ -52,6 +59,37 @@ const AddUsers = () => {
     }
   });
 
+  const handlePlanSelection = (planTitle) => {
+    setSelectedPlan(planTitle);
+
+    if (planTitle) {
+      const selectedPlanData = premiumPlans.find((plan) => plan.title === planTitle);
+      if (selectedPlanData) {
+        setFormData((prev) => ({
+          ...prev,
+          premiumPlan: {
+            ...prev.premiumPlan,
+            planTitle: selectedPlanData.title,
+            form: selectedPlanData.form || '',
+            purchasedDate: new Date().toISOString().split('T')[0],
+            expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().split('T')[0],
+          },
+        }));
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        premiumPlan: {
+          ...prev.premiumPlan,
+          planTitle: '',
+          purchasedDate: '',
+          expiryDate: '',
+          form: '',
+        },
+      }));
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
@@ -69,6 +107,10 @@ const AddUsers = () => {
       // Handle top-level fields
       if (name === 'isPremium') {
         setShowPremiumFields(checked);
+        if (!checked) {
+          setSelectedPlan('');
+          handlePlanSelection('');
+        }
       }
       
       setFormData(prev => ({
@@ -95,6 +137,20 @@ const AddUsers = () => {
     
     if (!formData.counsellingData.email.trim() || !formData.counsellingData.email.includes('@')) {
       setError('Valid email is required');
+      return;
+    }
+    
+    if (formData.isPremium && !formData.premiumPlan.planTitle) {
+      setError('Please select a premium plan');
+      return;
+    }
+
+    if (
+      formData.isPremium &&
+      formData.premiumPlan.paymentSource === 'Custom' &&
+      !formData.premiumPlan.paymentSourceLabel?.trim()
+    ) {
+      setError('Custom payment label is required');
       return;
     }
     
@@ -146,8 +202,13 @@ const AddUsers = () => {
           planTitle: formData.premiumPlan.planTitle,
           purchasedDate: new Date(formData.premiumPlan.purchasedDate),
           expiryDate: new Date(formData.premiumPlan.expiryDate),
-          form: formData.premiumPlan.form
+          form: formData.premiumPlan.form,
+          paymentSource: formData.premiumPlan.paymentSource,
         };
+
+        if (formData.premiumPlan.paymentSource === 'Custom') {
+          userData.premiumPlan.paymentSourceLabel = formData.premiumPlan.paymentSourceLabel.trim();
+        }
         
         // Add payment pending info if checked
         if (isPaymentPending) {
@@ -251,28 +312,72 @@ const AddUsers = () => {
                 <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">Premium Plan Details</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Plan Title *</label>
-                    <input
-                      type="text"
-                      name="premiumPlan.planTitle"
-                      required={formData.isPremium}
-                      value={formData.premiumPlan.planTitle}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="e.g. Counselling"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Plan *</label>
+                    {plansLoading ? (
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                        <span className="text-gray-500">Loading plans...</span>
+                      </div>
+                    ) : (
+                      <select
+                        value={selectedPlan}
+                        onChange={(e) => handlePlanSelection(e.target.value)}
+                        required={formData.isPremium}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select a plan...</option>
+                        {premiumPlans?.map((plan) => (
+                          <option key={plan.title} value={plan.title}>
+                            {plan.title} - ₹{plan.price}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Form ID</label>
-                    <input
-                      type="text"
-                      name="premiumPlan.form"
-                      value={formData.premiumPlan.form}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="e.g. elite-1234567"
-                    />
-                  </div>
+                  {selectedPlan && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Plan Title</label>
+                        <input
+                          type="text"
+                          value={formData.premiumPlan.planTitle}
+                          readOnly
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Form ID</label>
+                        <input
+                          type="text"
+                          name="premiumPlan.form"
+                          value={formData.premiumPlan.form}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="e.g. elite-1234567"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <PaymentSourceFields
+                    paymentSource={formData.premiumPlan.paymentSource}
+                    paymentSourceLabel={formData.premiumPlan.paymentSourceLabel}
+                    onSourceChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        premiumPlan: {
+                          ...prev.premiumPlan,
+                          paymentSource: value,
+                          paymentSourceLabel: value === 'Custom' ? prev.premiumPlan.paymentSourceLabel : '',
+                        },
+                      }))
+                    }
+                    onLabelChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        premiumPlan: { ...prev.premiumPlan, paymentSourceLabel: value },
+                      }))
+                    }
+                    required={formData.isPremium}
+                  />
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
                     <input

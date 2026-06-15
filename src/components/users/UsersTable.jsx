@@ -25,6 +25,8 @@ import { useUsers } from '../../contexts/UsersContext';
 import ListReleaseModal from './ListReleaseModal';
 import { toast } from 'react-toastify';
 import { formatDisplayDate, getDateMillis } from '../../utils/formatDate';
+import { getPaymentSourceDisplay } from '../../utils/paymentSource';
+import { notesToArray, getNoteForAdmin } from '../../utils/noteKeys';
 
 const NotesModal = ({ isOpen, onClose, userNotes, userName, onEditNote }) => {
   if (!isOpen) return null;
@@ -32,14 +34,7 @@ const NotesModal = ({ isOpen, onClose, userNotes, userName, onEditNote }) => {
   const [selectedAdmin, setSelectedAdmin] = useState('all');
 
   // Transform notes object to array and get unique admins
-  const notesArray = userNotes.notes ? 
-    Object.entries(userNotes.notes)
-      .map(([key, value]) => ({
-        adminEmail: key.replace('note-', ''),
-        ...value
-      }))
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    : [];
+  const notesArray = userNotes.notes ? notesToArray(userNotes.notes) : [];
 
   // Get unique admin emails for filter dropdown
   const uniqueAdmins = ['all', ...new Set(notesArray.map(note => note.adminEmail))];
@@ -239,7 +234,7 @@ const UsersTable = ({
   usePurchaseDate = false,
 }) => {
   const navigate = useNavigate();
-  const { notes, updateUserNotes, totalUsersNumber, isFilterActive, filters } = useUsers();
+  const { notes, fetchUserNotes, setNotes, totalUsersNumber, isFilterActive, filters } = useUsers();
   const [sortOrder, setSortOrder] = useState('desc');
   const [sortedUsers, setSortedUsers] = useState([]);
   
@@ -301,44 +296,52 @@ const UsersTable = ({
     }
   }
 
-  const handleAddNote = (userId, userName) => {
+  const handleAddNote = (user) => {
+    let existingNote = '';
+    try {
+      const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo') || '{}');
+      if (adminInfo.email) {
+        existingNote = getNoteForAdmin(notes[user.id]?.notes, adminInfo.email);
+      }
+    } catch {
+      existingNote = '';
+    }
+
     setNoteModal({
       isOpen: true,
-      userId,
-      userName,
-      note: ''
+      userId: user.id,
+      userName: user.name,
+      note: existingNote
     });
   };
 
   const handleSaveNote = async (isDelete = false) => {
+    if (!isDelete && !noteModal.note.trim()) {
+      return;
+    }
+
     try {
-      const response = await axiosInstance.post(`/api/admin/add-note/${noteModal.userId}`, {
+      await axiosInstance.post(`/api/admin/add-note/${noteModal.userId}`, {
         note: isDelete ? '' : noteModal.note
       });
 
-      // Update notes in context with the response data
-      if (response.data.message === 'success') {
-        updateUserNotes(
-          noteModal.userId, 
-          response.data.adminEmail, 
-          isDelete ? '' : noteModal.note,
-          new Date().toISOString()
-        );
-      }
-      
-      // Close modal and reset state
+      const freshNotes = await fetchUserNotes(noteModal.userId);
+      setNotes((prev) => ({
+        ...prev,
+        [noteModal.userId]: freshNotes,
+      }));
+
       setNoteModal({
         isOpen: false,
         userId: null,
         userName: '',
         note: ''
       });
-      
-      // Show success message
-      alert(isDelete ? 'Note deleted successfully' : 'Note added successfully');
+
+      toast.success(isDelete ? 'Note deleted successfully' : 'Note added successfully');
     } catch (error) {
       console.error('Error saving note:', error);
-      alert('Failed to save note');
+      toast.error('Failed to save note');
     }
   };
 
@@ -354,13 +357,11 @@ const UsersTable = ({
     const csvData = users.map(user => {
       // Get user's notes
       const userNotes = notes[user.id]?.notes || {};
-      const formattedNotes = Object.entries(userNotes)
-        .map(([key, value]) => ({
-          admin: key.replace('note-', ''),
-          note: value.note,
-          date: formatDisplayDate(value.createdAt)
-        }))
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
+      const formattedNotes = notesToArray(userNotes).map((entry) => ({
+        admin: entry.adminEmail,
+        note: entry.note,
+        date: formatDisplayDate(entry.createdAt)
+      }));
 
       return {
         Name: user.name,
@@ -490,6 +491,11 @@ const UsersTable = ({
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
+              {usePurchaseDate && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Payment Source
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Batch
               </th>
@@ -510,7 +516,7 @@ const UsersTable = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedUsers.length === 0 ? (
               <tr>
-                <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={usePurchaseDate ? 9 : 8} className="px-6 py-8 text-center text-gray-500">
                   No users found
                 </td>
               </tr>
@@ -559,6 +565,19 @@ const UsersTable = ({
                       )}
                     </div>
                   </td>
+
+                  {usePurchaseDate && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        {getPaymentSourceDisplay(user.premiumPlan)}
+                      </span>
+                      {(user.premiumPlan?.isPaymentPending) && (
+                        <div className="text-xs text-red-600 mt-1">
+                          Pending: ₹{user.premiumPlan?.amountRemaining || 0}
+                        </div>
+                      )}
+                    </td>
+                  )}
                   
                   {/* Batch */}
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -627,7 +646,7 @@ const UsersTable = ({
                   
                   {/* Notes */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {notes && notes[user.id] && Object.keys(notes[user.id].notes || []).length > 0 ? (
+                    {notes && notes[user.id] && Object.keys(notes[user.id].notes || {}).length > 0 ? (
                       <>
                       <button
                         onClick={() => setViewNotesModal({
@@ -638,15 +657,10 @@ const UsersTable = ({
                         className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors"
                       >
                         <MessageSquare size={12} className="mr-1" />
-                        {Object.keys(notes[user.id].notes).length}
+                        {Object.keys(notes[user.id].notes || {}).length}
                       </button>
                       <button
-                        onClick={() => setNoteModal({
-                          isOpen: true,
-                          userId: user.id,
-                          userName: user.name,
-                          note: ''
-                        })}
+                        onClick={() => handleAddNote(user)}
                         className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                       >
                         <Plus size={12} className="mr-1" />
@@ -655,12 +669,7 @@ const UsersTable = ({
                       </>
                     ) : (
                       <button
-                        onClick={() => setNoteModal({
-                          isOpen: true,
-                          userId: user.id,
-                          userName: user.name,
-                          note: ''
-                        })}
+                        onClick={() => handleAddNote(user)}
                         className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                       >
                         <Plus size={12} className="mr-1" />
@@ -684,12 +693,7 @@ const UsersTable = ({
                       </button>
                     ) : (
                       <button
-                        onClick={() => setNoteModal({
-                          isOpen: true,
-                          userId: user.id,
-                          userName: user.name,
-                          note: ''
-                        })}
+                        onClick={() => handleAddNote(user)}
                         className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                       >
                         <Plus size={12} className="mr-1" />

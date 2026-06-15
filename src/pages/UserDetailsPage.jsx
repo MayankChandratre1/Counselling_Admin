@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Copy, ArrowLeft, CheckCircle, ChevronDown, ChevronUp, MessageSquare, DollarSign, Edit, Eye, ListIcon } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { useUsers } from '../contexts/UsersContext';
 import VerdictModal from '../components/users/VerdictModal';
 import UserEditModal from '../components/users/UserEditModal';
 import ProgressTracker from '../components/users/ProgressTracker';
@@ -10,6 +9,8 @@ import StepEditModal from '../components/users/StepEditModal';
 import axiosInstance from '../utils/axios';
 import { formatDisplayDate } from '../utils/formatDate';
 import { formatCurrency, formatRazorpayAmount } from '../utils/formatCurrency';
+import { getPaymentSourceDisplay } from '../utils/paymentSource';
+import { notesToArray } from '../utils/noteKeys';
 import { checkPermission } from '../utils/checkPermission';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
@@ -23,7 +24,7 @@ const UserDetailsPage = () => {
   const [error, setError] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { notes } = useUsers();
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [verdictModal, setVerdictModal] = useState({ isOpen: false, stepNumber: null });
   const [stepEditModal, setStepEditModal] = useState({ isOpen: false, step: null });
   const [expandedStep, setExpandedStep] = useState(null);
@@ -31,7 +32,6 @@ const UserDetailsPage = () => {
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState(new Set());
-  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
 
   useEffect(() => {
     fetchUserDetails();
@@ -42,10 +42,7 @@ const UserDetailsPage = () => {
       const response = await axiosInstance.get(`/api/admin/user/${id}`);
 
       setUser(response.data);
-      if (notes) {
-        console.log(notes[`${id}`]);
-        setNotesToShow(notes[`${id}`]?.notes);
-      }
+      setNotesToShow(response.data.notes?.notes || {});
 
       // Only fetch payment history when explicitly requested
       console.log("User data fetched:", response.data);
@@ -484,6 +481,10 @@ const UserDetailsPage = () => {
                     <p className="text-sm text-gray-600">Expiry Date</p>
                     <p className="font-medium">{formatDate(user.premiumPlan.expiryDate)}</p>
                   </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Payment Source</p>
+                    <p className="font-medium">{getPaymentSourceDisplay(user.premiumPlan)}</p>
+                  </div>
                   {
                     user.premiumPlan.isPaymentPending && (
                       <>
@@ -508,18 +509,18 @@ const UserDetailsPage = () => {
 
           }
 
-          {notesToShow && Object.keys(notesToShow).length > 0 && (
+          {notesToShow && notesToArray(notesToShow).length > 0 && (
             <div className="bg-white rounded-lg shadow-md p-6  mb-6">
               <h2 className="text-xl font-semibold mb-4">Notes</h2>
               <div className="space-y-4">
-                {Object.entries(notesToShow).map(([noteKey, noteData], index) => (
+                {notesToArray(notesToShow).map((noteData, index) => (
                   <div
                     key={index}
                     className="border-l-4 border-blue-500 bg-gray-50 p-4 rounded-r-lg hover:shadow-md transition-shadow"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-medium text-blue-600">
-                        {noteKey.replace('note-', '')}
+                        {noteData.adminEmail}
                       </span>
                       <span className="text-sm text-gray-500">
                         {formatDisplayDate(noteData.createdAt)}

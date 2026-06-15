@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { usePremiumPage } from '../../contexts/PremiumPageContext';
+import PaymentSourceFields from './PaymentSourceFields';
+import { DEFAULT_PAYMENT_SOURCE } from '../../utils/paymentSource';
 
 const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
   const { premiumPlans, plansLoading } = usePremiumPage();
@@ -26,7 +28,9 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
       form: '',
       isPaymentPending: false,
       amountPaid: 0,
-      amountRemaining: 0
+      amountRemaining: 0,
+      paymentSource: DEFAULT_PAYMENT_SOURCE,
+      paymentSourceLabel: ''
     },
     
     // Counselling Data
@@ -83,7 +87,9 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
           form: '',
           isPaymentPending: false,
           amountPaid: 0,
-          amountRemaining: 0
+          amountRemaining: 0,
+          paymentSource: DEFAULT_PAYMENT_SOURCE,
+          paymentSourceLabel: ''
         }
       }));
     }
@@ -130,6 +136,9 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
         if (premiumPlan.isPaymentPending) {
           setIsPaymentPending(true);
         }
+
+        premiumPlan.paymentSource = premiumPlan.paymentSource || DEFAULT_PAYMENT_SOURCE;
+        premiumPlan.paymentSourceLabel = premiumPlan.paymentSourceLabel || '';
 
         preprocessedUser.premiumPlan = premiumPlan;
       }
@@ -183,6 +192,20 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
       return;
     }
     
+    if (formData.isPremium && !formData.premiumPlan?.planTitle) {
+      setError('Please select a premium plan');
+      return;
+    }
+
+    if (
+      formData.isPremium &&
+      formData.premiumPlan?.paymentSource === 'Custom' &&
+      !formData.premiumPlan?.paymentSourceLabel?.trim()
+    ) {
+      setError('Custom payment label is required');
+      return;
+    }
+    
     try {
       setLoading(true);
       
@@ -232,6 +255,13 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
         if (isPaymentPending) {
           premiumPlan.amountPaid = parseFloat(formData.premiumPlan.amountPaid) || 0;
           premiumPlan.amountRemaining = parseFloat(formData.premiumPlan.amountRemaining) || 0;
+        } else {
+          premiumPlan.amountPaid = 0;
+          premiumPlan.amountRemaining = 0;
+        }
+
+        if (premiumPlan.paymentSource !== 'Custom') {
+          delete premiumPlan.paymentSourceLabel;
         }
         
         userData.premiumPlan = premiumPlan;
@@ -415,6 +445,28 @@ const UserEditModal = ({ isOpen, onClose, user, onSave }) => {
                       <span className="ml-2 text-sm font-medium text-gray-700">Payment Pending</span>
                     </label>
                   </div>
+
+                  <PaymentSourceFields
+                    paymentSource={formData.premiumPlan?.paymentSource || DEFAULT_PAYMENT_SOURCE}
+                    paymentSourceLabel={formData.premiumPlan?.paymentSourceLabel || ''}
+                    onSourceChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        premiumPlan: {
+                          ...prev.premiumPlan,
+                          paymentSource: value,
+                          paymentSourceLabel: value === 'Custom' ? prev.premiumPlan?.paymentSourceLabel || '' : '',
+                        },
+                      }))
+                    }
+                    onLabelChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        premiumPlan: { ...prev.premiumPlan, paymentSourceLabel: value },
+                      }))
+                    }
+                    required={formData.isPremium}
+                  />
                   
                   {/* Payment pending fields */}
                   {isPaymentPending && (
