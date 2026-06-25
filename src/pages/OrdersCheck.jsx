@@ -127,6 +127,14 @@ const OrdersCheck = () => {
       });
       
       setBulkResult(response.data);
+      const paidResults = response.data.data?.paidOrderResults || [];
+      const failedGrants = paidResults.filter((r) => r.success === false);
+      if (failedGrants.length > 0) {
+        const msg = failedGrants
+          .map((r) => `${r.orderId}: ${r.error || r.updateResult?.message || 'grant failed'}`)
+          .join('; ');
+        setBulkError(`Razorpay paid but premium not granted — ${msg}`);
+      }
     } catch (error) {
       console.error('Error refreshing orders:', error);
       setBulkError(error.response?.data?.message || 'Failed to refresh orders');
@@ -185,6 +193,15 @@ const OrdersCheck = () => {
               .filter(order => paidOrderIds.includes(order.orderId))
               .reduce((sum, order) => sum + order.amount, 0)
           }));
+        }
+
+        const paidResults = response.data.data?.paidOrderResults || [];
+        const failedGrants = paidResults.filter((r) => r.success === false);
+        if (failedGrants.length > 0) {
+          const msg = failedGrants
+            .map((r) => `${r.orderId}: ${r.error || r.updateResult?.message || 'grant failed'}`)
+            .join('; ');
+          setBulkError(`Razorpay paid but premium not granted — ${msg}`);
         }
         
         setBulkResult(response.data);
@@ -870,12 +887,22 @@ const OrdersCheck = () => {
                       <div key={index} className={`p-4 rounded-lg border ${
                         result.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                       }`}>
-                        <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between">
                           <div>
                             <span className="font-medium">{result.orderId}</span>
                             <span className="ml-2 text-sm text-gray-600">
-                              {result.userPhone} - {result.planData?.planTitle}
+                              {result.userPhone} - {result.planData?.planTitle || result.planData?.plan}
                             </span>
+                            {!result.success && (
+                              <p className="text-sm text-red-700 mt-1">
+                                {result.error || result.updateResult?.message || 'Premium not granted'}
+                              </p>
+                            )}
+                            {result.success && result.updateResult?.userId && (
+                              <p className="text-sm text-green-700 mt-1">
+                                Premium granted (user {result.updateResult.userId})
+                              </p>
+                            )}
                           </div>
                           <div className="flex items-center">
                             {result.success ? (
