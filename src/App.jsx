@@ -185,7 +185,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/check-orders" element={
-          <ProtectedRoute requiredPermission="admin-settings">
+          <ProtectedRoute requiredPermission="check-orders">
             <OrdersCheck />
           </ProtectedRoute>
         } />
