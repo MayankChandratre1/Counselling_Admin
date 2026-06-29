@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, X, ChevronDown, Menu, RefreshCw, ChevronUp } from 'lucide-react';
+import { Search, Filter, X, ChevronDown, Menu, RefreshCw, ChevronUp, Download } from 'lucide-react';
 import { useUsers } from '../../contexts/UsersContext';
 import { usePremiumPage } from '../../contexts/PremiumPageContext';
 import UsersTable from './UsersTable';
@@ -18,6 +18,8 @@ import EditListModal from '../lists/EditListModal';
 import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
 import axiosInstance from '../../utils/axios';
+import { downloadUsersExport } from '../../utils/exportUsers';
+import { toast } from 'react-toastify';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -42,7 +44,8 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     refreshUsers,
     updateUser,
     deleteUser,
-    setUsers
+    setUsers,
+    exportFilteredUsers
   } = useUsers();
 
   const { premiumPlans } = usePremiumPage();
@@ -104,6 +107,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     listTitle: '',
     onConfirm: null
   });
+  const [exporting, setExporting] = useState(false);
 
   const navigation = useNavigate();
 
@@ -658,6 +662,45 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     changePageSize(newSize);
   };
 
+  const handleExport = async () => {
+    if (hasUnappliedChanges()) {
+      toast.warning('Apply your filters before exporting.');
+      return;
+    }
+
+    try {
+      setExporting(true);
+      const result = await exportFilteredUsers({
+        batch: selectedBatch,
+        isSearchMode,
+        searchParams,
+      });
+
+      const exported = downloadUsersExport(result.users || [], {
+        filters,
+        batch: selectedBatch,
+        isSearchMode,
+        searchParams,
+      });
+
+      if (!exported) {
+        toast.info('No users match the current filters.');
+        return;
+      }
+
+      if (result.truncated) {
+        toast.warning(`Exported ${result.exportedCount} of ${result.totalUsers} users (20,000 limit). Narrow filters for a full export.`);
+      } else {
+        toast.success(`Exported ${result.exportedCount} user(s).`);
+      }
+    } catch (err) {
+      console.error('Export failed:', err);
+      toast.error(err.response?.data?.error || 'Failed to export users');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Mobile menu button */}
@@ -699,6 +742,16 @@ const UsersManagement = ({id, listId, isListEdit}) => {
               >
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                 {loading ? 'Refreshing...' : 'Refresh'}
+              </button>
+
+              <button
+                onClick={handleExport}
+                disabled={exporting || loading}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 transition-colors"
+                title="Export all users matching applied filters"
+              >
+                <Download size={16} className={exporting ? 'animate-pulse' : ''} />
+                {exporting ? 'Exporting...' : 'Export'}
               </button>
               
               <Link to={"/add-user"} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-200">

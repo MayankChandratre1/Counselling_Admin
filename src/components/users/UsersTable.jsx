@@ -19,7 +19,6 @@ import {
   Filter,
   Edit2
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import axiosInstance from '../../utils/axios';
 import { useUsers } from '../../contexts/UsersContext';
 import ListReleaseModal from './ListReleaseModal';
@@ -351,40 +350,6 @@ const UsersTable = ({
       userId,
       userName
     });
-  };
-
-  const exportToCSV = () => {
-    const csvData = users.map(user => {
-      // Get user's notes
-      const userNotes = notes[user.id]?.notes || {};
-      const formattedNotes = notesToArray(userNotes).map((entry) => ({
-        admin: entry.adminEmail,
-        note: entry.note,
-        date: formatDisplayDate(entry.createdAt)
-      }));
-
-      return {
-        Name: user.name,
-        Phone: user.phone,
-        Email: user.email || '-',
-        CreatedAt: formatDisplayDate(user.createdAt),
-        ...(usePurchaseDate ? { PurchaseDate: formatDisplayDate(user.premiumPlan?.purchasedDate) } : {}),
-        Batch: user.batch || 'Unassigned',
-        IsPremium: user.isPremium ? 'Yes' : 'No',
-        HasLoggedIn: user.hasLoggedIn ? 'Yes' : 'No',
-        AssignedLists: user.lists?.map(list => list.title).join('; ') || '-',
-        NotesCount: formattedNotes.length,
-        LastNote: formattedNotes[0]?.note || '-',
-        LastNoteBy: formattedNotes[0]?.admin || '-',
-        LastNoteDate: formattedNotes[0]?.date || '-',
-        AllNotes: formattedNotes.map(n => `${n.note} (by ${n.admin} on ${n.date})`).join('\n')
-      };
-    });
-
-    const ws = XLSX.utils.json_to_sheet(csvData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Users");
-    XLSX.writeFile(wb, `users_with_notes_export.xlsx`);
   };
 
   const handleOpenListReleaseModal = (user) => {

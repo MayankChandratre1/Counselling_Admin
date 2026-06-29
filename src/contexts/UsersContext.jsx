@@ -367,6 +367,19 @@ export const UsersProvider = ({ children }) => {
     }
   }, [pageSize, premiumUsersOnly]); // Only trigger when pageSize changes
 
+  const exportFilteredUsers = useCallback(async ({ batch, isSearchMode, searchParams } = {}) => {
+    const params = { ...filters };
+    if (batch && batch !== 'all') {
+      params.batch = batch;
+    }
+    if (isSearchMode && searchParams) {
+      if (searchParams.name?.trim()) params.name = searchParams.name.trim();
+      if (searchParams.phone?.trim()) params.phone = searchParams.phone.trim();
+    }
+    const response = await axiosInstance.get('/api/admin/all-users/export', { params });
+    return response.data;
+  }, [filters]);
+
   const value = {
     users,
     loading,
@@ -404,7 +417,8 @@ export const UsersProvider = ({ children }) => {
     setNotes,
     fetchUserNotes,
     updateUserNotes,
-    setPremiumUsersOnly
+    setPremiumUsersOnly,
+    exportFilteredUsers
   };
 
   return <UsersContext.Provider value={value}>{children}</UsersContext.Provider>;
