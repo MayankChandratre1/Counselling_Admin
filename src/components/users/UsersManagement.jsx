@@ -19,6 +19,7 @@ import ErrorDisplay from './ErrorDisplay';
 import UserDetailsModal from './UserDetailsModal';
 import axiosInstance from '../../utils/axios';
 import { downloadUsersExport } from '../../utils/exportUsers';
+import { DEFAULT_USER_FILTERS } from '../../utils/userFilterParams';
 import { toast } from 'react-toastify';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
@@ -57,12 +58,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
   });
   
   // Local filter state (not applied until user clicks Apply)
-  const [localFilters, setLocalFilters] = useState({
-    plan: 'all',
-    listAssigned: 'all',
-    fromDate: '',
-    toDate: ''
-  });
+  const [localFilters, setLocalFilters] = useState({ ...DEFAULT_USER_FILTERS });
   
   const [showFilters, setShowFilters] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
@@ -126,13 +122,6 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     setLocalFilters(filters);
   }, [filters]);
 
-  // Remove fetchUsers implementation and use context's fetchUsers
-  useEffect(() => {
-    if (!isSearchMode && !dataLoaded) {
-      fetchUsers(currentPage);
-    }
-  }, [currentPage, pageSize, fetchUsers, isSearchMode, dataLoaded]);
-
   // Add this effect to extract unique batches
   useEffect(() => {
     if (users.length > 0) {
@@ -155,16 +144,17 @@ const UsersManagement = ({id, listId, isListEdit}) => {
   };
 
   const applyFilters = () => {
+    setIsSearchMode(false);
+    setSearchResults([]);
+    setSearchParams({ name: '', phone: '' });
     updateFilters(localFilters);
   };
 
   const clearAllFilters = () => {
-    setLocalFilters({
-      plan: 'all',
-      listAssigned: 'all',
-      fromDate: '',
-      toDate: ''
-    });
+    setLocalFilters({ ...DEFAULT_USER_FILTERS });
+    setIsSearchMode(false);
+    setSearchResults([]);
+    setSearchParams({ name: '', phone: '' });
     clearFilters();
   };
 
@@ -896,7 +886,23 @@ const UsersManagement = ({id, listId, isListEdit}) => {
                 )}
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                {/* Premium status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Premium Status
+                  </label>
+                  <select
+                    value={localFilters.isPremium}
+                    onChange={(e) => handleLocalFilterChange('isPremium', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Users</option>
+                    <option value="true">Premium Only</option>
+                    <option value="false">Non-Premium Only</option>
+                  </select>
+                </div>
+
                 {/* Plan Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -908,8 +914,6 @@ const UsersManagement = ({id, listId, isListEdit}) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Plans</option>
-                    <option value="premium">Premium Users</option>
-                    <option value="standard">Standard Users</option>
                     <optgroup label="Specific Plans">
                       {getAvailablePlans().map(plan => (
                         <option key={plan} value={plan}>
@@ -992,6 +996,11 @@ const UsersManagement = ({id, listId, isListEdit}) => {
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-gray-600">Applied:</span>
                     <div className="flex flex-wrap gap-2">
+                      {filters.isPremium !== 'all' && (
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                          Premium: {filters.isPremium === 'true' ? 'Yes' : 'No'}
+                        </span>
+                      )}
                       {filters.plan !== 'all' && (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
                           Plan: {filters.plan}

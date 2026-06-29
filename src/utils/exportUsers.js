@@ -58,6 +58,7 @@ export function buildUsersExportFilename({ filters = {}, batch, isSearchMode, se
     if (searchParams.name?.trim()) parts.push(`name-${searchParams.name.trim().slice(0, 20)}`);
     if (searchParams.phone?.trim()) parts.push(`phone-${searchParams.phone.trim()}`);
   }
+  if (filters.isPremium && filters.isPremium !== 'all') parts.push(`premium-${filters.isPremium}`);
   if (filters.plan && filters.plan !== 'all') parts.push(`plan-${filters.plan}`);
   if (filters.listAssigned && filters.listAssigned !== 'all') {
     parts.push(filters.listAssigned === 'true' ? 'with-lists' : 'no-lists');
