@@ -145,16 +145,19 @@ const ListFormModal = ({
 
 
   useEffect(() => {
-    // Filter categories based on search input
-    if (categorySearchInput.trim() === '') {
+    // Filter categories based on search input.
+    // When the input still holds the pre-selected category (prefill), show the
+    // full list so the user can browse/change it instead of seeing only the current one.
+    const query = categorySearchInput.trim();
+    if (query === '' || query === selectedCategory) {
       setFilteredCategories(categories);
     } else {
       const filtered = categories.filter(category => 
-        category.toLowerCase().includes(categorySearchInput.toLowerCase())
+        category.toLowerCase().includes(query.toLowerCase())
       );
       setFilteredCategories(filtered);
     }
-  }, [categorySearchInput, categories]);
+  }, [categorySearchInput, categories, selectedCategory]);
 
   useEffect(() => {
     // Close dropdown when clicking outside
@@ -422,6 +425,11 @@ const ListFormModal = ({
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setShowCategoryDropdown(true);
+                }}
+                onFocus={(e) => {
+                  e.target.select();
+                  setFilteredCategories(categories);
                   setShowCategoryDropdown(true);
                 }}
                 placeholder="Search category..."
