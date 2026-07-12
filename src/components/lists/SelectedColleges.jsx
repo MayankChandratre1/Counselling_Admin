@@ -986,7 +986,7 @@ const applyBulkColorLabel = (colorId) => {
                       );
 
                       const selectedCategoryCuttoff = selectedCollegesCutoffs?.find(clg => clg.id === college.id)?.branches?.find(
-                        branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.year == 2024 && cutoff.category === selectedCategory);
+                        branch => branch.branchCode === college.selectedBranchCode)?.cutoffs?.find(cutoff => cutoff.year == 2025 && cutoff.category === selectedCategory);
                       
                       // Get color option based on college's colorLabel
                       const colorOption = colorOptions.find(c => c.id === (college.colorLabel || 'none')) || colorOptions[0];
