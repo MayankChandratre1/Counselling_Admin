@@ -561,9 +561,14 @@ const ListsManagement2 = ({listId}) => {
   const handleFolderMove = async (listId, folderId) => {
     try {
       await axiosInstance.post(`/api/admin/list/${listId}/move-to-folder/${folderId}`);
+      // "No Folder" arrives as a sentinel ("null"/"no-folder"); normalize so grouping (folderId || 'no-folder') works.
+      const normalizedFolderId =
+        !folderId || folderId === 'null' || folderId === 'no-folder' || folderId === 'none'
+          ? null
+          : folderId;
       // Update the list in state to reflect its new folder
       setLists(lists.map(list => 
-        list.id === listId ? { ...list, folderId } : list
+        list.id === listId ? { ...list, folderId: normalizedFolderId } : list
       ));
       return true;
     } catch (err) {
