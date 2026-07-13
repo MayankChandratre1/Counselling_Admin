@@ -358,13 +358,17 @@ const UsersTable = ({
   };
 
   const handleListReleased = (listId) => {
-    // Update the user's createdList array by removing the released list
+    // Move the released list from createdList into the user's (released) lists
     setSortedUsers(prevUsers => 
       prevUsers.map(user => {
         if (user.id === selectedUserForRelease.id) {
+          const releasedList = user.createdList?.find(list => list.id === listId);
           return {
             ...user,
-            createdList: user.createdList?.filter(list => list.id !== listId) || []
+            createdList: user.createdList?.filter(list => list.id !== listId) || [],
+            lists: releasedList
+              ? [...(user.lists || []), { ...releasedList, type: 'assigned' }]
+              : (user.lists || [])
           };
         }
         return user;

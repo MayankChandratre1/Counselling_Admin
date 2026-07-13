@@ -19,6 +19,7 @@ import UserDetailsModal from './UserDetailsModal';
 import ListReleaseModal from './ListReleaseModal';
 import { set } from 'lodash';
 import { formatDisplayDate } from '../../utils/formatDate';
+import axiosInstance from '../../utils/axios';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -332,16 +333,18 @@ const PremiumUsersManagement = () => {
               createdAt: timestamp,
               updatedAt: timestamp,
               customized: false,
-              isCustomized: false
+              isCustomized: false,
+              type: 'created'
             };
             
-            await axiosInstance.post(`/api/admin/user/${selectedUserId.id}/assign-list`, listAssignment);
+            const assignResponse = await axiosInstance.post(`/api/admin/user/${selectedUserId.id}/assign-list`, listAssignment);
+            const savedList = assignResponse.data?.userList || listAssignment;
             
             setUsers(users.map(user => {
               if (user.id === selectedUserId.id) {
                 return {
                   ...user,
-                  lists: [...(user.lists || []), listAssignment]
+                  createdList: [...(user.createdList || []), savedList]
                 };
               }
               return user;
@@ -390,7 +393,7 @@ const PremiumUsersManagement = () => {
         if (user.id === selectedUserId.id) {
           return {
             ...user,
-            lists: [...(user.lists || []), assignedList]
+            createdList: [...(user.createdList || []), assignedList]
           };
         }
         return user;
@@ -659,13 +662,17 @@ const PremiumUsersManagement = () => {
   };
 
   const handleListReleased = (listId) => {
-    // Update the users state by removing the released list from the user's createdList
+    // Move the released list from the user's createdList into their (released) lists
     setUsers(prevUsers => 
       prevUsers.map(user => {
         if (user.id === selectedUserForRelease.id) {
+          const releasedList = user.createdList?.find(list => list.id === listId);
           return {
             ...user,
-            createdList: user.createdList?.filter(list => list.id !== listId) || []
+            createdList: user.createdList?.filter(list => list.id !== listId) || [],
+            lists: releasedList
+              ? [...(user.lists || []), { ...releasedList, type: 'assigned' }]
+              : (user.lists || [])
           };
         }
         return user;

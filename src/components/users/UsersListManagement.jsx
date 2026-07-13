@@ -422,7 +422,8 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
               createdAt: timestamp,
               updatedAt: timestamp,
               customized: false,
-              isCustomized: false
+              isCustomized: false,
+              type: 'created'
             };
 
             const assignedList = await assignListPayloadToUser(selectedUserId.id, listAssignment);
@@ -431,7 +432,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
               if (user.id === selectedUserId.id) {
                 return {
                   ...user,
-                  lists: [...(user.lists || []), assignedList]
+                  createdList: [...(user.createdList || []), assignedList]
                 };
               }
               return user;
@@ -479,7 +480,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
         if (user.id === selectedUserId.id) {
           return {
             ...user,
-            lists: [...(user.lists || []), assignedList]
+            createdList: [...(user.createdList || []), assignedList]
           };
         }
         return user;
@@ -538,7 +539,7 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
           if (!assignedList) return user;
           return {
             ...user,
-            lists: [...(user.lists || []), assignedList]
+            createdList: [...(user.createdList || []), assignedList]
           };
         }));
       }
@@ -633,11 +634,20 @@ const UsersListManagement = ({id, listId, isListEdit}) => {
         )
       );
 
+      setSelectedUsersCreatedLists(prevLists =>
+        (prevLists || []).map(list =>
+          (list.id === targetListId || list.listId === targetListId) ? response.data : list
+        )
+      );
+
       setUsers(users.map(user => {
         if (user.id === selectedUserListsId) {
           return {
             ...user,
-            lists: user.lists.map(list => 
+            lists: (user.lists || []).map(list => 
+              (list.id === targetListId || list.listId === targetListId) ? response.data : list
+            ),
+            createdList: (user.createdList || []).map(list =>
               (list.id === targetListId || list.listId === targetListId) ? response.data : list
             )
           };
