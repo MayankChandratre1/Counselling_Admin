@@ -329,7 +329,8 @@ const ListsManagement2 = ({listId}) => {
                     title: list.title || '',
                     items: list.items || [],
                     userIds: list.userIds || [],
-                    category: list.category || PREDEFINED_CATEGORIES[0]
+                    category: list.category || PREDEFINED_CATEGORIES[0],
+                    folderId: list.folderId || ''
                 });
                 setSelectedColleges(list.colleges || []);
                 setShowModal(true);
@@ -735,7 +736,7 @@ const ListsManagement2 = ({listId}) => {
       if (editingList?.id) {
         await axiosInstance.post(`/api/admin/edit-list/${editingList.id}`, submitData);
         setLists(lists.map(list => 
-          list.id === editingList.id ? { ...list, ...submitData, folderId: list.folderId } : list
+          list.id === editingList.id ? { ...list, ...submitData } : list
         ));
       } else {
         const response = await axiosInstance.post('/api/admin/add-list', submitData);
