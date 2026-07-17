@@ -34,18 +34,20 @@ axiosInstance.interceptors.request.use((config) => {
 });
 
 // Auto-logout on 401 (expired / invalid token)
+let isRedirecting = false;
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || '';
       const isLoginRequest = requestUrl.includes('/api/admin/login');
+      const hadToken = !!sessionStorage.getItem('adminToken');
 
-      sessionStorage.removeItem('adminToken');
-      sessionStorage.removeItem('adminInfo');
-      // adminPages removed - now using adminInfo.permissions
-
-      if (!isLoginRequest && window.location.pathname !== '/') {
+      if (!isLoginRequest && hadToken && !isRedirecting) {
+        isRedirecting = true;
+        sessionStorage.removeItem('adminToken');
+        sessionStorage.removeItem('adminInfo');
         window.location.replace('/');
       }
     }

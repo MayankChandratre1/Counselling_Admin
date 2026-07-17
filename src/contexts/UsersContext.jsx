@@ -296,7 +296,8 @@ export const UsersProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    if (!initialLoadDone.current) {
+    const hasToken = !!sessionStorage.getItem('adminToken');
+    if (!initialLoadDone.current && hasToken) {
       initialLoadDone.current = true;
       fetchUsers(1, true, premiumUsersOnly);
     }
@@ -349,6 +350,13 @@ export const UsersProvider = ({ children }) => {
     updateUserNotes,
     setPremiumUsersOnly,
     exportFilteredUsers,
+    refetchIfNeeded: useCallback(() => {
+      if (users.length === 0 && !loading && sessionStorage.getItem('adminToken')) {
+        initialLoadDone.current = false;
+        fetchUsers(1, true, premiumUsersOnly);
+        initialLoadDone.current = true;
+      }
+    }, [users.length, loading, fetchUsers, premiumUsersOnly]),
   };
 
   return <UsersContext.Provider value={value}>{children}</UsersContext.Provider>;

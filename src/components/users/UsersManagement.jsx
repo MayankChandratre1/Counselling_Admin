@@ -46,7 +46,8 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     updateUser,
     deleteUser,
     setUsers,
-    exportFilteredUsers
+    exportFilteredUsers,
+    refetchIfNeeded
   } = useUsers();
 
   const { premiumPlans } = usePremiumPage();
@@ -57,6 +58,10 @@ const UsersManagement = ({id, listId, isListEdit}) => {
     phone: ''
   });
   
+  useEffect(() => {
+    refetchIfNeeded();
+  }, [refetchIfNeeded]);
+
   // Local filter state (not applied until user clicks Apply)
   const [localFilters, setLocalFilters] = useState({ ...DEFAULT_USER_FILTERS });
   
