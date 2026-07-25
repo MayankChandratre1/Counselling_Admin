@@ -273,7 +273,7 @@ const ImportColleges = ({
                                   <div>
                                     <h5 className="font-medium text-gray-900">{list.title}</h5>
                                     <p className="text-sm text-gray-500">
-                                      {list.colleges?.length || 0} colleges
+                                      {list.collegeCount ?? list.colleges?.length ?? 0} colleges
                                     </p>
                                   </div>
                                   {selectedListId === list.id && (
@@ -324,7 +324,7 @@ const ImportColleges = ({
                                 <div>
                                   <h5 className="font-medium text-gray-900">{list.title}</h5>
                                   <p className="text-sm text-gray-500">
-                                    {list.colleges?.length || 0} colleges
+                                    {list.collegeCount ?? list.colleges?.length ?? 0} colleges
                                   </p>
                                 </div>
                                 {selectedListId === list.id && (

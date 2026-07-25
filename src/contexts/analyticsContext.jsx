@@ -50,6 +50,55 @@ export const AnalyticsProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  const mergeEnrolledDetails = useCallback((data, byId) => {
+    if (!data?.metrics || !byId) return data;
+
+    const mergeUsers = (users = []) =>
+      users.map((u) => {
+        const extra = byId[u.id];
+        if (!extra) return u;
+        return {
+          ...u,
+          stepsData: extra.stepsData,
+          counsellingData: extra.counsellingData,
+        };
+      });
+
+    return {
+      ...data,
+      detailsPending: false,
+      metrics: {
+        ...data.metrics,
+        enrolled: {
+          ...data.metrics.enrolled,
+          users: mergeUsers(data.metrics.enrolled?.users),
+        },
+        todayEnrolled: {
+          ...data.metrics.todayEnrolled,
+          users: mergeUsers(data.metrics.todayEnrolled?.users),
+        },
+        paymentPending: {
+          ...data.metrics.paymentPending,
+          users: mergeUsers(data.metrics.paymentPending?.users),
+        },
+      },
+    };
+  }, []);
+
+  const fetchEnrolledDetails = useCallback(async (baseData) => {
+    setDetailsLoading(true);
+    try {
+      const response = await axiosInstance.get('/api/admin/get-analytics-details');
+      const byId = response.data?.byId || {};
+      setRawAnalyticsData((prev) => mergeEnrolledDetails(baseData || prev, byId));
+    } catch (err) {
+      console.error('Error fetching analytics details:', err);
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, [mergeEnrolledDetails]);
 
   const fetchAnalyticsData = useCallback(async (forceRefresh = false) => {
     // Don't fetch if data is fresh (less than 5 minutes old) unless forced
@@ -66,6 +115,12 @@ export const AnalyticsProvider = ({ children }) => {
       
       setRawAnalyticsData(data);
       setLastFetched(Date.now());
+
+      // Heavy stepsData/counsellingData — load in background so home isn't blocked
+      if (data?.detailsPending !== false) {
+        fetchEnrolledDetails(data);
+      }
+
       return data;
     } catch (error) {
       console.error('Error fetching analytics data:', error);
@@ -74,7 +129,7 @@ export const AnalyticsProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [rawAnalyticsData, lastFetched]);
+  }, [rawAnalyticsData, lastFetched, fetchEnrolledDetails]);
 
   const refreshAnalytics = useCallback(() => {
     return fetchAnalyticsData(true);
@@ -204,6 +259,7 @@ export const AnalyticsProvider = ({ children }) => {
     purchaseYearFilter,
     setPurchaseYearFilter,
     loading,
+    detailsLoading,
     error,
     lastFetched,
     

@@ -484,31 +484,6 @@ const ListsManagement3 = ({list, user, users, setSelectedUsersCreatedLists, setU
       setLoading(true);
       const response = await axiosInstance.get('/api/admin/lists');
       setLists(response.data);
-      
-      // Fetch user details for each list that has users
-      const usersToFetch = new Set();
-      response.data.forEach(list => {
-        if (list.userIds && list.userIds.length > 0) {
-          list.userIds.forEach(userId => usersToFetch.add(userId));
-        }
-      });
-      
-      if (usersToFetch.size > 0) {
-        // Fetch details for all users in batches
-        const userDetails = {};
-        // In a real app, you might want to batch these requests
-        for (const userId of usersToFetch) {
-          try {
-            const userResponse = await axiosInstance.get(`/api/admin/user/${userId}`);
-            userDetails[userId] = userResponse.data;
-          } catch (err) {
-            console.error(`Error fetching user ${userId}:`, err);
-            userDetails[userId] = { name: 'Unknown user', id: userId };
-          }
-        }
-        setUsersInList(userDetails);
-      }
-      
       setError(null);
     } catch (err) {
       setError('Failed to fetch lists');

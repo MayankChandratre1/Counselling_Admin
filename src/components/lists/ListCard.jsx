@@ -150,8 +150,8 @@ const ListCard = ({
               <div className="flex items-center text-gray-600">
                 <School size={14} className="mr-1" />
                 <span>
-                  <span className="font-semibold">{list.colleges?.length || 0}</span> 
-                  {(list.colleges?.length || 0) === 1 ? ' college' : ' colleges'}
+                  <span className="font-semibold">{list.collegeCount ?? list.colleges?.length ?? 0}</span> 
+                  {(list.collegeCount ?? list.colleges?.length ?? 0) === 1 ? ' college' : ' colleges'}
                 </span>
               </div>
               

@@ -297,7 +297,6 @@ const ListsManagement2 = ({listId}) => {
   const [selectedColleges, setSelectedColleges] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [expandedListId, setExpandedListId] = useState(null);
-  const [usersInList, setUsersInList] = useState({});
   const [availableCities, setAvailableCities] = useState(PREDEFINED_CITIES.map(c => c.toLowerCase()));
   const [showCityFilter, setShowCityFilter] = useState(false);
   const [selectedCity, setSelectedCity] = useState('');
@@ -319,24 +318,33 @@ const ListsManagement2 = ({listId}) => {
   const [copiedCodes, setCopiedCodes] = useState({}); // Track copied codes by list and college ID
 
   useEffect(() => {
-        if(listId && lists.length > 0) {
-            const list = lists.find(l => l.id === listId);
-            console.log('Found list:', list);
-            
-            if (list) {
-                setEditingList(list);
-                setFormData({
-                    title: list.title || '',
-                    items: list.items || [],
-                    userIds: list.userIds || [],
-                    category: list.category || PREDEFINED_CATEGORIES[0],
-                    folderId: list.folderId || ''
-                });
-                setSelectedColleges(list.colleges || []);
-                setShowModal(true);
-            }
-        }
-  }, [listId, lists]);
+    if (!listId) return;
+
+    let cancelled = false;
+    const openListForEdit = async () => {
+      try {
+        // Prefer full list from API (index response omits colleges)
+        const { data: list } = await axiosInstance.get(`/api/admin/list/${listId}`);
+        if (cancelled || !list) return;
+        setEditingList(list);
+        setFormData({
+          title: list.title || '',
+          items: list.items || [],
+          userIds: list.userIds || [],
+          category: list.category || PREDEFINED_CATEGORIES[0],
+          folderId: list.folderId || '',
+        });
+        setSelectedColleges(list.colleges || []);
+        setShowModal(true);
+      } catch (err) {
+        console.error('Failed to load list for edit:', err);
+        setError('Failed to load list');
+      }
+    };
+
+    openListForEdit();
+    return () => { cancelled = true; };
+  }, [listId]);
 
   useEffect(() => {
     fetchLists();
@@ -470,31 +478,6 @@ const ListsManagement2 = ({listId}) => {
       setLoading(true);
       const response = await axiosInstance.get('/api/admin/lists');
       setLists(response.data);
-      
-      // Fetch user details for each list that has users
-      const usersToFetch = new Set();
-      response.data.forEach(list => {
-        if (list.userIds && list.userIds.length > 0) {
-          list.userIds.forEach(userId => usersToFetch.add(userId));
-        }
-      });
-      
-      if (usersToFetch.size > 0) {
-        // Fetch details for all users in batches
-        const userDetails = {};
-        // In a real app, you might want to batch these requests
-        for (const userId of usersToFetch) {
-          try {
-            const userResponse = await axiosInstance.get(`/api/admin/user/${userId}`);
-            userDetails[userId] = userResponse.data;
-          } catch (err) {
-            console.error(`Error fetching user ${userId}:`, err);
-            userDetails[userId] = { name: 'Unknown user', id: userId };
-          }
-        }
-        setUsersInList(userDetails);
-      }
-      
       setError(null);
     } catch (err) {
       setError('Failed to fetch lists');
@@ -502,6 +485,18 @@ const ListsManagement2 = ({listId}) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  /** Load full list (with colleges) when expanding — index payload omits colleges. */
+  const ensureListColleges = async (listId) => {
+    const existing = lists.find((l) => l.id === listId);
+    if (existing?.colleges) return existing;
+
+    const { data } = await axiosInstance.get(`/api/admin/list/${listId}`);
+    setLists((prev) =>
+      prev.map((l) => (l.id === listId ? { ...l, ...data, collegeCount: data.colleges?.length ?? l.collegeCount } : l))
+    );
+    return data;
   };
 
   const handleBranchSelect = (branch) => {
@@ -807,16 +802,23 @@ const ListsManagement2 = ({listId}) => {
     }
   };
 
-  const openModal = (list = null) => {
+  const openModal = async (list = null) => {
     if (list) {
-      setFormData({
-        title: list.title || '',
-        folderId: list.folderId || ''
-      });
-      setSelectedColleges(list.colleges || []);
-      setEditingList(list);
-      setShowTemplateSelection(false);
-      setSelectedTemplate('');
+      try {
+        const full = list.colleges ? list : await ensureListColleges(list.id);
+        setFormData({
+          title: full.title || '',
+          folderId: full.folderId || ''
+        });
+        setSelectedColleges(full.colleges || []);
+        setEditingList(full);
+        setShowTemplateSelection(false);
+        setSelectedTemplate('');
+      } catch (err) {
+        console.error('Failed to open list:', err);
+        setError('Failed to load list colleges');
+        return;
+      }
     } else {
       setFormData({ title: '', folderId: '' });
       setSelectedColleges([]);
@@ -827,7 +829,7 @@ const ListsManagement2 = ({listId}) => {
     setShowModal(true);
   };
 
-  const handleTemplateSelect = (templateId) => {
+  const handleTemplateSelect = async (templateId) => {
     if (templateId === '') {
       // No template selected
       setSelectedColleges([]);
@@ -836,15 +838,19 @@ const ListsManagement2 = ({listId}) => {
       return;
     }
 
-    const templateList = lists.find(list => list.id === templateId);
-    if (templateList && templateList.colleges) {
-      setSelectedColleges([...templateList.colleges]); // Copy colleges from template
-      setSelectedTemplate(templateId);
-      setShowTemplateSelection(false);
-      // Set the category from template as well
-      if (templateList.category) {
-        setSelectedCategory(templateList.category);
+    try {
+      const templateList = await ensureListColleges(templateId);
+      if (templateList?.colleges) {
+        setSelectedColleges([...templateList.colleges]);
+        setSelectedTemplate(templateId);
+        setShowTemplateSelection(false);
+        if (templateList.category) {
+          setSelectedCategory(templateList.category);
+        }
       }
+    } catch (err) {
+      console.error('Failed to load template list:', err);
+      setError('Failed to load template colleges');
     }
   };
 
@@ -873,8 +879,18 @@ const ListsManagement2 = ({listId}) => {
     setSelectedColleges(newColleges);
   };
 
-  const handleListClick = (listId) => {
-    setExpandedListId(expandedListId === listId ? null : listId);
+  const handleListClick = async (listId) => {
+    if (expandedListId === listId) {
+      setExpandedListId(null);
+      return;
+    }
+    setExpandedListId(listId);
+    try {
+      await ensureListColleges(listId);
+    } catch (err) {
+      console.error('Failed to load list colleges:', err);
+      setError('Failed to load list details');
+    }
   };
 
  

@@ -1164,7 +1164,7 @@ const ListFormModal = ({
                       .filter(list => list.id !== editingList?.id) // Exclude current list
                       .map(list => (
                         <option key={list.id} value={list.id}>
-                          {list.title} ({list.colleges?.length || 0} colleges)
+                          {list.title} ({list.collegeCount ?? list.colleges?.length ?? 0} colleges)
                         </option>
                       ))}
                   </select>
@@ -1702,7 +1702,7 @@ const ListFormModal = ({
                       .filter(list => list.id !== editingList?.id) // Exclude current list
                       .map(list => (
                         <option key={list.id} value={list.id}>
-                          {list.title} ({list.colleges?.length || 0} colleges)
+                          {list.title} ({list.collegeCount ?? list.colleges?.length ?? 0} colleges)
                         </option>
                       ))}
                   </select>
@@ -2229,7 +2229,7 @@ const ListFormModal = ({
                       .filter(list => list.id !== editingList?.id) // Exclude current list
                       .map(list => (
                         <option key={list.id} value={list.id}>
-                          {list.title} ({list.colleges?.length || 0} colleges)
+                          {list.title} ({list.collegeCount ?? list.colleges?.length ?? 0} colleges)
                         </option>
                       ))}
                   </select>
