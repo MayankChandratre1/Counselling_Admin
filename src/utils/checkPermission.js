@@ -5,6 +5,9 @@
  */
 import { hasSecurityPrivileges } from './securityRole';
 
+/** Set on save once Users capabilities have been explicitly configured. */
+export const USERS_CAPS_CONFIGURED = 'users-caps-configured';
+
 /** Fine-grained Users / Premium Users / User-lists capabilities (stored in pages[]). */
 export const USER_CAPABILITY_KEYS = [
   'users-write',
@@ -52,8 +55,12 @@ export const isElevatedAdmin = (adminInfo = getAdminInfo()) => {
   return adminInfo.role === 'super-admin' || adminInfo.role === 'security-admin';
 };
 
-/** True once any new capability key is present (explicit mode). */
-export const hasUserCapabilityFlags = (pages = getPages()) =>
+/**
+ * Explicit mode: capabilities were configured (marker or any cap key present).
+ * In explicit mode, missing a key means DENY — never fall back to full access.
+ */
+export const isUsersCapsExplicit = (pages = getPages()) =>
+  pages.includes(USERS_CAPS_CONFIGURED) ||
   USER_CAPABILITY_KEYS.some((k) => pages.includes(k));
 
 export const hasUsersPageAccess = (adminInfo = getAdminInfo()) => {
@@ -65,50 +72,56 @@ export const hasUsersPageAccess = (adminInfo = getAdminInfo()) => {
 
 /**
  * Can edit/delete users (Users + Premium Users).
- * Legacy admins without new flags keep full write access.
+ * Legacy (no marker / no caps): keep write if they have users.
+ * Explicit: require users-write or edit-users.
  */
 export const canWriteUsers = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   if (isElevatedAdmin(adminInfo)) return true;
   const pages = getPages(adminInfo);
-  if (pages.includes('users-write') || pages.includes('edit-users')) return true;
-  if (!hasUserCapabilityFlags(pages) && pages.includes('users')) return true;
-  return false;
+  if (!pages.includes('users') && !pages.includes('premium-users')) return false;
+  if (isUsersCapsExplicit(pages)) {
+    return pages.includes('users-write') || pages.includes('edit-users');
+  }
+  return pages.includes('users');
 };
 
 /**
- * Can edit/delete/assign on user lists overview.
- * Legacy admins without new flags keep full write access.
+ * Can edit/delete/assign on user lists.
  */
 export const canWriteUserLists = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   if (isElevatedAdmin(adminInfo)) return true;
   const pages = getPages(adminInfo);
-  if (pages.includes('user-lists-write')) return true;
-  if (!hasUserCapabilityFlags(pages) && (pages.includes('users') || pages.includes('user-lists'))) {
-    return true;
+  if (!pages.includes('users') && !pages.includes('user-lists')) return false;
+  if (isUsersCapsExplicit(pages)) {
+    return pages.includes('user-lists-write');
   }
-  return false;
+  return true;
 };
 
 /** Can see steps / form progress on user details. */
 export const canViewSteps = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   if (isElevatedAdmin(adminInfo)) return true;
+  if (!hasUsersPageAccess(adminInfo)) return false;
   const pages = getPages(adminInfo);
-  if (pages.includes('view-steps')) return true;
-  if (!hasUserCapabilityFlags(pages) && hasUsersPageAccess(adminInfo)) return true;
-  return false;
+  if (isUsersCapsExplicit(pages)) {
+    return pages.includes('view-steps');
+  }
+  return true;
 };
 
 /** Can see payment / premium plan money fields / payment history. */
 export const canViewPayment = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   if (isElevatedAdmin(adminInfo)) return true;
+  if (!hasUsersPageAccess(adminInfo)) return false;
   const pages = getPages(adminInfo);
-  if (pages.includes('view-payment')) return true;
-  if (!hasUserCapabilityFlags(pages) && hasUsersPageAccess(adminInfo)) return true;
-  return false;
+  if (isUsersCapsExplicit(pages)) {
+    return pages.includes('view-payment');
+  }
+  return true;
 };
 
 /**
@@ -125,11 +138,40 @@ export const expandLegacyUserCapabilities = (pages = []) => {
     next.push('users-write');
   }
 
-  if (!hasUserCapabilityFlags(next)) {
+  // Legacy only: no marker and no caps → show all checked in the UI
+  if (!isUsersCapsExplicit(next)) {
     for (const key of USER_CAPABILITY_KEYS) {
       if (!next.includes(key)) next.push(key);
     }
   }
+  return next;
+};
+
+/**
+ * Normalize pages before save so unchecked caps actually mean deny.
+ * Always stamps users-caps-configured when Users access is granted.
+ */
+export const finalizeUserCapabilityPages = (pages = []) => {
+  let next = [...pages];
+  const hasUsers = next.includes('users');
+
+  if (!hasUsers) {
+    return next.filter(
+      (p) => p !== USERS_CAPS_CONFIGURED && !USER_CAPABILITY_KEYS.includes(p) && p !== 'edit-users'
+    );
+  }
+
+  if (!next.includes(USERS_CAPS_CONFIGURED)) {
+    next.push(USERS_CAPS_CONFIGURED);
+  }
+
+  if (next.includes('users-write') && !next.includes('edit-users')) {
+    next.push('edit-users');
+  }
+  if (!next.includes('users-write')) {
+    next = next.filter((p) => p !== 'edit-users');
+  }
+
   return next;
 };
 
@@ -141,10 +183,8 @@ export const checkPermission = (requiredPermission) => {
     return hasSecurityPrivileges(adminInfo);
   }
 
-  // Privileged admins bypass all permission checks
   if (isElevatedAdmin(adminInfo)) return true;
 
-  // Capability helpers (also callable via checkPermission for convenience)
   if (requiredPermission === 'users-write') return canWriteUsers(adminInfo);
   if (requiredPermission === 'user-lists-write') return canWriteUserLists(adminInfo);
   if (requiredPermission === 'view-steps') return canViewSteps(adminInfo);

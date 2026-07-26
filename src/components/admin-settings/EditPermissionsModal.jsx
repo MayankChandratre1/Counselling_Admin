@@ -4,7 +4,9 @@ import { getAllPagePermissions, ANALYTICS_COMPONENTS } from '../../config/routes
 import {
   USER_CAPABILITIES,
   USER_CAPABILITY_KEYS,
+  USERS_CAPS_CONFIGURED,
   expandLegacyUserCapabilities,
+  finalizeUserCapabilityPages,
 } from '../../utils/checkPermission';
 
 const ALL_PAGES = getAllPagePermissions();
@@ -38,7 +40,9 @@ const EditPermissionsModal = ({ admin, onClose, onSave }) => {
 
       // Revoking Users access → drop user capability flags
       if (page === 'users' && !next.includes('users')) {
-        next = next.filter(p => !USER_CAPABILITY_KEYS.includes(p) && p !== 'edit-users');
+        next = next.filter(
+          p => !USER_CAPABILITY_KEYS.includes(p) && p !== 'edit-users' && p !== USERS_CAPS_CONFIGURED
+        );
       }
 
       return next;
@@ -74,15 +78,7 @@ const EditPermissionsModal = ({ admin, onClose, onSave }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Keep edit-users in sync with users-write for older checks
-      let pagesToSave = [...pages];
-      if (pagesToSave.includes('users-write') && !pagesToSave.includes('edit-users')) {
-        pagesToSave.push('edit-users');
-      }
-      if (!pagesToSave.includes('users-write')) {
-        pagesToSave = pagesToSave.filter(p => p !== 'edit-users');
-      }
-
+      const pagesToSave = finalizeUserCapabilityPages(pages);
       await onSave(admin.id, { pages: pagesToSave, components });
       onClose();
     } catch (error) {

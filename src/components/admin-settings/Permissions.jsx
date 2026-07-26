@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
-import { Bug, Save, Edit2, X, Plus } from 'lucide-react';
+import { Bug, Save, Edit2, X } from 'lucide-react';
 import axiosInstance from '../../utils/axios';
 import { getAllPagePermissions, ANALYTICS_COMPONENTS } from '../../config/routes';
+import {
+  USER_CAPABILITIES,
+  USER_CAPABILITY_KEYS,
+  USERS_CAPS_CONFIGURED,
+  expandLegacyUserCapabilities,
+  finalizeUserCapabilityPages,
+} from '../../utils/checkPermission';
 
 const ALL_PAGES = getAllPagePermissions();
 const ALL_COMPONENTS = ANALYTICS_COMPONENTS.map(c => c.key);
@@ -16,7 +23,7 @@ const Permissions = ({ permissions }) => {
   const handleEdit = (role) => {
     setEditingRole(role);
     const roleData = permissions.find(p => p.role === role);
-    setEditedPages(roleData?.pages || []);
+    setEditedPages(expandLegacyUserCapabilities(roleData?.pages || []));
     setEditedComponents(roleData?.components || []);
   };
 
@@ -24,11 +31,10 @@ const Permissions = ({ permissions }) => {
     try {
       setLoading(true);
       await axiosInstance.post(`/api/admin/permissions/${role}`, {
-        pages: editedPages,
+        pages: finalizeUserCapabilityPages(editedPages),
         components: editedComponents
       });
       setEditingRole(null);
-      // Refresh permissions (you might want to lift this up to parent)
       window.location.reload();
     } catch (error) {
       console.error('Error saving permissions:', error);
@@ -39,36 +45,53 @@ const Permissions = ({ permissions }) => {
   };
 
   const togglePage = (page) => {
-    setEditedPages(prev => 
-      prev.includes(page) 
+    setEditedPages(prev => {
+      let next = prev.includes(page)
         ? prev.filter(p => p !== page)
-        : [...prev, page]
+        : [...prev, page];
+      if (page === 'users' && next.includes('users')) {
+        for (const key of USER_CAPABILITY_KEYS) {
+          if (!next.includes(key)) next.push(key);
+        }
+      }
+      if (page === 'users' && !next.includes('users')) {
+        next = next.filter(
+          p => !USER_CAPABILITY_KEYS.includes(p) && p !== 'edit-users' && p !== USERS_CAPS_CONFIGURED
+        );
+      }
+      return next;
+    });
+  };
+
+  const toggleCapability = (key) => {
+    setEditedPages(prev =>
+      prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key]
     );
   };
 
   const toggleComponent = (component) => {
-    setEditedComponents(prev => 
-      prev.includes(component) 
+    setEditedComponents(prev =>
+      prev.includes(component)
         ? prev.filter(c => c !== component)
         : [...prev, component]
     );
   };
 
   const selectAllPages = () => {
-    setEditedPages(ALL_PAGES.map(p => p.key));
+    setEditedPages([...new Set([...ALL_PAGES.map(p => p.key), ...USER_CAPABILITY_KEYS])]);
   };
 
-  const deselectAllPages = () => {
-    setEditedPages([]);
-  };
+  const deselectAllPages = () => setEditedPages([]);
+  const selectAllComponents = () => setEditedComponents([...ALL_COMPONENTS]);
+  const deselectAllComponents = () => setEditedComponents([]);
 
-  const selectAllComponents = () => {
-    setEditedComponents([...ALL_COMPONENTS]);
-  };
+  const capabilityLabel = (key) =>
+    USER_CAPABILITIES.find(c => c.key === key)?.label || key;
 
-  const deselectAllComponents = () => {
-    setEditedComponents([]);
-  };
+  const visiblePageKeys = (pages = []) =>
+    (pages || []).filter(
+      p => !USER_CAPABILITY_KEYS.includes(p) && p !== 'edit-users' && p !== USERS_CAPS_CONFIGURED
+    );
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -118,24 +141,13 @@ const Permissions = ({ permissions }) => {
               )}
             </div>
 
-            {/* Pages Section */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="text-md font-medium text-gray-700">Pages Access</h4>
                 {editingRole === roleData.role && (
                   <div className="space-x-2 text-sm">
-                    <button
-                      onClick={selectAllPages}
-                      className="text-blue-600 hover:text-blue-700 underline"
-                    >
-                      Select All
-                    </button>
-                    <button
-                      onClick={deselectAllPages}
-                      className="text-gray-600 hover:text-gray-700 underline"
-                    >
-                      Deselect All
-                    </button>
+                    <button onClick={selectAllPages} className="text-blue-600 hover:text-blue-700 underline">Select All</button>
+                    <button onClick={deselectAllPages} className="text-gray-600 hover:text-gray-700 underline">Deselect All</button>
                   </div>
                 )}
               </div>
@@ -156,8 +168,8 @@ const Permissions = ({ permissions }) => {
                     </label>
                   ))
                 ) : (
-                  roleData.pages && roleData.pages.length > 0 ? (
-                    roleData.pages.map(pageKey => {
+                  visiblePageKeys(roleData.pages).length > 0 ? (
+                    visiblePageKeys(roleData.pages).map(pageKey => {
                       const page = ALL_PAGES.find(p => p.key === pageKey);
                       return (
                         <span key={pageKey} className="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
@@ -172,24 +184,40 @@ const Permissions = ({ permissions }) => {
               </div>
             </div>
 
-            {/* Components Section */}
+            {(editingRole === roleData.role ? editedPages.includes('users') : roleData.pages?.includes('users')) && (
+              <div className="mb-6">
+                <h4 className="text-md font-medium text-gray-700 mb-3">Users capabilities</h4>
+                <div className="flex items-center flex-wrap gap-2">
+                  {editingRole === roleData.role ? (
+                    USER_CAPABILITIES.map(cap => (
+                      <label key={cap.key} className="flex items-center space-x-2 bg-amber-50 px-3 py-2 rounded-md hover:bg-amber-100 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editedPages.includes(cap.key)}
+                          onChange={() => toggleCapability(cap.key)}
+                          className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                        />
+                        <span className="text-sm">{cap.label}</span>
+                      </label>
+                    ))
+                  ) : (
+                    USER_CAPABILITY_KEYS.filter(k => roleData.pages?.includes(k)).map(key => (
+                      <span key={key} className="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-amber-100 text-amber-800">
+                        {capabilityLabel(key)}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h4 className="text-md font-medium text-gray-700">Analytics Components</h4>
                 {editingRole === roleData.role && (
                   <div className="space-x-2 text-sm">
-                    <button
-                      onClick={selectAllComponents}
-                      className="text-blue-600 hover:text-blue-700 underline"
-                    >
-                      Select All
-                    </button>
-                    <button
-                      onClick={deselectAllComponents}
-                      className="text-gray-600 hover:text-gray-700 underline"
-                    >
-                      Deselect All
-                    </button>
+                    <button onClick={selectAllComponents} className="text-blue-600 hover:text-blue-700 underline">Select All</button>
+                    <button onClick={deselectAllComponents} className="text-gray-600 hover:text-gray-700 underline">Deselect All</button>
                   </div>
                 )}
               </div>
