@@ -10,12 +10,16 @@ import axiosInstance from '../utils/axios';
 import { formatDisplayDate } from '../utils/formatDate';
 import { formatRazorpayAmount } from '../utils/formatCurrency';
 import { notesToArray } from '../utils/noteKeys';
+import { canWriteUsers, canViewSteps, canViewPayment } from '../utils/checkPermission';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
 const UserDetailsByPhone = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const allowWrite = canWriteUsers();
+  const allowViewSteps = canViewSteps();
+  const allowViewPayment = canViewPayment();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notesToShow, setNotesToShow] = useState({});
@@ -244,6 +248,7 @@ const UserDetailsByPhone = () => {
               Back to Users
             </button>
             <h1 className="text-3xl font-bold text-gray-900">{user.name}'s Profile</h1>
+            {allowWrite && (
             <button
               onClick={() => setIsEditModalOpen(true)}
               className="ml-auto flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
@@ -251,6 +256,7 @@ const UserDetailsByPhone = () => {
               <Edit size={18} />
               Edit User
             </button>
+            )}
           </div>
 
           {/* Basic Info Card */}
@@ -302,7 +308,7 @@ const UserDetailsByPhone = () => {
                   <p className="font-medium">{formatDate(user.premiumPlan.expiryDate)}</p>
                 </div>
                 {
-                  user.premiumPlan.isPaymentPending && (
+                  allowViewPayment && user.premiumPlan.isPaymentPending && (
                     <>
                 <div>
                   <p className="text-sm text-gray-600">Amount Paid</p>
@@ -352,12 +358,17 @@ const UserDetailsByPhone = () => {
           )}
 
             {/* Steps Progress */}
-          { user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
-           <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step)=> handleAddVerdict(step.number)} />
+          {allowViewSteps && user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
+           <ProgressTracker
+             userId={user.id}
+             userStepsData={user.stepsData.steps}
+             form={user.stepsData.id}
+             onVerdictClick={allowWrite ? ((step)=> handleAddVerdict(step.number)) : undefined}
+           />
            </div>}
 
           {/* Payment History Section */}
-          {paymentHistory.length > 0 && (
+          {allowViewPayment && paymentHistory.length > 0 && (
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold flex items-center">

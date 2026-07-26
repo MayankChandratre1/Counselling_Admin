@@ -4,6 +4,7 @@ import CollegesListModal from './CollegesListModal';
 import axiosInstance from '../../utils/axios';
 import ListDetails from '../lists/ListDetails';
 import { formatDisplayDate } from '../../utils/formatDate';
+import { canWriteUserLists } from '../../utils/checkPermission';
 
 const UserListModal = ({ 
   showModal, 
@@ -19,6 +20,7 @@ const UserListModal = ({
   users = [],
   onAssignListToUsers
 }) => {
+  const allowWriteLists = canWriteUserLists();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedList, setSelectedList] = useState(null);
   const [editListFormData, setEditListFormData] = useState({ colleges: [] });
@@ -493,6 +495,8 @@ const UserListModal = ({
                       </div>
 
                       <div className="flex items-center gap-1">
+                        {allowWriteLists && (
+                          <>
                         <button
                           onClick={() => onEditList(expandedList.isCreatedList ? expandedList : { ...expandedList, id: expandedList.id })}
                           className={`p-2 rounded-md transition-colors ${expandedList.isCreatedList ? 'text-green-600 hover:bg-green-100' : 'text-blue-600 hover:bg-blue-100'}`}
@@ -525,6 +529,8 @@ const UserListModal = ({
                         >
                           <Trash2 size={16} />
                         </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

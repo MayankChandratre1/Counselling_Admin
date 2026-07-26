@@ -11,13 +11,16 @@ import { formatDisplayDate } from '../utils/formatDate';
 import { formatCurrency, formatRazorpayAmount } from '../utils/formatCurrency';
 import { getPaymentSourceDisplay } from '../utils/paymentSource';
 import { notesToArray } from '../utils/noteKeys';
-import { checkPermission } from '../utils/checkPermission';
+import { checkPermission, canWriteUsers, canViewSteps, canViewPayment } from '../utils/checkPermission';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
 const UserDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const allowWrite = canWriteUsers();
+  const allowViewSteps = canViewSteps();
+  const allowViewPayment = canViewPayment();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notesToShow, setNotesToShow] = useState({});
@@ -415,7 +418,7 @@ const UserDetailsPage = () => {
             </button>
             <h1 className="text-3xl font-bold text-gray-900">{user.name}'s Profile</h1>
             {
-              checkPermission('edit-users') && (
+              allowWrite && (
                 <button
                   onClick={() => setIsEditModalOpen(true)}
                   className="ml-auto flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
@@ -481,6 +484,8 @@ const UserDetailsPage = () => {
                     <p className="text-sm text-gray-600">Expiry Date</p>
                     <p className="font-medium">{formatDate(user.premiumPlan.expiryDate)}</p>
                   </div>
+                  {allowViewPayment && (
+                    <>
                   <div>
                     <p className="text-sm text-gray-600">Payment Source</p>
                     <p className="font-medium">{getPaymentSourceDisplay(user.premiumPlan)}</p>
@@ -499,6 +504,8 @@ const UserDetailsPage = () => {
                       </>
                     )
                   }
+                    </>
+                  )}
 
 
 
@@ -536,12 +543,18 @@ const UserDetailsPage = () => {
           )}
 
           {/* Steps Progress */}
-          {user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
-            <ProgressTracker userId={user.id} userStepsData={user.stepsData.steps} form={user.stepsData.id} onVerdictClick={(step) => handleAddVerdict(step.number)} onEditClick={handleEditStep} />
+          {allowViewSteps && user && user.stepsData && user.stepsData.steps && <div className='mb-12'>
+            <ProgressTracker
+              userId={user.id}
+              userStepsData={user.stepsData.steps}
+              form={user.stepsData.id}
+              onVerdictClick={allowWrite ? ((step) => handleAddVerdict(step.number)) : undefined}
+              onEditClick={allowWrite ? handleEditStep : undefined}
+            />
           </div>}
 
           {/* Orders Section */}
-          {user?.orders && user.orders.length > 0 && (
+          {allowViewPayment && user?.orders && user.orders.length > 0 && (
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
               <h2 className="text-xl font-semibold mb-4 text-gray-800">Orders</h2>
               <div className="space-y-4">
@@ -581,6 +594,7 @@ const UserDetailsPage = () => {
           )}
 
           {/* Payment History Section */}
+          {allowViewPayment && (
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-800">Payment History</h2>
@@ -676,6 +690,7 @@ const UserDetailsPage = () => {
               </>
             )}
           </div>
+          )}
 
           {/* Counselling Data Card */}
           {user.counsellingData && (

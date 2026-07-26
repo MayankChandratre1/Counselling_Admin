@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { getAllPagePermissions, ANALYTICS_COMPONENTS } from '../../config/routes';
+import {
+  USER_CAPABILITIES,
+  USER_CAPABILITY_KEYS,
+  expandLegacyUserCapabilities,
+} from '../../utils/checkPermission';
 
 const ALL_PAGES = getAllPagePermissions();
 const ALL_COMPONENTS = ANALYTICS_COMPONENTS.map(c => c.key);
@@ -12,15 +17,39 @@ const EditPermissionsModal = ({ admin, onClose, onSave }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setPages(admin.pages || []);
+    setPages(expandLegacyUserCapabilities(admin.pages || []));
     setComponents(admin.components || []);
   }, [admin]);
 
+  const hasUsersAccess = pages.includes('users');
+
   const togglePage = (page) => {
-    setPages(prev =>
-      prev.includes(page)
+    setPages(prev => {
+      let next = prev.includes(page)
         ? prev.filter(p => p !== page)
-        : [...prev, page]
+        : [...prev, page];
+
+      // Granting Users access → enable all user capabilities by default
+      if (page === 'users' && next.includes('users')) {
+        for (const key of USER_CAPABILITY_KEYS) {
+          if (!next.includes(key)) next.push(key);
+        }
+      }
+
+      // Revoking Users access → drop user capability flags
+      if (page === 'users' && !next.includes('users')) {
+        next = next.filter(p => !USER_CAPABILITY_KEYS.includes(p) && p !== 'edit-users');
+      }
+
+      return next;
+    });
+  };
+
+  const toggleCapability = (key) => {
+    setPages(prev =>
+      prev.includes(key)
+        ? prev.filter(p => p !== key)
+        : [...prev, key]
     );
   };
 
@@ -32,7 +61,11 @@ const EditPermissionsModal = ({ admin, onClose, onSave }) => {
     );
   };
 
-  const selectAllPages = () => setPages(ALL_PAGES.map(p => p.key));
+  const selectAllPages = () => {
+    const keys = ALL_PAGES.map(p => p.key);
+    const withCaps = [...new Set([...keys, ...USER_CAPABILITY_KEYS])];
+    setPages(withCaps);
+  };
   const deselectAllPages = () => setPages([]);
   const selectAllComponents = () => setComponents([...ALL_COMPONENTS]);
   const deselectAllComponents = () => setComponents([]);
@@ -41,7 +74,16 @@ const EditPermissionsModal = ({ admin, onClose, onSave }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await onSave(admin.id, { pages, components });
+      // Keep edit-users in sync with users-write for older checks
+      let pagesToSave = [...pages];
+      if (pagesToSave.includes('users-write') && !pagesToSave.includes('edit-users')) {
+        pagesToSave.push('edit-users');
+      }
+      if (!pagesToSave.includes('users-write')) {
+        pagesToSave = pagesToSave.filter(p => p !== 'edit-users');
+      }
+
+      await onSave(admin.id, { pages: pagesToSave, components });
       onClose();
     } catch (error) {
       console.error('Error saving permissions:', error);
@@ -113,6 +155,37 @@ const EditPermissionsModal = ({ admin, onClose, onSave }) => {
               </div>
             </div>
 
+            {/* Users capabilities — only when Users page is granted */}
+            {hasUsersAccess && (
+              <div>
+                <div className="mb-4">
+                  <h4 className="text-lg font-medium text-gray-900">Users / Premium Users capabilities</h4>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Uncheck write access for read-only. Control whether this admin can see steps and payment info, and whether they can modify user lists.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  {USER_CAPABILITIES.map(cap => (
+                    <label
+                      key={cap.key}
+                      className="flex items-start space-x-3 bg-amber-50 px-4 py-3 rounded-md hover:bg-amber-100 cursor-pointer transition-colors border border-amber-100"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={pages.includes(cap.key)}
+                        onChange={() => toggleCapability(cap.key)}
+                        className="rounded border-gray-300 text-amber-600 focus:ring-amber-500 h-4 w-4 mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">{cap.label}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{cap.description}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Components Section */}
             <div>
               <div className="flex justify-between items-center mb-4">
@@ -158,7 +231,11 @@ const EditPermissionsModal = ({ admin, onClose, onSave }) => {
           {/* Footer */}
           <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
             <div className="text-sm text-gray-500">
-              {pages.length} pages • {components.length} components selected
+              {pages.filter(p => !USER_CAPABILITY_KEYS.includes(p) && p !== 'edit-users').length} pages
+              {' • '}
+              {USER_CAPABILITY_KEYS.filter(k => pages.includes(k)).length} user caps
+              {' • '}
+              {components.length} components
             </div>
             <div className="flex gap-3">
               <button

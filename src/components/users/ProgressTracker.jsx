@@ -193,7 +193,7 @@ const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick, onEditCl
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      {step.isVerdict && (
+                      {onVerdictClick && step.isVerdict && (
                         <button
                           onClick={(e)=>{
                             e.stopPropagation();
@@ -205,7 +205,7 @@ const ProgressTracker = ({ userId, userStepsData, form, onVerdictClick, onEditCl
                           Add Verdict
                         </button>
                       )}
-                     {!step.isLocked &&  <button
+                     {onEditClick && !step.isLocked &&  <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onEditClick(step);

@@ -26,6 +26,7 @@ import { toast } from 'react-toastify';
 import { formatDisplayDate, getDateMillis } from '../../utils/formatDate';
 import { getPaymentSourceDisplay } from '../../utils/paymentSource';
 import { notesToArray, getNoteForAdmin } from '../../utils/noteKeys';
+import { canWriteUsers, canWriteUserLists, canViewPayment } from '../../utils/checkPermission';
 
 const NotesModal = ({ isOpen, onClose, userNotes, userName, onEditNote }) => {
   if (!isOpen) return null;
@@ -128,7 +129,7 @@ const NotesModal = ({ isOpen, onClose, userNotes, userName, onEditNote }) => {
   );
 };
 
-const ActionsDropdown = ({ user, onAddToList, onViewLists, onEdit, onDelete, onViewDetails, isLastItem }) => {
+const ActionsDropdown = ({ user, onAddToList, onViewLists, onEdit, onDelete, onViewDetails, isLastItem, canWrite = true, canWriteLists = true }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -183,7 +184,7 @@ const ActionsDropdown = ({ user, onAddToList, onViewLists, onEdit, onDelete, onV
                 <ExternalLink size={14} className="mr-2" />
                 View Details
               </button>
-              {user.isPremium && <button
+              {canWriteLists && user.isPremium && <button
                 onClick={() => handleAction('addToList')}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
               >
@@ -198,15 +199,19 @@ const ActionsDropdown = ({ user, onAddToList, onViewLists, onEdit, onDelete, onV
                 View Lists
               </button>
             
-              <div className="border-t border-gray-100 my-1" />
-              
-              <button
-                onClick={() => handleAction('delete')}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
-              >
-                <Trash2 size={14} className="mr-2" />
-                Delete User
-              </button>
+              {canWrite && (
+                <>
+                  <div className="border-t border-gray-100 my-1" />
+                  
+                  <button
+                    onClick={() => handleAction('delete')}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
+                  >
+                    <Trash2 size={14} className="mr-2" />
+                    Delete User
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </>
@@ -236,6 +241,10 @@ const UsersTable = ({
   const { notes, fetchUserNotes, setNotes, totalUsersNumber, isFilterActive, filters } = useUsers();
   const [sortOrder, setSortOrder] = useState('desc');
   const [sortedUsers, setSortedUsers] = useState([]);
+  const allowWrite = canWriteUsers();
+  const allowWriteLists = canWriteUserLists();
+  const allowViewPayment = canViewPayment();
+  const showPaymentColumn = usePurchaseDate && allowViewPayment;
   
   const [noteModal, setNoteModal] = useState({
     isOpen: false,
@@ -460,7 +469,7 @@ const UsersTable = ({
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              {usePurchaseDate && (
+              {showPaymentColumn && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Payment Source
                 </th>
@@ -485,7 +494,7 @@ const UsersTable = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedUsers.length === 0 ? (
               <tr>
-                <td colSpan={usePurchaseDate ? 9 : 8} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={showPaymentColumn ? 9 : 8} className="px-6 py-8 text-center text-gray-500">
                   No users found
                 </td>
               </tr>
@@ -535,7 +544,7 @@ const UsersTable = ({
                     </div>
                   </td>
 
-                  {usePurchaseDate && (
+                  {showPaymentColumn && (
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                         {getPaymentSourceDisplay(user.premiumPlan)}
@@ -559,7 +568,7 @@ const UsersTable = ({
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       {/* Add List Plus Button */}
-                    {user.isPremium && <button
+                    {allowWriteLists && user.isPremium && <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onAddToList(user);
@@ -691,6 +700,8 @@ const UsersTable = ({
                       onDelete={onDelete}
                       onViewDetails={onViewDetails}
                       isLastItem={sortedUsers.indexOf(user) >= sortedUsers.length/2}
+                      canWrite={allowWrite}
+                      canWriteLists={allowWriteLists}
                     />
                   </td>
                 </tr>
