@@ -2,6 +2,10 @@
  * Check if the currently logged-in admin has a given permission page.
  * Pages are stored in sessionStorage under adminInfo.permissions.pages.
  * Super-admins and security-admins always have access.
+ *
+ * Users capabilities are ALLOW-ONLY (no legacy “has users ⇒ full access” fallback).
+ * Unchecked caps must deny. Legacy admins without caps are upgraded at login
+ * (see auth.service) so they keep access until a security admin reconfigures them.
  */
 import { hasSecurityPrivileges } from './securityRole';
 
@@ -47,18 +51,16 @@ const getAdminInfo = () => {
   }
 };
 
-const getPages = (adminInfo = getAdminInfo()) =>
-  adminInfo?.permissions?.pages || adminInfo?.pages || [];
+const getPages = (adminInfo = getAdminInfo()) => {
+  const raw = adminInfo?.permissions?.pages ?? adminInfo?.pages ?? [];
+  return Array.isArray(raw) ? raw : [];
+};
 
 export const isElevatedAdmin = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   return adminInfo.role === 'super-admin' || adminInfo.role === 'security-admin';
 };
 
-/**
- * Explicit mode: capabilities were configured (marker or any cap key present).
- * In explicit mode, missing a key means DENY — never fall back to full access.
- */
 export const isUsersCapsExplicit = (pages = getPages()) =>
   pages.includes(USERS_CAPS_CONFIGURED) ||
   USER_CAPABILITY_KEYS.some((k) => pages.includes(k));
@@ -70,64 +72,38 @@ export const hasUsersPageAccess = (adminInfo = getAdminInfo()) => {
   return pages.includes('users') || pages.includes('user-lists') || pages.includes('premium-users');
 };
 
-/**
- * Can edit/delete users (Users + Premium Users).
- * Legacy (no marker / no caps): keep write if they have users.
- * Explicit: require users-write or edit-users.
- */
+/** Edit / delete users — requires users-write (or legacy edit-users). */
 export const canWriteUsers = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   if (isElevatedAdmin(adminInfo)) return true;
   const pages = getPages(adminInfo);
-  if (!pages.includes('users') && !pages.includes('premium-users')) return false;
-  if (isUsersCapsExplicit(pages)) {
-    return pages.includes('users-write') || pages.includes('edit-users');
-  }
-  return pages.includes('users');
+  return pages.includes('users-write') || pages.includes('edit-users');
 };
 
-/**
- * Can edit/delete/assign on user lists.
- */
+/** Edit / delete / assign user lists — requires user-lists-write. */
 export const canWriteUserLists = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   if (isElevatedAdmin(adminInfo)) return true;
-  const pages = getPages(adminInfo);
-  if (!pages.includes('users') && !pages.includes('user-lists')) return false;
-  if (isUsersCapsExplicit(pages)) {
-    return pages.includes('user-lists-write');
-  }
-  return true;
+  return getPages(adminInfo).includes('user-lists-write');
 };
 
-/** Can see steps / form progress on user details. */
+/** Steps on user details — requires view-steps. */
 export const canViewSteps = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   if (isElevatedAdmin(adminInfo)) return true;
-  if (!hasUsersPageAccess(adminInfo)) return false;
-  const pages = getPages(adminInfo);
-  if (isUsersCapsExplicit(pages)) {
-    return pages.includes('view-steps');
-  }
-  return true;
+  return getPages(adminInfo).includes('view-steps');
 };
 
-/** Can see payment / premium plan money fields / payment history. */
+/** Payment info — requires view-payment. */
 export const canViewPayment = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   if (isElevatedAdmin(adminInfo)) return true;
-  if (!hasUsersPageAccess(adminInfo)) return false;
-  const pages = getPages(adminInfo);
-  if (isUsersCapsExplicit(pages)) {
-    return pages.includes('view-payment');
-  }
-  return true;
+  return getPages(adminInfo).includes('view-payment');
 };
 
 /**
  * When opening the permissions editor for a legacy admin who has Users access
- * but no capability flags yet, treat all capabilities as enabled in the UI
- * so saving doesn't accidentally lock them out.
+ * but no capability flags yet, treat all capabilities as enabled in the UI.
  */
 export const expandLegacyUserCapabilities = (pages = []) => {
   const next = [...pages];
@@ -138,7 +114,6 @@ export const expandLegacyUserCapabilities = (pages = []) => {
     next.push('users-write');
   }
 
-  // Legacy only: no marker and no caps → show all checked in the UI
   if (!isUsersCapsExplicit(next)) {
     for (const key of USER_CAPABILITY_KEYS) {
       if (!next.includes(key)) next.push(key);
@@ -191,6 +166,5 @@ export const checkPermission = (requiredPermission) => {
   if (requiredPermission === 'view-payment') return canViewPayment(adminInfo);
   if (requiredPermission === 'edit-users') return canWriteUsers(adminInfo);
 
-  const pages = getPages(adminInfo);
-  return pages.includes(requiredPermission);
+  return getPages(adminInfo).includes(requiredPermission);
 };

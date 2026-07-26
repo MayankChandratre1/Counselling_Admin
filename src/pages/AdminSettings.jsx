@@ -104,6 +104,26 @@ const AdminSettings = () => {
       // Refresh admin list
       const response = await axiosInstance.get('/api/admin/all-admins');
       setAdmins(response.data);
+
+      // If editing the currently logged-in admin, refresh their session permissions immediately
+      try {
+        const current = JSON.parse(sessionStorage.getItem('adminInfo') || 'null');
+        if (current && (current.id === adminId || current.email === response.data.find(a => a.id === adminId)?.email)) {
+          const updated = response.data.find(a => a.id === adminId);
+          if (updated) {
+            sessionStorage.setItem('adminInfo', JSON.stringify({
+              ...current,
+              pages: updated.pages || [],
+              permissions: {
+                pages: updated.pages || [],
+                components: updated.components || current.permissions?.components || [],
+              },
+            }));
+          }
+        }
+      } catch (_) { /* ignore */ }
+
+      alert('Permissions saved. That admin must log out and log back in for changes to apply.');
     } catch (error) {
       console.error('Error updating permissions:', error);
       throw error;
