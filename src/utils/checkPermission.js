@@ -18,6 +18,7 @@ export const USER_CAPABILITY_KEYS = [
   'user-lists-write',
   'view-steps',
   'view-payment',
+  'users-export',
 ];
 
 export const USER_CAPABILITIES = [
@@ -40,6 +41,11 @@ export const USER_CAPABILITIES = [
     key: 'user-lists-write',
     label: 'Write access on User Lists',
     description: 'Allow editing, deleting, and assigning lists. Uncheck for read-only overview.',
+  },
+  {
+    key: 'users-export',
+    label: 'Export CSV',
+    description: 'Allow exporting users / list colleges as CSV',
   },
 ];
 
@@ -99,6 +105,13 @@ export const canViewPayment = (adminInfo = getAdminInfo()) => {
   if (!adminInfo) return false;
   if (isElevatedAdmin(adminInfo)) return true;
   return getPages(adminInfo).includes('view-payment');
+};
+
+/** Export users / list CSV — requires users-export. */
+export const canExportUsers = (adminInfo = getAdminInfo()) => {
+  if (!adminInfo) return false;
+  if (isElevatedAdmin(adminInfo)) return true;
+  return getPages(adminInfo).includes('users-export');
 };
 
 /**
@@ -164,6 +177,7 @@ export const checkPermission = (requiredPermission) => {
   if (requiredPermission === 'user-lists-write') return canWriteUserLists(adminInfo);
   if (requiredPermission === 'view-steps') return canViewSteps(adminInfo);
   if (requiredPermission === 'view-payment') return canViewPayment(adminInfo);
+  if (requiredPermission === 'users-export') return canExportUsers(adminInfo);
   if (requiredPermission === 'edit-users') return canWriteUsers(adminInfo);
 
   return getPages(adminInfo).includes(requiredPermission);

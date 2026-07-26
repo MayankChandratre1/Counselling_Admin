@@ -21,6 +21,7 @@ import axiosInstance from '../../utils/axios';
 import { downloadUsersExport } from '../../utils/exportUsers';
 import { DEFAULT_USER_FILTERS } from '../../utils/userFilterParams';
 import { toast } from 'react-toastify';
+import { canExportUsers, canWriteUsers } from '../../utils/checkPermission';
 
 const API_URL = import.meta.env.VITE_REACT_APP_ADMIN_API_URL;
 
@@ -739,6 +740,7 @@ const UsersManagement = ({id, listId, isListEdit}) => {
                 {loading ? 'Refreshing...' : 'Refresh'}
               </button>
 
+              {canExportUsers() && (
               <button
                 onClick={handleExport}
                 disabled={exporting || loading}
@@ -748,10 +750,13 @@ const UsersManagement = ({id, listId, isListEdit}) => {
                 <Download size={16} className={exporting ? 'animate-pulse' : ''} />
                 {exporting ? 'Exporting...' : 'Export'}
               </button>
+              )}
               
+              {canWriteUsers() && (
               <Link to={"/add-user"} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-200">
                 Add User
               </Link>
+              )}
               
               <button
                 onClick={() => setShowFilters(!showFilters)}

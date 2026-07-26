@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, GraduationCap, Search, MapPin, Building, Filter, Download, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { canExportUsers } from '../../utils/checkPermission';
 
 const CollegesListModal = ({ show, onClose, list }) => {
+  const allowExport = canExportUsers();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCity, setFilterCity] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
@@ -111,7 +113,7 @@ const CollegesListModal = ({ show, onClose, list }) => {
               </select>
             </div>
             
-            {colleges.length > 0 && (
+            {allowExport && colleges.length > 0 && (
               <button
                 onClick={exportToCSV}
                 className="inline-flex items-center px-3 py-2 bg-white bg-opacity-20 text-white text-sm font-medium rounded-lg hover:bg-opacity-30 transition-colors"
